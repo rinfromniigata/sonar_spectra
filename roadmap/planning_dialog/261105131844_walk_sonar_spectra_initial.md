@@ -71,8 +71,15 @@
 - [x] W1-9 【ユーザー】pushしたあと、GitHub Actionsの`ci.yml`が通ることを確認する
   - 依存: T1-8
   - 実施メモ（261106）：ユーザーが確認し、完了の報告を受けた
-- [ ] W1-10 【エージェント】リポジトリを別の場所にクローンし、`CONTRIBUTING.md`の手順だけでセットアップ・`bun run check`・起動ができる
+- [x] W1-10 【エージェント】リポジトリを別の場所にクローンし、`CONTRIBUTING.md`の手順だけでセットアップ・`bun run check`・起動ができる
   - 依存: T1-9
+  - 実施メモ（261106）：通過した。修正は不要だった。手順は、作業ツリーとは別の空のフォルダ（スクラッチパッド）で、`CONTRIBUTING.md`に書かれたとおりに実行した
+    - クローン：`git clone https://github.com/rinfromniigata/sonar_spectra.git`で取得し、HEAD（`9acbc8a`）が手元の`main`・`origin/main`と一致することを確かめた
+    - セットアップ：`bun install`が終了コード0で完了した（240パッケージ、約20秒）。`bun.lock`から入るため、版は固定どおり
+    - 検査：`bun run check`が終了コード0で通った（型・ESLint・i18n・トークン・単体テスト・clippy・cargo test）。検査後の`git status`は空で、検査が追跡ファイルを書き換えないことも確かめた
+    - 起動：`bun run tauri dev`で、Rust側のビルドを経てウィンドウが起動した。WebView2のリモートデバッグ経由で、`<html lang="ja" data-theme="dark">`・タイトル`sonar_spectra`・Vueのマウントを確かめた。`Ctrl+Shift+P`で部品ギャラリー（見出し「部品の状態」・47個のボタン）が開いた。メーター画面は、Phase 2以降の実装まで空である（想定どおり）。確認後、アプリと開発サーバーを止めた
+    - 手順に書かれていない前提は、必要なかった（Bun・Rust・C++ Build Tools・WebView2は、この環境に入っている）。この環境にない状態からのセットアップ（Bun・Rustの導入など）は検証していない
+    - 気づいた点（検証は通過）：①`tsconfig.node.tsbuildinfo`がGitで追跡されている（ビルドの副産物）。`.gitignore`に加えて追跡から外す価値がある。②`cargo test`の最後に、リンカーの出力の警告（`linker_messages`）が1件出る。clippyの`-D warnings`の対象外で、検査は通る
 
 ## Phase 2: 音の取得から最初の表示まで（レベル・波形・状態表示）
 
