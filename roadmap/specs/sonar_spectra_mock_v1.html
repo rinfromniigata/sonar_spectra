@@ -1,0 +1,1588 @@
+<title>sonar_spectra モック</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;600&family=Syncopate:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* レイアウト：画面を上から縦に並べる仕様書。各画面はアプリのウィンドウ枠ごと描く */
+/* ===== tokens.css の写し ===== */
+:root {
+  --color-bg: #07060f;
+  --color-surface: #0f0d1c;
+  --color-surface-raised: #17142a;
+  --color-line: #2a2545;
+  --color-grid: #1c1832;
+  --color-text: #e9e6ff;
+  --color-text-muted: #8f88b8;
+  --color-neon-a: #ff2bd6;
+  --color-neon-b: #18e4ff;
+  --color-neon-c: #ffb547;
+  --color-danger: #ff4d6a;
+  --color-glow-a: rgb(255 43 214 / 0.55);
+  --color-glow-b: rgb(24 228 255 / 0.5);
+  --color-scanline: rgb(0 0 0 / 0.28);
+  --color-vignette: rgb(0 0 0 / 0.55);
+  --color-scrim: rgb(4 3 10 / 0.72);
+  color-scheme: dark;
+  --font-display: "Syncopate", "Arial Black", sans-serif;
+  --font-numeric: "Azeret Mono", "Consolas", ui-monospace, monospace;
+  --font-ui: "Zen Kaku Gothic New", "Yu Gothic UI", "Meiryo", sans-serif;
+  --font-size-xs: 0.6875rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-md: 0.9375rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 2rem;
+  --font-size-hero: clamp(2rem, 6vw, 4.5rem);
+  --tracking-label: 0.14em;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
+  --radius-sm: 2px; --radius-md: 4px; --radius-lg: 8px;
+  --glow-line-a: 0 0 6px var(--color-glow-a), 0 0 18px var(--color-glow-a);
+  --glow-line-b: 0 0 6px var(--color-glow-b), 0 0 18px var(--color-glow-b);
+  --shadow-panel: 0 12px 40px rgb(0 0 0 / 0.6);
+  --motion-fast: 120ms; --motion-base: 220ms; --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:lang(ja) { --font-ui: "Zen Kaku Gothic New", "Yu Gothic UI", "Meiryo", sans-serif; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --color-bg: #f3f1fb; --color-surface: #ffffff; --color-surface-raised: #ebe8f7;
+    --color-line: #cdc7e6; --color-grid: #e1ddf2; --color-text: #17132e; --color-text-muted: #5f587f;
+    --color-neon-a: #c4069f; --color-neon-b: #007f9c; --color-neon-c: #a85d00; --color-danger: #c41634;
+    --color-glow-a: rgb(196 6 159 / 0.18); --color-glow-b: rgb(0 127 156 / 0.18);
+    --color-scanline: rgb(23 19 46 / 0.05); --color-vignette: rgb(23 19 46 / 0.08); --color-scrim: rgb(243 241 251 / 0.8);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --color-bg: #f3f1fb; --color-surface: #ffffff; --color-surface-raised: #ebe8f7;
+  --color-line: #cdc7e6; --color-grid: #e1ddf2; --color-text: #17132e; --color-text-muted: #5f587f;
+  --color-neon-a: #c4069f; --color-neon-b: #007f9c; --color-neon-c: #a85d00; --color-danger: #c41634;
+  --color-glow-a: rgb(196 6 159 / 0.18); --color-glow-b: rgb(0 127 156 / 0.18);
+  --color-scanline: rgb(23 19 46 / 0.05); --color-vignette: rgb(23 19 46 / 0.08); --color-scrim: rgb(243 241 251 / 0.8);
+  color-scheme: light;
+}
+/* ===== ここまで tokens ===== */
+
+body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-ui); font-size: var(--font-size-md); line-height: 1.6; }
+.doc { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: var(--space-6); display: grid; gap: var(--space-6); }
+.doc-head { display: grid; gap: var(--space-3); }
+.wordmark { font-family: var(--font-display); font-weight: 700; font-size: var(--font-size-xl); letter-spacing: 0.08em; color: var(--color-neon-b); text-shadow: var(--glow-line-b); margin: 0; text-wrap: balance; }
+.wordmark span { color: var(--color-neon-a); text-shadow: var(--glow-line-a); }
+.notice { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-sm); max-width: 70ch; }
+.toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--color-line); border-radius: var(--radius-md); overflow: hidden; }
+.seg button { font: inherit; font-size: var(--font-size-sm); background: var(--color-surface); color: var(--color-text-muted); border: 0; padding: var(--space-1) var(--space-3); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--color-surface-raised); color: var(--color-text); box-shadow: inset 0 -2px 0 var(--color-neon-b); }
+.seg button:focus-visible, .btn:focus-visible, .chip:focus-visible, .opt:focus-within, .sw:focus-visible { outline: 2px solid var(--color-neon-b); outline-offset: 2px; }
+.seg-label { font-size: var(--font-size-xs); letter-spacing: var(--tracking-label); color: var(--color-text-muted); text-transform: uppercase; }
+
+.screen { display: grid; gap: var(--space-3); }
+.screen-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; }
+.screen-id { font-family: var(--font-numeric); font-size: var(--font-size-sm); color: var(--color-neon-c); }
+.screen-title { margin: 0; font-size: var(--font-size-lg); font-weight: 700; text-wrap: balance; }
+.screen-note { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-sm); max-width: 70ch; }
+
+/* ===== ウィンドウ枠（Windows） ===== */
+.win { border: 1px solid var(--color-line); border-radius: var(--radius-lg); overflow: hidden; background: var(--color-bg); box-shadow: var(--shadow-panel); max-width: 100%; }
+.win-bar { display: flex; align-items: center; height: 32px; background: var(--color-surface); border-bottom: 1px solid var(--color-line); font-size: var(--font-size-xs); color: var(--color-text-muted); }
+.win-bar .win-title { flex: 1; min-width: 0; padding-left: var(--space-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.04em; }
+.win-ctrl { width: 44px; height: 32px; display: grid; place-items: center; color: var(--color-text-muted); }
+.win-ctrl svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 1.2; }
+.win-ctrl.close:hover { background: var(--color-danger); color: var(--color-bg); }
+.stage { --title-h: clamp(20px, 3.4cqi, 44px); position: relative; aspect-ratio: 16 / 9; max-width: 100%; background: var(--color-bg); overflow: hidden; container-type: inline-size; }
+.titlebar { position: absolute; inset: 0 0 auto 0; height: var(--title-h); z-index: 5; display: flex; align-items: center; gap: var(--space-3); padding-inline: clamp(6px, 1cqi, 16px); background: var(--color-bg); border-bottom: 1px solid var(--color-line); }
+.title-mark { margin: 0; flex: none; font-family: var(--font-display); font-weight: 700; font-size: calc(var(--title-h) * 0.38); letter-spacing: 0.1em; color: var(--color-neon-b); text-shadow: var(--glow-line-b); white-space: nowrap; }
+.title-mark span { color: var(--color-neon-a); text-shadow: var(--glow-line-a); }
+.title-ver { font-family: var(--font-numeric); font-size: calc(var(--title-h) * 0.3); color: var(--color-text-muted); white-space: nowrap; }
+.title-ctrl { margin-left: auto; display: flex; gap: clamp(4px, 0.5cqi, 8px); align-items: center; min-width: 0; }
+.stage.fs { border-radius: var(--radius-lg); border: 1px solid var(--color-line); }
+
+/* 走査線と周辺減光 */
+.stage .crt { position: absolute; inset: 0; pointer-events: none; z-index: 7;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, var(--color-scanline) 2px 3px),
+    radial-gradient(ellipse at center, transparent 55%, var(--color-vignette) 100%); }
+.stage.no-crt .crt { display: none; }
+
+/* ===== メーター配置 ===== */
+.grid { position: absolute; inset: var(--title-h) 0 0 0; display: grid; gap: 1px; background: var(--color-line); }
+.layout-t { grid-template-columns: 0.3fr 0.24fr 0.62fr 1.84fr; grid-template-rows: 0.9fr 2.2fr 1.3fr;
+  grid-template-areas: "level wave wave wave" "level pan spec spec" "loud loud stereo gram"; }
+
+.mod { position: relative; background: var(--color-bg); min-width: 0; min-height: 0; container-type: inline-size; }
+.mod canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mod .tag { position: absolute; left: var(--space-2); top: var(--space-1); z-index: 2; font-size: clamp(7px, 7cqi, var(--font-size-xs)); letter-spacing: var(--tracking-label); color: var(--color-text-muted); text-transform: uppercase; font-family: var(--font-numeric); white-space: nowrap; }
+/* 自動整列：画面比の帯ごとに配置を選ぶ */
+.layout-auto-std { grid-template-columns: 0.32fr 0.26fr 0.62fr 1.8fr; grid-template-rows: 0.9fr 2.6fr 1.9fr;
+  grid-template-areas: "level wave wave wave" "level pan spec spec" "loud loud stereo gram"; }
+.layout-auto-tall { grid-template-columns: 3fr 1fr; grid-template-rows: 0.45fr 1.1fr 3fr 2.4fr 1.5fr;
+  grid-template-areas: "level level" "wave wave" "spec pan" "gram gram" "stereo loud"; }
+.layout-auto-strip { grid-template-columns: 0.22fr 0.5fr 1.6fr 0.35fr 1.8fr 0.55fr 1.3fr; grid-template-rows: 1fr;
+  grid-template-areas: "level loud wave pan spec stereo gram"; }
+.layout-stereo-only { grid-template-columns: 1fr; grid-template-rows: 1fr; grid-template-areas: "stereo"; }
+.layout-stereo-only .mod:not(.stereo) { display: none; }
+.stage.ar-16-10 { aspect-ratio: 16 / 10; } .stage.ar-4-3 { aspect-ratio: 4 / 3; } .stage.ar-9-16 { aspect-ratio: 9 / 16; } .stage.ar-3-1 { aspect-ratio: 3 / 1; }
+.gallery { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; }
+.gallery figure { margin: 0; display: grid; gap: var(--space-2); min-width: 0; }
+.gallery figcaption { font-size: var(--font-size-sm); color: var(--color-text-muted); }
+.gallery figcaption b { color: var(--color-text); font-family: var(--font-numeric); margin-right: var(--space-2); }
+.g-wide { flex: 1 1 46%; } .g-std { flex: 1 1 36%; } .g-tall { flex: 0 1 22%; } .g-strip { flex: 1 1 100%; }
+@media (max-width: 640px) { .g-wide, .g-std, .g-strip { flex-basis: 100%; } .g-tall { flex-basis: 60%; } }
+/* 自由配置：12×8の格子にモジュールを置く */
+.layout-custom { grid-template-columns: repeat(12, 1fr); grid-template-rows: repeat(8, 1fr); }
+.layout-custom .mod { grid-area: auto; }
+.mod[data-on="off"] { display: none; }
+/* 編集モード */
+.stage[data-edit="on"] .grid { right: min(300px, 30%); gap: 4px; padding: 4px; background-color: var(--color-bg);
+  background-image: radial-gradient(var(--color-line) 1px, transparent 1.2px); background-size: calc(100% / 12) calc(100% / 8); }
+.stage[data-edit="on"] .mod { outline: 1px dashed var(--color-neon-b); outline-offset: -1px; }
+.stage[data-edit="on"] .mod canvas, .stage[data-edit="on"] .mod .loud-read { opacity: 0.5; }
+.stage[data-edit="on"] .mod.is-selected { outline: 2px solid var(--color-neon-a); box-shadow: 0 0 16px var(--color-glow-a); }
+.edit-head { position: absolute; inset: 0 0 auto 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 6px; background: var(--color-scrim); font-size: clamp(8px, 4cqi, 11px); }
+.edit-head .grip { width: 10px; height: 10px; flex: none; background: radial-gradient(var(--color-text-muted) 1px, transparent 1.3px) 0 0 / 4px 4px; cursor: grab; }
+.edit-head .name { font-weight: 700; white-space: nowrap; }
+.fit { padding: 0 6px; border-radius: 999px; border: 1px solid var(--color-line); white-space: nowrap; }
+.fit.good { color: var(--color-neon-b); border-color: var(--color-neon-b); }
+.fit.warn { color: var(--color-neon-c); border-color: var(--color-neon-c); }
+.dirs { display: inline-flex; border: 1px solid var(--color-line); border-radius: var(--radius-sm); overflow: hidden; }
+.dirs button { font: inherit; font-size: 1em; line-height: 1.5; width: 1.9em; padding: 0; border: 0; background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; }
+.dirs button[aria-pressed="true"] { background: var(--color-surface-raised); color: var(--color-neon-a); box-shadow: inset 0 -2px 0 var(--color-neon-a); }
+.dirs button:focus-visible { outline: 2px solid var(--color-neon-b); outline-offset: -2px; }
+.splitter { position: absolute; z-index: 4; display: grid; place-items: center; touch-action: none; }
+.splitter.v { width: 10px; margin-left: -5px; cursor: col-resize; }
+.splitter.h { height: 10px; margin-top: -5px; cursor: row-resize; }
+.splitter::before { content: ""; background: var(--color-neon-b); opacity: 0.35; border-radius: 2px; transition: opacity var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
+.splitter.v::before { width: 2px; height: 100%; }
+.splitter.h::before { height: 2px; width: 100%; }
+.splitter::after { content: ""; position: absolute; border-radius: 2px; background: var(--color-neon-b); }
+.splitter.v::after { width: 4px; height: 18px; }
+.splitter.h::after { height: 4px; width: 18px; }
+.splitter:hover::before, .splitter.is-drag::before, .splitter:focus-visible::before { opacity: 1; box-shadow: var(--glow-line-b); }
+.splitter:focus-visible { outline: none; }
+.resize { position: absolute; right: 2px; bottom: 2px; z-index: 3; width: 12px; height: 12px; border-right: 2px solid var(--color-neon-b); border-bottom: 2px solid var(--color-neon-b); cursor: nwse-resize; }
+.edit-panel { position: absolute; top: var(--title-h); right: 0; bottom: 0; width: min(300px, 30%); z-index: 6; background: var(--color-surface); border-left: 1px solid var(--color-line); display: grid; grid-template-rows: auto 1fr auto; font-size: clamp(9px, 1.05cqi, var(--font-size-sm)); }
+.edit-panel .drawer-body { gap: var(--space-2); }
+.mod-row { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--space-2); align-items: center; padding: var(--space-2) var(--space-3); border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--color-bg); }
+.mod-row.is-off { opacity: 0.55; }
+.mod-row .mr-name { font-weight: 700; }
+.mod-row .mr-desc { grid-column: 1 / -1; color: var(--color-text-muted); font-size: 0.9em; }
+.mod-row .sub { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding-left: var(--space-3); border-left: 2px solid var(--color-line); }
+.badge.mode-manual { color: var(--color-neon-c); border-color: var(--color-neon-c); }
+.ins-pop { position: absolute; z-index: 8; max-height: 84%; overflow: auto; background: var(--color-surface); box-shadow: var(--shadow-panel), 0 0 12px var(--color-glow-a); font-size: clamp(9px, 1.05cqi, var(--font-size-sm)); }
+.pop-close { position: absolute; top: 6px; right: 6px; }
+.ins-pop .ins-head { padding-right: 28px; }
+.edit-head .head-gear { width: 1.9em; height: 1.9em; }
+.edit-head .head-gear svg { width: 1.1em; height: 1.1em; }
+.inspector { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--color-neon-a); border-radius: var(--radius-md); background: var(--color-bg); box-shadow: 0 0 12px var(--color-glow-a); }
+.ins-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2); }
+.ins-title { font-weight: 700; }
+.btn.ins-reset { display: inline-flex; gap: 4px; height: auto; min-height: 24px; padding: 2px var(--space-2); font-size: 0.9em; }
+.btn.ins-reset svg { width: 12px; height: 12px; }
+.ins-field { display: grid; gap: 4px; }
+.ins-label { font-size: 0.85em; letter-spacing: var(--tracking-label); color: var(--color-text-muted); }
+.ins-note { font-size: 0.85em; color: var(--color-text-muted); }
+.inspector .swatch { font: inherit; font-size: 0.9em; color: var(--color-text); cursor: pointer; }
+.sw-a1 { background: var(--color-neon-a); } .sw-a2 { background: var(--color-neon-b); }
+.sw-b1 { background: var(--color-neon-b); } .sw-b2 { background: var(--color-neon-a); }
+.sw-c1 { background: var(--color-neon-c); } .sw-c2 { background: var(--color-neon-a); }
+/* カスタム配色はユーザーのデータなので、値はプリセット定義から読む */
+.sw-d1 { background: var(--custom-d1); } .sw-d2 { background: var(--custom-d2); }
+.stage { --custom-d1: #b7ff3c; --custom-d2: #8b5cff; }
+.mod-row { grid-template-columns: 1fr auto; }
+.mod-row.is-picked { border-color: var(--color-neon-a); }
+.swatch-mini { display: inline-flex; gap: 2px; margin-right: var(--space-2); vertical-align: middle; }
+.swatch-mini i, .color-pick i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.color-pick { display: inline-flex; align-items: center; gap: var(--space-2); padding: 2px var(--space-2); border: 1px solid var(--color-line); border-radius: var(--radius-sm); background: var(--color-surface-raised); }
+.color-pick code { font-family: var(--font-numeric); font-size: 0.9em; }
+.split-row { display: flex; align-items: center; gap: var(--space-2); }
+.split-row input[type="range"] { flex: 1; min-width: 0; accent-color: var(--color-neon-a); }
+.split-val { font-family: var(--font-numeric); font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
+.icon-btn:disabled { opacity: 0.35; cursor: not-allowed; border-color: var(--color-line); color: var(--color-text-muted); }
+.btn-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.btn-row .btn { flex: 1; }
+.mr-sub { display: block; font-weight: 400; color: var(--color-text-muted); font-size: 0.85em; }
+.mr-tools { display: inline-flex; gap: 4px; align-items: center; }
+.icon-btn { display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 1px solid var(--color-line); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; }
+.icon-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.4; }
+.icon-btn:hover { color: var(--color-text); border-color: var(--color-neon-b); }
+.icon-btn:focus-visible { outline: 2px solid var(--color-neon-b); outline-offset: 1px; }
+.hint { margin: 0; color: var(--color-text-muted); font-size: 0.9em; }
+.grid:not(.layout-custom) .mod.vu, .grid:not(.layout-custom) .mod.chroma, .grid:not(.layout-custom) .mod.centroid { display: none; }
+.layout-solo { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+.layout-solo .mod { display: none; }
+.layout-solo .mod.is-solo { display: block !important; grid-area: 1 / 1 / -1 / -1 !important; }
+.level { grid-area: level; } .pan { grid-area: pan; } .wave { grid-area: wave; } .spec { grid-area: spec; } .stereo { grid-area: stereo; } .gram { grid-area: gram; } .loud { grid-area: loud; }
+
+.loud-read { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 0; z-index: 2; padding-bottom: 10px; }
+.loud-unit { font-family: var(--font-numeric); font-size: clamp(7px, 9cqi, var(--font-size-sm)); color: var(--color-text-muted); letter-spacing: var(--tracking-label); }
+.loud-val { font-family: var(--font-numeric); font-weight: 600; font-size: clamp(12px, 26cqi, 4.5rem); line-height: 1.05; color: var(--color-neon-b); text-shadow: var(--glow-line-b); font-variant-numeric: tabular-nums; }
+.loud-val.peak { color: var(--color-neon-c); text-shadow: 0 0 10px var(--color-neon-c); }
+.loud-sub { font-family: var(--font-numeric); font-size: clamp(7px, 8cqi, var(--font-size-xs)); white-space: nowrap; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+
+/* ===== 操作系（タイトル帯の右側） ===== */
+.chip { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; max-width: min(40cqi, 360px); height: calc(var(--title-h, 30px) * 0.72); padding: 0 var(--space-3); border: 1px solid var(--color-line); border-radius: 999px; background: var(--color-scrim); color: var(--color-text); font: inherit; font-size: var(--font-size-xs); cursor: pointer; backdrop-filter: blur(6px); }
+.chip .dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--color-neon-b); box-shadow: var(--glow-line-b); }
+.chip .dot.off { background: var(--color-text-muted); box-shadow: none; }
+.chip .dot.err { background: var(--color-danger); box-shadow: 0 0 8px var(--color-danger); }
+.chip .txt { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title-ctrl .btn { min-width: calc(var(--title-h) * 0.72); height: calc(var(--title-h) * 0.72); padding: 0; }
+.title-ctrl .btn svg { width: calc(var(--title-h) * 0.34); height: calc(var(--title-h) * 0.34); }
+.title-ctrl .chip { font-size: clamp(8px, 0.85cqi, var(--font-size-xs)); }
+.btn { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 var(--space-3); border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--color-scrim); color: var(--color-text); font: inherit; font-size: var(--font-size-xs); cursor: pointer; backdrop-filter: blur(6px); transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
+.btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+.btn:hover, .btn.is-hover { border-color: var(--color-neon-b); box-shadow: 0 0 10px var(--color-glow-b); }
+.btn.is-active { border-color: var(--color-neon-a); color: var(--color-neon-a); box-shadow: 0 0 10px var(--color-glow-a); }
+.btn.primary { border-color: var(--color-neon-a); color: var(--color-text); box-shadow: 0 0 10px var(--color-glow-a); }
+.btn:disabled, .btn.is-disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; border-color: var(--color-line); }
+.btn.is-focus { outline: 2px solid var(--color-neon-b); outline-offset: 2px; }
+
+/* ===== 状態オーバーレイ ===== */
+.overlay { position: absolute; inset: var(--title-h) 0 0 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: var(--space-3); text-align: center; padding: var(--space-5); background: var(--color-scrim); }
+.overlay.thin { background: transparent; pointer-events: none; }
+.ov-title { font-family: var(--font-ui); font-weight: 700; font-size: clamp(13px, 2.2cqi, 1.5rem); margin: 0; text-wrap: balance; }
+.ov-body { margin: 0; color: var(--color-text-muted); font-size: clamp(11px, 1.4cqi, var(--font-size-md)); max-width: 52ch; }
+.ov-err .ov-title { color: var(--color-danger); }
+.ov-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--color-neon-a); box-shadow: var(--glow-line-a); animation: pulse 1.6s var(--motion-ease) infinite; }
+@keyframes pulse { 50% { opacity: 0.25; transform: scale(0.7); } }
+.spinner { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--color-line); border-top-color: var(--color-neon-b); animation: spin 0.9s linear infinite; box-shadow: 0 0 10px var(--color-glow-b); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== 設定パネル ===== */
+.drawer { position: absolute; top: var(--title-h); right: 0; bottom: 0; width: min(380px, 44%); z-index: 6; background: var(--color-surface); border-left: 1px solid var(--color-line); box-shadow: var(--shadow-panel); display: grid; grid-template-rows: auto 1fr auto; font-size: clamp(10px, 1.15cqi, var(--font-size-sm)); }
+.drawer-head, .drawer-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-line); }
+.drawer-foot { border-bottom: 0; border-top: 1px solid var(--color-line); justify-content: flex-end; }
+.btn.wide { width: 100%; justify-items: center; }
+.drawer-head h4 { margin: 0; font-size: 1.1em; }
+.drawer-body { overflow: auto; padding: var(--space-3) var(--space-4); display: grid; gap: var(--space-4); align-content: start; }
+.fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.legend { padding: 0; font-size: 0.85em; letter-spacing: var(--tracking-label); color: var(--color-text-muted); text-transform: uppercase; }
+.opt { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); align-items: start; padding: var(--space-2) var(--space-3); border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--color-bg); cursor: pointer; }
+.opt input { accent-color: var(--color-neon-b); margin-top: 0.3em; }
+.opt .opt-main { min-width: 0; }
+.opt .opt-title { display: block; }
+.opt .opt-desc { display: block; color: var(--color-text-muted); font-size: 0.9em; }
+.opt.checked { border-color: var(--color-neon-b); box-shadow: inset 0 0 0 1px var(--color-neon-b), 0 0 12px var(--color-glow-b); }
+.opt.disabled { opacity: 0.45; cursor: not-allowed; }
+.badge { display: inline-block; margin-left: var(--space-2); padding: 0 var(--space-2); border-radius: 999px; border: 1px solid var(--color-line); font-size: 0.8em; color: var(--color-text-muted); }
+.select { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--color-surface-raised); min-width: 0; }
+.select span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+.sw { position: relative; flex: none; width: 34px; height: 18px; border-radius: 999px; background: var(--color-surface-raised); border: 1px solid var(--color-line); cursor: pointer; padding: 0; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--color-text-muted); transition: transform var(--motion-fast) var(--motion-ease); }
+.sw[aria-checked="true"] { border-color: var(--color-neon-a); }
+.sw[aria-checked="true"]::after { transform: translateX(16px); background: var(--color-neon-a); box-shadow: var(--glow-line-a); }
+.swatches { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.swatch { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--color-bg); font-size: 0.9em; }
+.swatch.checked { border-color: var(--color-neon-b); }
+.swatch i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+
+/* ===== 表示方式の一覧 ===== */
+.compare { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); }
+.cmp { display: grid; gap: var(--space-2); }
+.cmp h4 { margin: 0; font-size: var(--font-size-md); }
+.cmp p { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted); }
+
+/* ===== 部品の状態 ===== */
+.parts { display: flex; flex-wrap: wrap; gap: var(--space-5); padding: var(--space-5); border: 1px solid var(--color-line); border-radius: var(--radius-lg); background: var(--color-surface); }
+.part { display: grid; gap: var(--space-2); justify-items: start; font-size: var(--font-size-xs); color: var(--color-text-muted); }
+
+/* ===== 決まったこと ===== */
+.notes { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+.notes section { padding: var(--space-5); border: 1px solid var(--color-line); border-radius: var(--radius-lg); background: var(--color-surface); min-width: 0; }
+.notes h3 { margin: 0 0 var(--space-3); font-size: var(--font-size-lg); }
+.notes ol, .notes ul { margin: 0; padding-left: 1.3em; display: grid; gap: var(--space-2); font-size: var(--font-size-sm); }
+.notes li small { display: block; color: var(--color-text-muted); }
+
+@media (prefers-reduced-motion: reduce) { .pulse, .spinner { animation: none; } }
+</style>
+
+<div class="doc">
+  <header class="doc-head">
+    <h1 class="wordmark">SONAR<span>/</span>SPECTRA</h1>
+    <p class="notice" data-i18n="doc.notice"></p>
+    <div class="toolbar">
+      <span class="seg-label" data-i18n="doc.theme"></span>
+      <div class="seg" id="theme_seg">
+        <button type="button" data-theme-set="system" aria-pressed="true" data-i18n="doc.theme_system"></button>
+        <button type="button" data-theme-set="dark" aria-pressed="false" data-i18n="doc.theme_dark"></button>
+        <button type="button" data-theme-set="light" aria-pressed="false" data-i18n="doc.theme_light"></button>
+      </div>
+      <span class="seg-label" data-i18n="doc.locale"></span>
+      <div class="seg" id="locale_seg">
+        <button type="button" data-locale="ja" aria-pressed="true">日本語</button>
+        <button type="button" data-locale="pseudo" aria-pressed="false" data-i18n="doc.locale_pseudo"></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- S01 -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S01</span><h2 class="screen-title" data-i18n="screen.s01.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s01.note"></p>
+    <div class="win">
+      <div class="win-bar"><span class="win-title" data-i18n="app.window_title"></span>
+        <span class="win-ctrl"><svg viewBox="0 0 10 10"><path d="M1 5h8"/></svg></span>
+        <span class="win-ctrl"><svg viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8"/></svg></span>
+        <span class="win-ctrl close"><svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1l-8 8"/></svg></span>
+      </div>
+      <div class="stage" data-layout="t" data-mode="live"></div>
+    </div>
+  </section>
+
+  <!-- S01a -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S01a</span><h2 class="screen-title" data-i18n="screen.s01a.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s01a.note"></p>
+    <div class="stage fs" data-layout="t" data-mode="live" data-fs="on"></div>
+  </section>
+
+  <!-- S01b -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S01b</span><h2 class="screen-title" data-i18n="screen.s01b.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s01b.note"></p>
+    <div class="stage fs" data-layout="t" data-mode="silent"></div>
+  </section>
+
+  <!-- S01c -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S01c</span><h2 class="screen-title" data-i18n="screen.s01c.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s01c.note"></p>
+    <div class="stage fs" data-layout="t" data-mode="error"></div>
+  </section>
+
+  <!-- S01d -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S01d</span><h2 class="screen-title" data-i18n="screen.s01d.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s01d.note"></p>
+    <div class="stage fs" data-layout="t" data-mode="loading"></div>
+  </section>
+
+  <!-- S05 スペクトラムの表示方式 -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S05</span><h2 class="screen-title" data-i18n="screen.s05.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s05.note"></p>
+    <div class="gallery">
+      <figure class="g-std"><div class="stage fs" data-layout="solo" data-solo="spec" data-mode="live" data-specmode="fill"></div><figcaption><span data-i18n="spec.fill"></span></figcaption></figure>
+      <figure class="g-std"><div class="stage fs" data-layout="solo" data-solo="spec" data-mode="live" data-specmode="bars"></div><figcaption><span data-i18n="spec.bars"></span></figcaption></figure>
+      <figure class="g-std"><div class="stage fs" data-layout="solo" data-solo="spec" data-mode="live" data-specmode="mirror"></div><figcaption><span data-i18n="spec.mirror"></span></figcaption></figure>
+      <figure class="g-std"><div class="stage fs" data-layout="solo" data-solo="spec" data-mode="live" data-specmode="radial"></div><figcaption><span data-i18n="spec.radial"></span></figcaption></figure>
+    </div>
+  </section>
+
+  <!-- S06 波形履歴の色 -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S06</span><h2 class="screen-title" data-i18n="screen.s06.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s06.note"></p>
+    <div class="gallery">
+      <figure class="g-wide"><div class="stage fs ar-3-1" data-layout="solo" data-solo="wave" data-mode="live" data-wcolor="solid"></div><figcaption><span data-i18n="wcolor.solid"></span></figcaption></figure>
+      <figure class="g-wide"><div class="stage fs ar-3-1" data-layout="solo" data-solo="wave" data-mode="live" data-wcolor="bands"></div><figcaption><span data-i18n="wcolor.bands"></span></figcaption></figure>
+    </div>
+  </section>
+
+  <!-- 新しいモジュール -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S07</span><h2 class="screen-title" data-i18n="screen.s07.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s07.note"></p>
+    <div class="gallery">
+      <figure class="g-std"><div class="stage fs ar-4-3" data-layout="solo" data-solo="chroma" data-mode="live"></div><figcaption><b data-i18n="meter.chroma"></b><span data-i18n="new.chroma"></span></figcaption></figure>
+      <figure class="g-wide"><div class="stage fs ar-3-1" data-layout="solo" data-solo="centroid" data-mode="live"></div><figcaption><b data-i18n="meter.centroid"></b><span data-i18n="new.centroid"></span></figcaption></figure>
+    </div>
+  </section>
+
+  <!-- S08 位相の表示方式 -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S08</span><h2 class="screen-title" data-i18n="screen.s08.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s08.note"></p>
+    <div class="gallery">
+      <figure class="g-std"><div class="stage fs ar-4-3" data-layout="stereo-only" data-mode="live" data-dots="none"></div><figcaption><span data-i18n="stereo.lines"></span></figcaption></figure>
+      <figure class="g-std"><div class="stage fs ar-4-3" data-layout="stereo-only" data-mode="live" data-dots="size"></div><figcaption><span data-i18n="stereo.dots_size"></span></figcaption></figure>
+      <figure class="g-std"><div class="stage fs ar-4-3" data-layout="stereo-only" data-mode="live" data-dots="bright"></div><figcaption><span data-i18n="stereo.dots_bright"></span></figcaption></figure>
+      <figure class="g-std"><div class="stage fs ar-4-3" data-layout="stereo-only" data-mode="live" data-dots="both"></div><figcaption><span data-i18n="stereo.dots_both"></span></figcaption></figure>
+      <figure class="g-tall"><div class="stage fs ar-9-16" data-layout="stereo-only" data-mode="live" data-smode="pan"></div><figcaption><span data-i18n="stereo.pan"></span></figcaption></figure>
+      <figure class="g-tall"><div class="stage fs ar-9-16" data-layout="stereo-only" data-mode="live" data-smode="pan" data-blur="off"></div><figcaption><span data-i18n="stereo.pan_noblur"></span></figcaption></figure>
+    </div>
+  </section>
+
+  <!-- S02 -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S02</span><h2 class="screen-title" data-i18n="screen.s02.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s02.note"></p>
+    <div class="stage fs" data-layout="t" data-mode="live" data-drawer="on" data-long="on"></div>
+  </section>
+
+  <!-- S02a -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S02a</span><h2 class="screen-title" data-i18n="screen.s02a.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s02a.note"></p>
+    <div class="stage fs" data-layout="t" data-mode="live" data-drawer="palette"></div>
+  </section>
+
+  <!-- S02b -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S02b</span><h2 class="screen-title" data-i18n="screen.s02b.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s02b.note"></p>
+    <div class="stage fs" data-layout="t" data-mode="live" data-drawer="presets"></div>
+  </section>
+
+  <!-- S04 -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S04</span><h2 class="screen-title" data-i18n="screen.s04.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s04.note"></p>
+    <div class="gallery">
+      <figure class="g-wide"><div class="stage fs" data-layout="t" data-mode="live"></div><figcaption><b>16:9</b><span data-i18n="auto.wide"></span></figcaption></figure>
+      <figure class="g-std"><div class="stage fs ar-16-10" data-layout="auto-std" data-mode="live"></div><figcaption><b>16:10</b><span data-i18n="auto.std"></span></figcaption></figure>
+      <figure class="g-std"><div class="stage fs ar-4-3" data-layout="auto-std" data-mode="live"></div><figcaption><b>4:3</b><span data-i18n="auto.std"></span></figcaption></figure>
+      <figure class="g-tall"><div class="stage fs ar-9-16" data-layout="auto-tall" data-mode="live"></div><figcaption><b>9:16</b><span data-i18n="auto.tall"></span></figcaption></figure>
+      <figure class="g-strip"><div class="stage fs ar-3-1" data-layout="auto-strip" data-mode="live"></div><figcaption><b>3:1</b><span data-i18n="auto.strip"></span></figcaption></figure>
+    </div>
+  </section>
+
+  <!-- S03 -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S03</span><h2 class="screen-title" data-i18n="screen.s03.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s03.note"></p>
+    <div class="stage fs" data-layout="custom" data-mode="live" data-edit="on"></div>
+  </section>
+
+  <!-- S03a -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S03a</span><h2 class="screen-title" data-i18n="screen.s03a.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s03a.note"></p>
+    <div class="stage fs" data-layout="custom" data-mode="live"></div>
+  </section>
+
+  <!-- 部品 -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">PARTS</span><h2 class="screen-title" data-i18n="screen.parts.title"></h2></div>
+    <div class="parts">
+      <div class="part"><button class="btn" type="button" data-i18n="settings.open"></button><span data-i18n="state.default"></span></div>
+      <div class="part"><button class="btn is-hover" type="button" data-i18n="settings.open"></button><span data-i18n="state.hover"></span></div>
+      <div class="part"><button class="btn is-focus" type="button" data-i18n="settings.open"></button><span data-i18n="state.focus"></span></div>
+      <div class="part"><button class="btn" type="button" disabled data-i18n="settings.open"></button><span data-i18n="state.disabled"></span></div>
+      <div class="part"><button class="btn primary" type="button" data-i18n="common.retry"></button><span data-i18n="state.primary"></span></div>
+      <div class="part"><button class="sw" type="button" role="switch" aria-checked="true" data-i18n-aria="settings.scanline"></button><span data-i18n="state.on"></span></div>
+      <div class="part"><button class="sw" type="button" role="switch" aria-checked="false" data-i18n-aria="settings.scanline"></button><span data-i18n="state.off"></span></div>
+      <div class="part"><span class="chip"><span class="dot"></span><span class="txt" data-i18n="source.chip_loopback"></span></span><span data-i18n="state.chip_live"></span></div>
+      <div class="part"><span class="chip"><span class="dot off"></span><span class="txt" data-i18n="source.chip_silent"></span></span><span data-i18n="state.chip_silent"></span></div>
+      <div class="part"><span class="chip"><span class="dot err"></span><span class="txt" data-i18n="source.chip_error"></span></span><span data-i18n="state.chip_error"></span></div>
+    </div>
+  </section>
+
+  <!-- 決まったこと -->
+  <div class="notes">
+    <section>
+      <h3 data-i18n="notes.decided"></h3>
+      <ul>
+        <li>Tauri＋Vue 3＋Viteのデスクトップアプリ。初版はWindowsのみ（Macは後で取り込み方式を追加）</li>
+        <li>音声入力源は抽象化する。初版の実装は出力音声のループバック（WASAPI）だけ</li>
+        <li>解析と描画は入力源を知らない作りにする</li>
+        <li>用途はVJ中の演出用表示。計測の厳密さ（規格準拠のLUFS）は求めない</li>
+        <li>初版は日本語のみ（モード1）。多言語化の基盤だけ用意する</li>
+        <li>配布は自分用のみ</li>
+        <li>見た目の方向性はB（ネオン・クラブ系）</li>
+        <li>配置：左端の細い列に音量系（上にレベルメーター、下にラウドネス）。その右にスペクトラムと同じ高さの縦長の「周波数別の定位」（2つ目の位相）。ラウドネスは周波数別の定位の下まで横に広げる。右側は上に波形、中央に大きなスペクトラム、下段に位相（リサージュ）とスペクトログラム</li>
+        <li>レベルメーターは細く、光量を抑える</li>
+        <li>最上部にタイトル帯（SONAR/SPECTRAとバージョン）を置き、右側に操作系を常に表示する：出力系統・レイアウト編集・設定・ボーダレスフルスクリーン（全画面中は終了を表す内向きのアイコン）</li>
+        <li>テーマの切り替えは設定パネルの中に置く</li>
+        <li>スペクトラムは輪郭線の下を塗りつぶし、下端に向けてフェードさせて下段との境目を切る</li>
+        <li>波形は、左側に音量の履歴、右側に今の瞬間の波形を並べる。履歴は速めに流してスパイクを鋭く見せる。今の波形は、硬い芯（振幅小・なめらか）と柔らかい外縁（振幅大・即応）の2本で描き、間を半透明で塗る。今の波形は両端固定（境目と反対側の端で中心に戻る）で、境目には点線の境界線を引く</li>
+        <li>レイアウト編集中は、各モジュールの見出しの歯車ボタンから、そのインスタンスの設定をモジュールの横に直接開ける</li>
+        <li>流れるモジュール（波形・スペクトログラム・重心と変化量）は、流れる速さをインスタンスの設定のスライダーで変えられる（既定×1.00、×0.25〜×3.00）</li>
+        <li>モジュールは自由に並べ替え・大きさ変更ができる（12×8の格子に吸着、S03）。既定の配置はS01</li>
+        <li>レイアウト編集では、隣り合うモジュールの間の境界線をつかんで動かし、両側の大きさを同時に変えられる。格子に吸着し、どのモジュールも1マス未満にはならない。キーボードでは矢印キーで1マスずつ動かせる</li>
+        <li>モジュールには推奨の形がある：細長（波形・スペクトラム・レベル）、正方形に近い（ラウドネス・位相）、形を選ばない（スペクトログラム）</li>
+        <li>波形・スペクトラム・レベル・スペクトログラムは、流れる方向を上下左右の4方向から選べる</li>
+        <li>モジュールごとと、波形の「今の波形」部分を、個別に有効・無効にできる</li>
+        <li>同じモジュールを複数置ける。設定は置いたものごと（インスタンス）に持ち、入力源と配色を個別に選べる（初版の入力源は既定の1系統のみ）</li>
+        <li>波形はステレオ（L・Rを背中合わせ）とモノラル（混ぜた1本を上下対称）を切り替えられる</li>
+        <li>波形の履歴と今の波形の境目は、インスタンスごとにスライダーで調整できる（既定は72%）</li>
+        <li>走査線と周辺減光は、初期状態でオン（設定でオフにできる）</li>
+        <li>前回表示していたディスプレイと、ウィンドウの位置・大きさを記憶し、次の起動で引き継ぐ。ディスプレイが外れているときはメインのディスプレイに出す</li>
+        <li>「起動時にボーダレスフルスクリーン」は設定で選べ、初期状態はオフ（通常のウィンドウで起動）</li>
+        <li>「常に最前面」は設定で選べ、初期状態はオフ</li>
+        <li>起動時は前回の状態（配置・設定）をすべて引き継ぐ</li>
+        <li>構成（配置・設定のまとまり）に名前を付けて保存・切り替えでき、ファイルとして書き出し・読み込みができる（S02b）</li>
+        <li>構成に含めるもの：配置（自動／手動とインスタンス）・モジュールの設定・自分で作った配色・テーマと表示の設定。含めないもの：ウィンドウの位置と大きさ、入力源のデバイス</li>
+        <li>モジュールに針式のVUメーターを追加する（L・Rの2本の針、振れた跡を残像で残す。推奨の形は正方形に近い枠、方向なし）。機能はレベルメーターと同じなので、初期状態では無効（既定の配置・自動整列には入れない）</li>
+        <li>位相は全周のリサージュを線で描き、同じ軌跡の点描を重ねる。点描の強調はインスタンスの設定で「なし／大きく／明るく／両方」から選べ、既定は「両方」。外周の円は背景の薄い線</li>
+        <li>位相の表示方式は「リサージュ」と「周波数別の定位（縦軸が周波数、横軸が帯域ごとの左右の位置。縦長の枠に向く）」から選べ、既定はリサージュ。周波数別の定位は、帯域の移動が速いほど移動した道筋に尾を引くモーションブラーをかける（インスタンスの設定でオン／オフ、既定はオン）</li>
+        <li>スペクトラムの表示方式は「線＋塗り（既定）／バー／鏡写し／円形」から選べ、ピークの残像をオン／オフできる（既定はオン）</li>
+        <li>波形履歴の色は「単色（既定）／帯域別」から選べる</li>
+        <li>新しいモジュールとしてクロマ（音名の円環。中央に今のコードを主表示、推定したキーを副表示）と、重心と変化量を追加する。既定の配置と自動整列には入れない</li>
+        <li>ラウドネスは近似値なので、表示名は「LOUD」とする（規格名のLUFSは使わない）</li>
+        <li>インスタンスの設定（方向・配色・チャンネル表示・今の波形・境目）は、「既定に戻す」で1クリックでまとめて戻せる。配置と入力源は対象外</li>
+        <li>流れる方向を変えたときは、目盛りやラベルの文字も枠ごと回す（横倒しにする）</li>
+        <li>配色はプリセットから選び、自分で作った配色（主色・副色・強調色）も追加できる。標準のプリセットは複製してから変える（S02a）</li>
+        <li>推奨の形を使った自動整列を持つ。画面比（ウィンドウの大きさ、ディスプレイの画面比）に合わせて配置を選ぶ（S04）</li>
+        <li>配置は自動が基本。手で動かすと手動配置に切り替わって固定され、「自動整列」で自動に戻る</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ===== 辞書（文言の初期値） ===== */
+const dict = {
+  ja: {
+    "doc.notice": "見た目だけのモックで、中身はありません。メーターの動きはダミーの信号で描いています。各画面は1920×1080のウィンドウを縮小した見た目です。",
+    "doc.theme": "テーマ", "doc.theme_system": "OS設定", "doc.theme_dark": "ダーク", "doc.theme_light": "ライト",
+    "doc.locale": "言語", "doc.locale_pseudo": "疑似ロケール",
+    "app.window_title": "sonar_spectra",
+    "app.version": "v0.1.0",
+    "toolbar.source": "出力系統", "toolbar.layout": "レイアウト編集", "toolbar.settings": "設定", "toolbar.fullscreen": "ボーダレスフルスクリーン", "toolbar.fullscreen_exit": "ボーダレスフルスクリーンを終了",
+    "settings.theme": "テーマ", "settings.theme_dark": "ダーク", "settings.theme_light": "ライト", "settings.theme_system": "OS設定",
+    "screen.s01.title": "メーター画面（ウィンドウ表示）",
+    "screen.s01.note": "タイトル帯の右には、出力系統・レイアウト編集・設定・ボーダレスフルスクリーンのボタンを並べる。起動するとすぐ出力音声を拾って表示する。配置は参考動画のサブモニターを下敷きにし、音量系（レベルとラウドネス）を左端の細い列にまとめ、その右にスペクトラムと同じ高さの「周波数別の定位」を置いた。ラウドネスはその下まで横に広げている。波形は点線の境界線より左が音量の履歴、右が今の瞬間の波形。今の波形は両端が中心に固定され、履歴とつながる。最上部はタイトル帯で、右側に操作系（出力系統・設定・ボーダレスフルスクリーン）を並べる。",
+    "screen.s01a.title": "メーター画面（ボーダレスフルスクリーン）",
+    "screen.s01a.note": "本番での見え方。ウィンドウ枠が消え、タイトル帯と操作系はそのまま残る。全画面のボタンは、終了を表す内向きの矢印になる。",
+    "screen.s01b.title": "無音のとき",
+    "screen.s01b.note": "入力はつながっているが音が来ていない状態。メーターは平らな線で残し、中央に小さく待機表示を出す。",
+    "screen.s01c.title": "入力源が使えないとき",
+    "screen.s01c.note": "出力デバイスが見つからない・切断されたなどで取り込めない状態。",
+    "screen.s01d.title": "起動中・入力源の切り替え中",
+    "screen.s01d.note": "入力源を開くまでの短い待ち時間。",
+    "screen.s02.title": "設定パネル",
+    "screen.s02.note": "メーターを動かしたまま、タイトル帯の下・右側に重ねて開く。テーマの切り替えはここに置く。長いデバイス名の例も入れている。",
+    "screen.parts.title": "部品の状態",
+    "screen.s08.title": "位相の表示方式",
+    "screen.s08.note": "表示方式はインスタンスの設定で「リサージュ／周波数別の定位」から選ぶ（既定はリサージュ）。リサージュの点描の強調のしかたは、インスタンスの設定（S03）で「なし／大きく／明るく／両方」から選ぶ。既定は「両方」。外周の円は背景の薄い線で描く。",
+    "stereo.dots_size": "リサージュ＋点描（大きく）：点を線より大きくして強調する",
+    "stereo.dots_bright": "リサージュ＋点描（明るく）：点の中心を明るい色にして強調する（大きさは線と同程度）",
+    "stereo.dots_both": "リサージュ＋点描（両方・既定）：点を大きく、中心も明るくする",
+    "stereo.pan": "周波数別の定位：縦軸が周波数（下が低域）、横軸がその帯域の左右の位置。左右に広い音が鳴ると点が散り、中央の音だけなら縦のくっきりした線になる。流れずにその場で描き直す",
+    "screen.s05.title": "スペクトラムの表示方式",
+    "screen.s05.note": "表示方式はインスタンスの設定で選ぶ（既定は線＋塗り）。ピークの残像はどの方式でもオン／オフでき、既定はオン。ピーク位置を細い線で残し、ゆっくり下げる。",
+    "spec.fill": "線＋塗り（既定）：輪郭の下を塗り、下端に向けてフェード",
+    "spec.bars": "バー：LED風に区切った柱。上の方は強調色、ピークは副色の短い線",
+    "spec.mirror": "鏡写し：中央の線から上下に同じ形を描く",
+    "spec.radial": "円形：低域から高域を円周に沿って並べ、左右対称にする",
+    "screen.s06.title": "波形履歴の色",
+    "screen.s06.note": "履歴の色はインスタンスの設定で選ぶ（既定は単色）。帯域別は、その瞬間に強い帯域の色で塗る。",
+    "wcolor.solid": "単色（既定）：ステレオはL・Rで主色と副色",
+    "wcolor.bands": "帯域別：低域が強い所は主色、中域は強調色、高域は副色",
+    "screen.s07.title": "新しいモジュール",
+    "screen.s07.note": "既定の配置と自動整列には入れず、レイアウト編集で追加して使う（S03の一覧では無効の状態で並ぶ）。",
+    "new.chroma": "12の音名ごとの強さを円環に並べる。いちばん強い音（根音）を強調色で示し、中央に今のコード（大きく）と、推定したキー（小さく）を2段で出す。推奨の形は正方形に近い枠",
+    "new.centroid": "線は音の明るさ（スペクトルの重心）の推移、下の棒は音色の変化の激しさ（フラックス）。右端に今の値。推奨の形は細長い枠で、流れる方向を選べる",
+    "stereo.pan_noblur": "周波数別の定位（モーションブラーをオフ）",
+    "stereo.lines": "リサージュ（点描なし）：全周のリサージュ。連続するサンプルを線でつなぎ、新しいほど明るく残像を残す。外周の円とL・Rの軸つき",
+    "screen.s04.title": "自動整列（画面比への適応）",
+    "screen.s04.note": "有効なモジュールを、推奨の形に合わせて画面比ごとに並べ直す。ウィンドウ表示では大きさを変えるたび、ボーダレスフルスクリーンではディスプレイの画面比に合わせて選ぶ。細長いモジュールは画面の長辺に沿わせ、正方形に近いモジュールは隅にまとめ、残りをスペクトログラムで埋める。",
+    "auto.wide": "横長（1.5〜2.4）：参考配置。音量系を左の細い列に、その右に周波数別の定位",
+    "auto.std": "標準（1.1〜1.5）：同じ並びで、スペクトラムと下段を縦に広げる",
+    "auto.tall": "縦長（〜1.1未満）：細長いモジュールを横の帯で積み、レベルは横向きに。周波数別の定位はスペクトラムの右に、同じ高さで",
+    "auto.strip": "帯（2.4以上）：すべてを1列に並べる",
+    "edit.auto": "自動整列", "edit.mode_manual": "手動配置", "edit.mode_auto": "自動配置",
+    "screen.s03.title": "レイアウト編集",
+    "screen.s03.note": "設定の「レイアウトを編集」から入る。モジュールは格子に吸着させながらドラッグで移動し、右下の角で大きさを変える。隣り合うモジュールの間の境界線をつかむと、両側の大きさを同時に変えられる（モックでも境界線はドラッグできる）。見出しの矢印で流れる方向を4方向から選べる（モックでも押すと向きが変わる）。同じモジュールを複数置け、置いたものごと（インスタンス）に入力源・配色を選べる。各モジュールの見出しの歯車ボタン（またはタイトル帯のレイアウト編集ボタンで入ったあと）で、そのインスタンスの設定をモジュールの横に開く（×で閉じる）。設定は、波形ならステレオ／モノラル、「今の波形」の表示、履歴と今の波形の境目（スライダー）も変える。設定欄右上の「既定に戻す」で、そのインスタンスの設定をまとめて既定値に戻す（モックでも押すと反映される。位相なら点描の強調を選ぶ）。例として、スペクトラムを左右に2つ置いて向きと配色を変え、波形をモノラルにし、位相を2つ（リサージュと、縦長の枠の周波数別の定位）置き、レベルとVUメーターを無効にしている（一覧のスイッチで有効にすると表示される）。",
+    "screen.s03a.title": "自由配置の表示例",
+    "screen.s03a.note": "S03の配置で編集を終えたときの見え方。",
+    "edit.title": "レイアウト編集", "edit.hint": "ドラッグで移動、右下の角で大きさを変更。モジュールの間の境界線をつかむと、両側の大きさを同時に変えられます（矢印キーでも動かせます）。格子に吸着します。手で動かすと手動配置に切り替わり、画面比が変わっても配置を保ちます。「自動整列」を押すと自動配置に戻ります。",
+    "edit.reset": "既定に戻す", "edit.done": "完了",
+    "edit.direction": "流れる方向", "edit.dir_up": "上へ", "edit.dir_right": "右へ", "edit.dir_down": "下へ", "edit.dir_left": "左へ",
+    "edit.wave_now": "今の波形を表示",
+    "edit.split": "履歴と今の波形の境目",
+    "edit.split_note": "流れの先から数えた履歴の割合（既定は72%）",
+    "edit.mod_reset": "既定に戻す", "edit.open_settings": "このモジュールの設定", "edit.speed": "流れる速さ", "edit.splitter": "境界線（ドラッグか矢印キーで移動）",
+    "edit.specmode": "表示方式", "edit.specmode_fill": "線＋塗り", "edit.specmode_bars": "バー", "edit.specmode_mirror": "鏡写し", "edit.specmode_radial": "円形",
+    "edit.ghost": "ピークの残像",
+    "edit.wcolor": "履歴の色", "edit.wcolor_solid": "単色", "edit.wcolor_bands": "帯域別",
+    "edit.blur": "モーションブラー", "edit.smode": "表示方式", "edit.smode_lissajous": "リサージュ", "edit.smode_pan": "周波数別の定位",
+    "edit.smode_note_lissajous": "全周のリサージュを線と点描で描く",
+    "edit.smode_note_pan": "縦軸を周波数、横軸を左右の位置として、帯域ごとの定位を描く。縦長の枠に向く",
+    "fit.warn_tall": "もっと縦長に",
+    "edit.dots": "点描", "edit.dots_none": "なし", "edit.dots_size": "大きく", "edit.dots_bright": "明るく", "edit.dots_both": "両方",
+    "edit.instances": "置いたモジュール", "edit.add": "＋ モジュールを追加", "edit.duplicate": "複製", "edit.delete": "削除",
+    "edit.selected": "選択中",
+    "edit.source": "入力源", "edit.source_default": "既定の入力源（出力音声）", "edit.source_note": "複数チャンネルの入力に対応したら、ここでモジュールごとに選べる",
+    "edit.color": "配色",
+    "edit.channel": "チャンネル", "edit.ch_stereo": "ステレオ", "edit.ch_mono": "モノラル",
+    "edit.ch_note_stereo": "上にL、下にRを背中合わせに描く", "edit.ch_note_mono": "LとRを混ぜた1本を上下対称に描く",
+    "palette.a": "マゼンタ主", "palette.b": "シアン主", "palette.c": "アンバー主", "palette.d": "マイ配色 1",
+    "palette.new": "＋ 配色を作る", "palette.builtin": "標準", "palette.title": "配色の管理", "palette.list": "配色",
+    "palette.editing": "編集中：マイ配色 1", "palette.name": "名前",
+    "palette.role_main": "主色（L・Mid・主な線）", "palette.role_sub": "副色（R・Side）", "palette.role_accent": "強調色（ピーク・注意）",
+    "palette.light_note": "ライトテーマでの色は、この値から自動で暗く・彩度を落として作る",
+    "common.back": "戻る",
+    "preset.legend": "構成", "preset.current": "クラブ用（縦モニター）", "preset.modified": "保存後に変更あり。上書きするか、別の名前で保存する",
+    "preset.save": "名前を付けて保存", "preset.manage": "構成を管理", "preset.title": "構成の管理",
+    "preset.hint": "配置・モジュールの設定・自分で作った配色・表示の設定をまとめて保存する。ファイルに書き出して、別のPCで読み込める。",
+    "preset.in_use": "使用中", "preset.export": "書き出す", "preset.import": "ファイルから読み込む",
+    "preset.p1": "クラブ用（縦モニター）", "preset.p1_meta": "手動配置・モジュール7・2026/11/04",
+    "preset.p2": "リハ用（ノートPC）", "preset.p2_meta": "自動配置・モジュール6・2026/11/01",
+    "preset.p3": "スペクトラム左右対称", "preset.p3_meta": "手動配置・モジュール5・2026/10/28",
+    "preset.p4": "長い名前の例：週末のレギュラーイベント用・サブモニター2枚目・縦置き", "preset.p4_meta": "自動配置・モジュール6・2026/10/20",
+    "screen.s02b.title": "構成の管理",
+    "screen.s02b.note": "設定の「構成を管理」から開く。名前を付けた構成を切り替え・複製・削除し、ファイルとして書き出し・読み込みができる。",
+    "settings.palette_note": "配色はモジュールごとに選ぶ。ここでは選べる配色の一覧を管理する",
+    "settings.manage_palette": "配色を管理",
+    "screen.s02a.title": "配色の管理",
+    "screen.s02a.note": "設定の「配色を管理」から開く。標準のプリセットは編集できず、複製してから変更する。自分で作った配色は主色・副色・強調色を指定する。",
+    "shape.long": "推奨：細長い枠（向きに合わせた長辺）", "shape.compact": "推奨：正方形に近い枠", "shape.free": "形を選ばない",
+    "fit.good": "適", "fit.warn_short": "もっと細長く", "fit.warn_axis": "向きと枠が逆", "fit.warn_long": "もっと正方形に",
+    "settings.layout": "レイアウト", "settings.edit_layout": "レイアウトを編集",
+    "meter.level": "レベル", "meter.vu": "VU", "meter.chroma": "クロマ", "meter.chroma_key": "キー {key}", "meter.centroid": "重心と変化量",
+    "meter.waveform": "波形", "meter.spectrum": "スペクトラム", "meter.stereo": "位相", "meter.spectrogram": "スペクトログラム", "meter.loudness": "ラウドネス",
+    "meter.loudness_unit": "LOUD", "meter.loudness_peak": "ピーク {value} dB",
+    "source.chip_loopback": "出力音声 · スピーカー (Realtek High Definition Audio)",
+    "source.chip_long": "出力音声 · スピーカー (Focusrite Scarlett 2i2 USB Audio Interface 4th Gen) — 長いデバイス名の例",
+    "source.chip_silent": "出力音声 · 無音",
+    "source.chip_error": "入力源を開けません",
+    "status.silent": "音を待っています",
+    "status.loading": "入力源を開いています",
+    "error.title": "出力デバイスが見つかりません",
+    "error.body": "再生デバイスが取り外されたか、ほかのアプリが占有しています。デバイスをつなぎ直してから再試行してください。",
+    "common.retry": "再試行", "common.close": "閉じる",
+    "settings.open": "設定", "settings.fullscreen": "全画面",
+    "settings.title": "設定",
+    "settings.source": "入力源",
+    "settings.source_loopback": "出力音声（ループバック）", "settings.source_loopback_desc": "パソコンで再生中の音をそのまま拾う",
+    "settings.source_device": "出力デバイス",
+    "settings.source_input": "入力デバイス", "settings.source_input_desc": "オーディオインターフェースやマイク", "settings.coming_soon": "今後対応",
+    "settings.palette": "配色",
+    "settings.display": "表示", "settings.scanline": "走査線と周辺減光", "settings.always_on_top": "常に最前面", "settings.start_fullscreen": "起動時にボーダレスフルスクリーン",
+    "state.default": "通常", "state.hover": "ホバー", "state.focus": "フォーカス", "state.disabled": "無効", "state.primary": "主操作", "state.on": "オン", "state.off": "オフ",
+    "state.chip_live": "入力中", "state.chip_silent": "無音", "state.chip_error": "エラー",
+    "notes.decided": "決まったこと"
+  }
+};
+const pseudo = s => "⟦" + s + "・".repeat(Math.ceil(s.length * 0.35)) + "⟧";
+let locale = "ja";
+const t = (k, vars) => { let s = dict.ja[k] ?? k; if (vars) for (const [a, b] of Object.entries(vars)) s = s.replace("{" + a + "}", b); return locale === "pseudo" ? pseudo(s) : s; };
+
+/* ===== 画面の組み立て ===== */
+const ICON_GEAR = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.4"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>';
+const ICON_FS = '<svg viewBox="0 0 16 16"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>';
+const ICON_FS_EXIT = '<svg viewBox="0 0 16 16"><path d="M6 2v4H2M14 6h-4V2M10 14v-4h4M2 10h4v4"/></svg>';
+const ICON_LAYOUT = '<svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="12"/><rect x="9" y="2" width="5" height="5"/><rect x="9" y="9" width="5" height="5"/></svg>';
+
+/* モジュールの性質：推奨の形と、流れる方向の既定値（null は方向なし） */
+const MODULES = {
+  level:  { key: "meter.level",       shape: "long", base: "up" },
+  wave:   { key: "meter.waveform",    shape: "long", base: "left" },
+  spec:   { key: "meter.spectrum",    shape: "long", base: "up" },
+  stereo: { key: "meter.stereo",      shape: "compact", base: null },
+  gram:   { key: "meter.spectrogram", shape: "free", base: "left" },
+  loud:   { key: "meter.loudness",    shape: "compact", base: null },
+  vu:     { key: "meter.vu",          shape: "compact", base: null },
+  chroma: { key: "meter.chroma",      shape: "compact", base: null },
+  centroid: { key: "meter.centroid",  shape: "long", base: "left" }
+};
+const ORDER = ["level", "wave", "spec", "stereo", "gram", "loud", "vu", "chroma", "centroid"];
+/* 自由配置の例：インスタンス単位で持つ。列・行・幅・高さは12×8の格子の単位
+   color は配色の組（a：マゼンタ主、b：シアン主、c：アンバー主）、source は入力源（初版は既定の1系統のみ） */
+const CUSTOM = [
+  { id: 1, kind: "spec",   c: 1,  r: 1, cs: 3, rs: 8, dir: "right", color: "a" },
+  { id: 2, kind: "wave",   c: 4,  r: 1, cs: 6, rs: 2, dir: "left",  color: "a", ch: "mono" },
+  { id: 3, kind: "stereo", c: 4,  r: 3, cs: 3, rs: 3 },
+  { id: 4, kind: "loud",   c: 4,  r: 6, cs: 3, rs: 3 },
+  { id: 9, kind: "stereo", c: 7,  r: 3, cs: 1, rs: 6, smode: "pan" },
+  { id: 5, kind: "gram",   c: 8,  r: 3, cs: 2, rs: 6, dir: "up", color: "d" },
+  { id: 8, kind: "vu",     on: false },
+  { id: 10, kind: "chroma", on: false },
+  { id: 11, kind: "centroid", on: false, dir: "left" },
+  { id: 6, kind: "spec",   c: 10, r: 1, cs: 3, rs: 8, dir: "left",  color: "b" },
+  { id: 7, kind: "level",  on: false }
+];
+const SELECTED_ID = 2;
+/* ユーザーが作った配色の例（ダークの値。ライトは自動で暗く・彩度を落とす想定） */
+const CUSTOM_PALETTE = { name: "マイ配色 1", main: "#b7ff3c", sub: "#8b5cff", accent: "#ffb547" };
+const ARROW = { up: "↑", right: "→", down: "↓", left: "←" };
+/* 自動整列で決まる方向（縦長の画面ではレベルを横向きの帯にする） */
+const PRESET_DIR = { "auto-tall": { level: "right" }, "auto-strip": {} };
+
+function buildStage(el) {
+  const layout = el.dataset.layout, mode = el.dataset.mode, edit = el.dataset.edit === "on", fs = el.dataset.fs === "on";
+  let html = `<div class="grid layout-${layout}">`;
+  /* 既定の配置と自動整列：種類ごとに1つ＋縦長の「周波数別の定位」（2つ目の位相） */
+  const list = layout === "solo" ? [{ id: 1, kind: el.dataset.solo, solo: true }] : layout === "custom" ? CUSTOM : [...ORDER.map((kind, i) => ({ id: i + 1, kind })), { id: 99, kind: "stereo", smode: "pan", area: "pan" }];
+  const count = {};
+  for (const cfg of list) {
+    const kind = cfg.kind, def = MODULES[kind];
+    count[kind] = (count[kind] || 0) + 1;
+    const dir = (PRESET_DIR[layout] && PRESET_DIR[layout][kind]) || cfg.dir || def.base || "";
+    const on = cfg.on === false ? "off" : "on";
+    const style = layout === "custom" && cfg.c ? ` style="grid-column:${cfg.c} / span ${cfg.cs};grid-row:${cfg.r} / span ${cfg.rs}"` : "";
+    const sel = edit && cfg.id === SELECTED_ID ? " is-selected" : "";
+    html += `<div class="mod ${cfg.area || kind}${sel}${cfg.solo ? " is-solo" : ""}" data-id="${cfg.id}" data-kind="${kind}" data-dir="${dir}" data-on="${on}" data-now="on" data-ch="${cfg.ch || "stereo"}"${cfg.smode ? ` data-smode="${cfg.smode}"` : ""} data-color="${cfg.color || "a"}"${style}><span class="tag" data-i18n="${def.key}"></span>`;
+    if (edit) html += editHead(kind, dir, count[kind]);
+    if (kind === "loud") html += `<canvas data-kind="loud"></canvas><div class="loud-read"><span class="loud-unit" data-i18n="meter.loudness_unit"></span><span class="loud-val">−9.8</span><span class="loud-sub" data-peak="1"></span></div>`;
+    else html += `<canvas data-kind="${kind}"></canvas>`;
+    if (edit) html += `<span class="resize" aria-hidden="true"></span>`;
+    html += `</div>`;
+  }
+  html += `</div><div class="crt"></div>`;
+  const chipKey = mode === "error" ? "source.chip_error" : mode === "silent" ? "source.chip_silent" : el.dataset.long ? "source.chip_long" : "source.chip_loopback";
+  const dot = mode === "error" ? "err" : mode === "silent" || mode === "loading" ? "off" : "";
+  html += `<header class="titlebar"><p class="title-mark">SONAR<span>/</span>SPECTRA</p><span class="title-ver" data-i18n="app.version"></span>
+    <div class="title-ctrl"><button type="button" class="chip" data-i18n-aria="toolbar.source"><span class="dot ${dot}"></span><span class="txt" data-i18n="${chipKey}"></span></button><button type="button" class="btn${edit ? " is-active" : ""}" data-i18n-aria="toolbar.layout">${ICON_LAYOUT}</button><button type="button" class="btn" data-i18n-aria="toolbar.settings">${ICON_GEAR}</button><button type="button" class="btn" data-i18n-aria="${fs ? "toolbar.fullscreen_exit" : "toolbar.fullscreen"}">${fs ? ICON_FS_EXIT : ICON_FS}</button></div></header>`;
+  if (mode === "silent") html += `<div class="overlay thin"><span class="pulse"></span><p class="ov-body" data-i18n="status.silent"></p></div>`;
+  if (mode === "loading") html += `<div class="overlay"><span class="spinner"></span><p class="ov-body" data-i18n="status.loading"></p></div>`;
+  if (mode === "error") html += `<div class="overlay ov-err"><p class="ov-title" data-i18n="error.title"></p><p class="ov-body" data-i18n="error.body"></p><div class="ov-actions"><button type="button" class="btn primary" data-i18n="common.retry"></button><button type="button" class="btn" data-i18n="settings.open"></button></div></div>`;
+  if (el.dataset.drawer === "on") html += drawerHtml();
+  if (el.dataset.drawer === "palette") html += paletteDrawerHtml();
+  if (el.dataset.drawer === "presets") html += presetDrawerHtml();
+  if (edit) html += editPanelHtml(list);
+  el.innerHTML = html;
+}
+
+function editHead(kind, dir, n) {
+  const def = MODULES[kind];
+  let h = `<div class="edit-head"><span class="grip" aria-hidden="true"></span><span class="name"><span data-i18n="${def.key}"></span> ${n}</span><button type="button" class="icon-btn head-gear" data-open-inspector data-i18n-aria="edit.open_settings">${ICON_GEAR}</button><span class="fit good" data-fit></span>`;
+  if (def.base) h += `<span class="dirs" role="group" data-i18n-aria="edit.direction">${["up","right","down","left"].map(d => `<button type="button" data-dir-set="${d}" aria-pressed="${d === dir}" data-i18n-aria="edit.dir_${d}">${ARROW[d]}</button>`).join("")}</span>`;
+  return h + `</div>`;
+}
+
+const SPLIT_DEFAULT = 72;
+const ICON_RESET = '<svg viewBox="0 0 16 16"><path d="M3 8a5 5 0 1 0 1.6-3.7"/><path d="M3 2.5v3h3"/></svg>';
+const ICON_COPY = '<svg viewBox="0 0 16 16"><rect x="5" y="5" width="8" height="8"/><path d="M3 11V3h8"/></svg>';
+const ICON_DEL = '<svg viewBox="0 0 16 16"><path d="M3 4h10M6 4V2.5h4V4M4.5 4l.7 9.5h5.6l.7-9.5"/></svg>';
+function editPanelHtml(list) {
+  const count = {};
+  const rows = list.map(cfg => {
+    const def = MODULES[cfg.kind], on = cfg.on !== false;
+    count[cfg.kind] = (count[cfg.kind] || 0) + 1;
+    return `<div class="mod-row${on ? "" : " is-off"}${cfg.id === SELECTED_ID ? " is-picked" : ""}" data-row="${cfg.id}"><span class="mr-name"><span data-i18n="${def.key}"></span> ${count[cfg.kind]}</span><span class="mr-tools"><button type="button" class="icon-btn" data-i18n-aria="edit.duplicate">${ICON_COPY}</button><button type="button" class="icon-btn" data-i18n-aria="edit.delete">${ICON_DEL}</button><button class="sw" type="button" role="switch" aria-checked="${on}" data-toggle-mod="${cfg.id}" data-i18n-aria="${def.key}"></button></span></div>`;
+  }).join("");
+  return `<aside class="edit-panel" aria-label="layout">
+    <div class="drawer-head"><h4 data-i18n="edit.title"></h4><span class="badge mode-manual" data-i18n="edit.mode_manual"></span></div>
+    <div class="drawer-body">
+      <p class="hint" data-i18n="edit.hint"></p>
+      <div class="legend" data-i18n="edit.instances"></div>
+      ${rows}
+      <button type="button" class="btn wide" data-i18n="edit.add"></button>
+    </div>
+    <div class="drawer-foot"><button type="button" class="btn" data-i18n="edit.auto"></button><button type="button" class="btn" data-i18n="edit.reset"></button><button type="button" class="btn primary" data-i18n="edit.done"></button></div>
+  </aside>`;
+}
+
+/* 選択中のインスタンスの設定（入力源・配色・波形の表示） */
+function inspectorHtml(mod) {
+  const kind = mod.dataset.kind, def = MODULES[kind];
+  const n = mod.querySelector(".edit-head .name").textContent.replace(/^\D+/, "").trim();
+  const sw = c => `<button type="button" class="swatch${mod.dataset.color === c ? " checked" : ""}" data-color-set="${c}"><i class="sw-${c}1"></i><i class="sw-${c}2"></i><span data-i18n="palette.${c}"></span></button>`;
+  let h = `<div class="ins-head"><span class="ins-title"><span data-i18n="edit.selected"></span>：<span data-i18n="${def.key}"></span> ${n}</span>
+    <button type="button" class="btn ins-reset" data-mod-reset${isDefault(mod) ? " disabled" : ""}>${ICON_RESET}<span data-i18n="edit.mod_reset"></span></button></div>
+    <div class="ins-field"><span class="ins-label" data-i18n="edit.source"></span><div class="select"><span data-i18n="edit.source_default"></span><span aria-hidden="true">▾</span></div><span class="ins-note" data-i18n="edit.source_note"></span></div>
+    <div class="ins-field"><span class="ins-label" data-i18n="edit.color"></span><div class="swatches">${sw("a")}${sw("b")}${sw("c")}${sw("d")}<button type="button" class="swatch" data-i18n="palette.new"></button></div></div>`;
+  if (kind === "stereo") h += `<div class="ins-field"><span class="ins-label" data-i18n="edit.smode"></span><div class="seg">${["lissajous","pan"].map(c => `<button type="button" data-smode-set="${c}" aria-pressed="${(mod.dataset.smode || "lissajous") === c}" data-i18n="edit.smode_${c}"></button>`).join("")}</div><span class="ins-note" data-i18n="edit.smode_note_${mod.dataset.smode || "lissajous"}"></span></div>`;
+  if (["wave", "gram", "centroid"].includes(kind)) { const v = Number(mod.dataset.speed || 1); h += `<div class="ins-field"><span class="ins-label" data-i18n="edit.speed"></span><div class="split-row"><input type="range" id="speed_${mod.dataset.id}" min="0.25" max="3" step="0.05" value="${v}" data-speed-input data-i18n-aria="edit.speed"><output class="split-val">×${v.toFixed(2)}</output></div></div>`; }
+  if (kind === "spec") h += `<div class="ins-field"><span class="ins-label" data-i18n="edit.specmode"></span><div class="seg">${["fill","bars","mirror","radial"].map(c => `<button type="button" data-specmode-set="${c}" aria-pressed="${(mod.dataset.specmode || "fill") === c}" data-i18n="edit.specmode_${c}"></button>`).join("")}</div></div>
+    <div class="row"><span data-i18n="edit.ghost"></span><button class="sw" type="button" role="switch" aria-checked="${mod.dataset.ghost !== "off"}" data-toggle-ghost data-i18n-aria="edit.ghost"></button></div>`;
+  if (kind === "wave") h += `<div class="ins-field"><span class="ins-label" data-i18n="edit.wcolor"></span><div class="seg">${["solid","bands"].map(c => `<button type="button" data-wcolor-set="${c}" aria-pressed="${(mod.dataset.wcolor || "solid") === c}" data-i18n="edit.wcolor_${c}"></button>`).join("")}</div></div>`;
+  if (kind === "stereo" && mod.dataset.smode === "pan") h += `<div class="row"><span data-i18n="edit.blur"></span><button class="sw" type="button" role="switch" aria-checked="${mod.dataset.blur !== "off"}" data-toggle-blur data-i18n-aria="edit.blur"></button></div>`;
+  if (kind === "stereo" && mod.dataset.smode !== "pan") h += `<div class="ins-field"><span class="ins-label" data-i18n="edit.dots"></span><div class="seg">${["none","size","bright","both"].map(c => `<button type="button" data-dots-set="${c}" aria-pressed="${(mod.dataset.dots || "both") === c}" data-i18n="edit.dots_${c}"></button>`).join("")}</div></div>`;
+  if (kind === "wave") h += `<div class="ins-field"><span class="ins-label" data-i18n="edit.channel"></span><div class="seg">${["stereo","mono"].map(c => `<button type="button" data-ch-set="${c}" aria-pressed="${mod.dataset.ch === c}" data-i18n="edit.ch_${c}"></button>`).join("")}</div><span class="ins-note" data-i18n="edit.ch_note_${mod.dataset.ch}"></span></div>
+    <div class="row"><span data-i18n="edit.wave_now"></span><button class="sw" type="button" role="switch" aria-checked="${mod.dataset.now !== "off"}" data-toggle-now data-i18n-aria="edit.wave_now"></button></div>
+    <div class="ins-field"${mod.dataset.now === "off" ? " hidden" : ""}><span class="ins-label" data-i18n="edit.split"></span>
+      <div class="split-row"><input type="range" id="split_${mod.dataset.id}" min="10" max="90" step="1" value="${mod.dataset.split || SPLIT_DEFAULT}" data-split-input data-i18n-aria="edit.split"><output class="split-val">${mod.dataset.split || SPLIT_DEFAULT}%</output></div>
+      <span class="ins-note" data-i18n="edit.split_note"></span></div>`;
+  return h;
+}
+/* 既定値：方向は種類ごとの既定、配色はマゼンタ主、波形はステレオ・今の波形あり・境目72% */
+function isDefault(mod) {
+  const def = MODULES[mod.dataset.kind];
+  return (!def.base || mod.dataset.dir === def.base) && (mod.dataset.color || "a") === "a" && !mod.dataset.speed
+    && (mod.dataset.kind !== "spec" || ((mod.dataset.specmode || "fill") === "fill" && mod.dataset.ghost !== "off"))
+    && (mod.dataset.kind !== "wave" || ((mod.dataset.wcolor || "solid") === "solid" && mod.dataset.ch === "stereo" && mod.dataset.now !== "off" && !mod.dataset.split))
+    && (mod.dataset.kind !== "stereo" || ((mod.dataset.dots || "both") === "both" && (mod.dataset.smode || "lissajous") === "lissajous" && mod.dataset.blur !== "off"));
+}
+function resetMod(mod) {
+  const def = MODULES[mod.dataset.kind];
+  if (def.base) mod.dataset.dir = def.base;
+  mod.dataset.color = "a"; mod.dataset.ch = "stereo"; mod.dataset.now = "on"; delete mod.dataset.split; delete mod.dataset.dots; delete mod.dataset.smode; delete mod.dataset.blur; delete mod.dataset.specmode; delete mod.dataset.speed; delete mod.dataset.ghost; delete mod.dataset.wcolor;
+  mod.querySelectorAll("[data-dir-set]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.dirSet === mod.dataset.dir)));
+  const m = meters.find(x => x.cv === mod.querySelector("canvas")); if (m) m.hist = [];
+  updateFit(mod);
+}
+/* 選択中のインスタンスの設定を、そのモジュールの横に浮かべて開く */
+function renderInspector(stage) {
+  let box = stage.querySelector("[data-inspector]");
+  const mod = stage.querySelector(".mod.is-selected");
+  if (!mod || stage.dataset.pop === "closed") { if (box) box.hidden = true; return; }
+  if (!box) { box = document.createElement("div"); box.className = "inspector ins-pop"; box.dataset.inspector = ""; box.setAttribute("role", "dialog"); stage.appendChild(box); }
+  box.hidden = false;
+  box.innerHTML = inspectorHtml(mod) + `<button type="button" class="icon-btn pop-close" data-close-inspector data-i18n-aria="common.close"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>`;
+  const st = stage.getBoundingClientRect(), r = mod.getBoundingClientRect(), panel = stage.querySelector(".edit-panel");
+  const limit = (panel ? panel.getBoundingClientRect().left : st.right) - st.left - 8, bw = Math.min(280, limit * 0.45);
+  box.style.width = bw + "px";
+  let left = r.right - st.left + 8; if (left + bw > limit) left = r.left - st.left - bw - 8; if (left < 8) left = Math.max(8, Math.min(limit - bw, r.left - st.left + 8));
+  box.style.left = left + "px"; box.style.top = Math.max(st.height * 0.08, Math.min(r.top - st.top, st.height - 40 - box.offsetHeight)) + "px";
+  box.querySelectorAll("[data-i18n]").forEach(n => { n.textContent = t(n.dataset.i18n); });
+  box.querySelectorAll("[data-i18n-aria]").forEach(n => { n.setAttribute("aria-label", t(n.dataset.i18nAria)); });
+}
+
+function paletteDrawerHtml() {
+  const row = (c, custom, picked) => `<div class="mod-row${picked ? " is-picked" : ""}"><span class="mr-name"><span class="swatch-mini"><i class="sw-${c}1"></i><i class="sw-${c}2"></i></span><span data-i18n="palette.${c}"></span>${custom ? "" : `<span class="badge" data-i18n="palette.builtin"></span>`}</span><span class="mr-tools"><button type="button" class="icon-btn" data-i18n-aria="edit.duplicate">${ICON_COPY}</button>${custom ? `<button type="button" class="icon-btn" data-i18n-aria="edit.delete">${ICON_DEL}</button>` : ""}</span></div>`;
+  return `<aside class="drawer" aria-label="palette">
+    <div class="drawer-head"><h4 data-i18n="palette.title"></h4><button type="button" class="btn" data-i18n="common.back"></button></div>
+    <div class="drawer-body">
+      <div class="legend" data-i18n="palette.list"></div>
+      ${row("a", false)}${row("b", false)}${row("c", false)}${row("d", true, true)}
+      <button type="button" class="btn wide" data-i18n="palette.new"></button>
+      <div class="inspector">
+        <div class="ins-title" data-i18n="palette.editing"></div>
+        <div class="ins-field"><span class="ins-label" data-i18n="palette.name"></span><div class="select"><span data-i18n="palette.d"></span></div></div>
+        ${["main","sub","accent"].map(k => `<div class="row"><span data-i18n="palette.role_${k}"></span><span class="color-pick"><i style="background:${CUSTOM_PALETTE[k]}"></i><code>${CUSTOM_PALETTE[k]}</code></span></div>`).join("")}
+        <span class="ins-note" data-i18n="palette.light_note"></span>
+      </div>
+    </div>
+  </aside>`;
+}
+
+const ICON_EXPORT = '<svg viewBox="0 0 16 16"><path d="M8 10V2M5 5l3-3 3 3M3 10v4h10v-4"/></svg>';
+function presetDrawerHtml() {
+  const items = [["preset.p1", "preset.p1_meta", true], ["preset.p2", "preset.p2_meta"], ["preset.p3", "preset.p3_meta"], ["preset.p4", "preset.p4_meta"]];
+  const rows = items.map(([k, meta, cur]) => `<div class="mod-row${cur ? " is-picked" : ""}"><span class="mr-name"><span data-i18n="${k}"></span>${cur ? `<span class="badge" data-i18n="preset.in_use"></span>` : ""}<span class="mr-sub" data-i18n="${meta}"></span></span><span class="mr-tools"><button type="button" class="icon-btn" data-i18n-aria="preset.export">${ICON_EXPORT}</button><button type="button" class="icon-btn" data-i18n-aria="edit.duplicate">${ICON_COPY}</button><button type="button" class="icon-btn" data-i18n-aria="edit.delete">${ICON_DEL}</button></span></div>`).join("");
+  return `<aside class="drawer" aria-label="presets">
+    <div class="drawer-head"><h4 data-i18n="preset.title"></h4><button type="button" class="btn" data-i18n="common.back"></button></div>
+    <div class="drawer-body">
+      <p class="hint" data-i18n="preset.hint"></p>
+      ${rows}
+      <div class="btn-row"><button type="button" class="btn" data-i18n="preset.save"></button><button type="button" class="btn" data-i18n="preset.import"></button></div>
+    </div>
+  </aside>`;
+}
+
+function drawerHtml() {
+  return `<aside class="drawer" aria-label="settings">
+    <div class="drawer-head"><h4 data-i18n="settings.title"></h4><button type="button" class="btn" data-i18n="common.close"></button></div>
+    <div class="drawer-body">
+      <fieldset class="fieldset"><legend class="legend" data-i18n="preset.legend"></legend>
+        <div class="select"><span data-i18n="preset.current"></span><span aria-hidden="true">▾</span></div>
+        <span class="ins-note" data-i18n="preset.modified"></span>
+        <div class="btn-row"><button type="button" class="btn" data-i18n="preset.save"></button><button type="button" class="btn" data-i18n="preset.manage"></button></div>
+      </fieldset>
+      <fieldset class="fieldset"><legend class="legend" data-i18n="settings.source"></legend>
+        <label class="opt checked"><input type="radio" name="src_demo" id="src_loopback" checked><span class="opt-main"><span class="opt-title" data-i18n="settings.source_loopback"></span><span class="opt-desc" data-i18n="settings.source_loopback_desc"></span></span></label>
+        <div class="select"><span data-i18n="source.chip_long"></span><span aria-hidden="true">▾</span></div>
+        <label class="opt disabled"><input type="radio" name="src_demo" id="src_input" disabled><span class="opt-main"><span class="opt-title"><span data-i18n="settings.source_input"></span><span class="badge" data-i18n="settings.coming_soon"></span></span><span class="opt-desc" data-i18n="settings.source_input_desc"></span></span></label>
+      </fieldset>
+      <fieldset class="fieldset"><legend class="legend" data-i18n="settings.theme"></legend>
+        <div class="seg"><button type="button" aria-pressed="true" data-i18n="settings.theme_dark"></button><button type="button" aria-pressed="false" data-i18n="settings.theme_light"></button><button type="button" aria-pressed="false" data-i18n="settings.theme_system"></button></div>
+      </fieldset>
+      <fieldset class="fieldset"><legend class="legend" data-i18n="settings.palette"></legend>
+        <span class="ins-note" data-i18n="settings.palette_note"></span>
+        <button type="button" class="btn wide" data-i18n="settings.manage_palette"></button>
+      </fieldset>
+      <fieldset class="fieldset"><legend class="legend" data-i18n="settings.layout"></legend>
+        <button type="button" class="btn wide" data-i18n="settings.edit_layout"></button>
+      </fieldset>
+      <fieldset class="fieldset"><legend class="legend" data-i18n="settings.display"></legend>
+        <div class="row"><span data-i18n="settings.scanline"></span><button class="sw" type="button" role="switch" aria-checked="true" data-i18n-aria="settings.scanline"></button></div>
+        <div class="row"><span data-i18n="settings.always_on_top"></span><button class="sw" type="button" role="switch" aria-checked="false" data-i18n-aria="settings.always_on_top"></button></div>
+        <div class="row"><span data-i18n="settings.start_fullscreen"></span><button class="sw" type="button" role="switch" aria-checked="false" data-i18n-aria="settings.start_fullscreen"></button></div>
+      </fieldset>
+    </div>
+    <div class="drawer-foot"><button type="button" class="btn" data-i18n="common.close"></button></div>
+  </aside>`;
+}
+
+function applyText() {
+  document.documentElement.lang = locale === "pseudo" ? "ja-x-pseudo" : "ja";
+  document.querySelectorAll("[data-i18n]").forEach(n => { n.textContent = t(n.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-aria]").forEach(n => { n.setAttribute("aria-label", t(n.dataset.i18nAria)); });
+  document.querySelectorAll("[data-peak]").forEach(n => { n.textContent = t("meter.loudness_peak", { value: "−1.2" }); });
+}
+
+document.querySelectorAll(".stage").forEach(buildStage);
+applyText();
+
+document.getElementById("locale_seg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  locale = b.dataset.locale;
+  e.currentTarget.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  applyText();
+});
+document.getElementById("theme_seg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const v = b.dataset.themeSet;
+  if (v === "system") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", v);
+  e.currentTarget.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  readColors();
+});
+document.querySelectorAll(".sw:not([data-toggle-now])").forEach(s => s.addEventListener("click", () => s.setAttribute("aria-checked", String(s.getAttribute("aria-checked") !== "true"))));
+
+/* ===== ダミー信号と描画 ===== */
+let C = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ["bg","grid","line","text","text-muted","neon-a","neon-b","neon-c","glow-a"]) C[k] = cs.getPropertyValue("--color-" + k).trim();
+}
+readColors();
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", readColors);
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const BPM = 128, BEAT = 60 / BPM;
+function kickEnv(time) { const ph = (time % BEAT) / BEAT; return Math.exp(-ph * 9); }
+function sample(time, ch) {
+  const k = kickEnv(time);
+  const base = Math.sin(2 * Math.PI * 55 * time) * k * 0.7;
+  const pad = Math.sin(2 * Math.PI * 220 * time + ch * 0.6) * 0.18 + Math.sin(2 * Math.PI * 330.5 * time + ch) * 0.12;
+  const hat = ((time / (BEAT / 2)) % 1 < 0.06 ? (Math.random() * 2 - 1) * 0.25 : 0);
+  return base + pad + hat + (Math.random() * 2 - 1) * 0.04;
+}
+/* 波形用のダミー信号：乱数を使わず、キックの間は静かにする（実際の曲の履歴に近い疎なスパイク） */
+function waveSig(time, ch) {
+  const k = kickEnv(time);
+  const hp = (time / (BEAT / 2)) % 1, hat = hp < 0.08 ? Math.exp(-hp * 60) : 0;
+  return Math.sin(2 * Math.PI * 55 * time) * k * 0.85
+    + Math.sin(2 * Math.PI * 220 * time + ch * 0.6) * 0.07 + Math.sin(2 * Math.PI * 330.5 * time + ch) * 0.05
+    + Math.sin(2 * Math.PI * 2400 * time + ch) * hat * 0.3;
+}
+function waveEnv(time, ch) {
+  const k = kickEnv(time), hp = (time / (BEAT / 2)) % 1;
+  return Math.pow(k, 2.2) * 0.9 + (hp < 0.08 ? Math.exp(-hp * 60) * 0.25 : 0) + 0.012 + 0.006 * Math.sin(time * 3 + ch);
+}
+const BINS = 96;
+function spectrum(time, silent) {
+  const out = new Float32Array(BINS); if (silent) return out;
+  const k = kickEnv(time);
+  for (let i = 0; i < BINS; i++) {
+    const x = i / (BINS - 1);
+    let v = 0.78 - x * 0.45;
+    v += Math.exp(-((x - 0.08) ** 2) / 0.002) * 0.35 * k;
+    v += Math.exp(-((x - 0.38) ** 2) / 0.0015) * 0.22 * (0.7 + 0.3 * Math.sin(time * 1.3));
+    v += Math.exp(-((x - 0.47) ** 2) / 0.0008) * 0.16;
+    v += Math.exp(-((x - 0.82) ** 2) / 0.01) * 0.18 * (((time / (BEAT / 2)) % 1) < 0.12 ? 1 : 0.25);
+    v += (Math.random() - 0.5) * 0.06;
+    out[i] = Math.max(0, Math.min(1, v));
+  }
+  return out;
+}
+
+const meters = [];
+document.querySelectorAll(".stage").forEach(stage => {
+  const mode = stage.dataset.mode;
+  stage.querySelectorAll("canvas").forEach(cv => {
+    const m = { cv, ctx: cv.getContext("2d"), kind: cv.dataset.kind, mode, stage, w: 0, h: 0, dpr: 1, hist: [], visible: false, smooth: new Float32Array(BINS) };
+    if (m.kind === "gram") { m.buf = document.createElement("canvas"); m.bctx = m.buf.getContext("2d"); }
+    meters.push(m);
+  });
+});
+const ro = new ResizeObserver(es => { for (const e of es) { const m = meters.find(x => x.cv.parentElement === e.target); if (m) sizeMeter(m); } });
+meters.forEach(m => ro.observe(m.cv.parentElement));
+function sizeMeter(m) {
+  const r = m.cv.parentElement.getBoundingClientRect();
+  m.dpr = Math.min(2, devicePixelRatio || 1);
+  m.w = Math.max(1, Math.round(r.width)); m.h = Math.max(1, Math.round(r.height));
+  m.cv.width = m.w * m.dpr; m.cv.height = m.h * m.dpr;
+  m.ctx.setTransform(m.dpr, 0, 0, m.dpr, 0, 0);
+  if (m.buf) { m.buf.width = m.w; m.buf.height = m.h; }
+  m.dirty = true;
+}
+/* long：細長（向きに合った長辺）、compact：正方形に近い、free：どちらでも */
+function fitOf(kind, dir, w, h, mode) {
+  const shape = MODULES[kind].shape, ratio = Math.max(w, h) / Math.max(1, Math.min(w, h));
+  if (shape === "free") return "good";
+  if (kind === "stereo" && mode === "pan") return h >= w * 1.3 ? "good" : "warn_tall";
+  if (shape === "compact") return ratio <= 1.8 ? "good" : "warn_long";
+  const horizontal = dir === "left" || dir === "right";
+  const wantWide = kind === "level" ? !horizontal : kind === "spec" ? !horizontal : horizontal;
+  if (ratio < 1.6) return "warn_short";
+  return (w >= h) === wantWide ? "good" : "warn_axis";
+}
+function updateFit(mod) {
+  const chip = mod.querySelector("[data-fit]"); if (!chip) return;
+  const r = mod.getBoundingClientRect(), f = fitOf(mod.dataset.kind, mod.dataset.dir, r.width, r.height, mod.dataset.smode);
+  chip.className = "fit " + (f === "good" ? "good" : "warn");
+  chip.dataset.i18n = "fit." + f; chip.textContent = t("fit." + f);
+}
+const fitRo = new ResizeObserver(es => es.forEach(e => updateFit(e.target)));
+document.querySelectorAll('.stage[data-edit="on"] .mod').forEach(md => fitRo.observe(md));
+
+/* 境界線のドラッグ：隣り合うモジュールの共有している辺をつかみ、格子に吸着させながら両側の大きさを同時に変える */
+function gridOf(stage) { return stage.querySelector(".grid"); }
+function cellOf(mod) {
+  const c = mod.style.gridColumn.match(/(\d+) \/ span (\d+)/), r = mod.style.gridRow.match(/(\d+) \/ span (\d+)/);
+  return c && r ? { c: +c[1], cs: +c[2], r: +r[1], rs: +r[2] } : null;
+}
+function setCell(mod, k) { mod.style.gridColumn = `${k.c} / span ${k.cs}`; mod.style.gridRow = `${k.r} / span ${k.rs}`; }
+function layoutSplitters(stage) {
+  const grid = gridOf(stage); grid.querySelectorAll(".splitter").forEach(n => n.remove());
+  const mods = [...grid.querySelectorAll('.mod[data-on="on"]')].map(md => ({ md, k: cellOf(md) })).filter(x => x.k);
+  const g = grid.getBoundingClientRect();
+  const add = (axis, line, a, b) => {
+    const A = mods.filter(x => axis === "v" ? x.k.c + x.k.cs === line : x.k.r + x.k.rs === line);
+    const B = mods.filter(x => axis === "v" ? x.k.c === line : x.k.r === line);
+    /* 辺を共有している組だけを対象にする */
+    const overl = (p, q) => axis === "v" ? (p.k.r < q.k.r + q.k.rs && q.k.r < p.k.r + p.k.rs) : (p.k.c < q.k.c + q.k.cs && q.k.c < p.k.c + p.k.cs);
+    const pairs = A.filter(p => B.some(q => overl(p, q)));
+    if (!pairs.length) return;
+    const side = [...new Set([...pairs, ...B.filter(q => pairs.some(p => overl(p, q)))])];
+    const rects = side.map(x => x.md.getBoundingClientRect());
+    const sp = document.createElement("div"); sp.className = "splitter " + axis; sp.tabIndex = 0;
+    sp.setAttribute("role", "separator"); sp.setAttribute("aria-orientation", axis === "v" ? "vertical" : "horizontal"); sp.setAttribute("aria-label", t("edit.splitter"));
+    if (axis === "v") {
+      const x = Math.max(...pairs.map(p => p.md.getBoundingClientRect().right));
+      const right = Math.min(...side.filter(q => q.k.c === line).map(q => q.md.getBoundingClientRect().left));
+      sp.style.left = ((x + right) / 2 - g.left) + "px"; sp.style.top = (Math.min(...rects.map(r => r.top)) - g.top) + "px"; sp.style.height = (Math.max(...rects.map(r => r.bottom)) - Math.min(...rects.map(r => r.top))) + "px";
+    } else {
+      const y = Math.max(...pairs.map(p => p.md.getBoundingClientRect().bottom));
+      const below = Math.min(...side.filter(q => q.k.r === line).map(q => q.md.getBoundingClientRect().top));
+      sp.style.top = ((y + below) / 2 - g.top) + "px"; sp.style.left = (Math.min(...rects.map(r => r.left)) - g.left) + "px"; sp.style.width = (Math.max(...rects.map(r => r.right)) - Math.min(...rects.map(r => r.left))) + "px";
+    }
+    sp.dataset.axis = axis; sp.dataset.line = line; sp._side = side;
+    grid.appendChild(sp);
+  };
+  for (let line = 2; line <= 12; line++) add("v", line);
+  for (let line = 2; line <= 8; line++) add("h", line);
+}
+function moveSplitter(stage, sp, to) {
+  const axis = sp.dataset.axis, from = +sp.dataset.line; if (to === from) return;
+  const before = sp._side.filter(x => axis === "v" ? x.k.c + x.k.cs === from : x.k.r + x.k.rs === from);
+  const after = sp._side.filter(x => axis === "v" ? x.k.c === from : x.k.r === from);
+  /* どのモジュールも1マス未満にはしない */
+  const ok = before.every(x => (axis === "v" ? to - x.k.c : to - x.k.r) >= 1) && after.every(x => (axis === "v" ? x.k.c + x.k.cs - to : x.k.r + x.k.rs - to) >= 1);
+  if (!ok) return;
+  before.forEach(x => { if (axis === "v") x.k.cs = to - x.k.c; else x.k.rs = to - x.k.r; setCell(x.md, x.k); });
+  after.forEach(x => { if (axis === "v") { x.k.cs = x.k.c + x.k.cs - to; x.k.c = to; } else { x.k.rs = x.k.r + x.k.rs - to; x.k.r = to; } setCell(x.md, x.k); });
+  sp.dataset.line = to;
+  const badge = stage.querySelector(".mode-manual"); if (badge) badge.textContent = t("edit.mode_manual");
+}
+document.querySelectorAll('.stage[data-edit="on"]').forEach(stage => {
+  const grid = gridOf(stage);
+  requestAnimationFrame(() => layoutSplitters(stage));
+  new ResizeObserver(() => { if (!stage._dragging) layoutSplitters(stage); }).observe(grid);
+  grid.addEventListener("pointerdown", e => {
+    const sp = e.target.closest(".splitter"); if (!sp) return;
+    e.preventDefault(); sp.setPointerCapture(e.pointerId); sp.classList.add("is-drag"); stage._dragging = true;
+    const g = grid.getBoundingClientRect(), cs = getComputedStyle(grid), pad = parseFloat(cs.paddingLeft) || 0, gap = parseFloat(cs.columnGap) || 0;
+    const cols = sp.dataset.axis === "v" ? 12 : 8;
+    const size = sp.dataset.axis === "v" ? g.width - pad * 2 : g.height - pad * 2;
+    const unit = (size + gap) / cols;
+    const onMove = ev => {
+      const pos = sp.dataset.axis === "v" ? ev.clientX - g.left - pad : ev.clientY - g.top - pad;
+      const to = Math.max(2, Math.min(cols, Math.round(pos / unit) + 1));
+      moveSplitter(stage, sp, to);
+      const p = sp.dataset.axis === "v" ? (to - 1) * unit + pad - gap / 2 : (to - 1) * unit + pad - gap / 2;
+      if (sp.dataset.axis === "v") sp.style.left = p + "px"; else sp.style.top = p + "px";
+      stage.querySelectorAll(".mod").forEach(updateFit);
+    };
+    const onUp = () => { sp.removeEventListener("pointermove", onMove); sp.removeEventListener("pointerup", onUp); stage._dragging = false; layoutSplitters(stage); renderInspector(stage); };
+    sp.addEventListener("pointermove", onMove); sp.addEventListener("pointerup", onUp);
+  });
+  /* キーボード：矢印キーで1マスずつ動かす */
+  grid.addEventListener("keydown", e => {
+    const sp = e.target.closest(".splitter"); if (!sp) return;
+    const d = (sp.dataset.axis === "v" ? { ArrowLeft: -1, ArrowRight: 1 } : { ArrowUp: -1, ArrowDown: 1 })[e.key]; if (!d) return;
+    e.preventDefault(); const line = +sp.dataset.line;
+    moveSplitter(stage, sp, line + d); layoutSplitters(stage);
+    const again = [...grid.querySelectorAll(".splitter")].find(n => n.dataset.axis === sp.dataset.axis && +n.dataset.line === line + d); if (again) again.focus();
+  });
+});
+
+/* 編集モードの操作（見た目の確認用） */
+document.querySelectorAll('.stage[data-edit="on"]').forEach(stage => {
+  renderInspector(stage);
+  stage.addEventListener("input", e => {
+    const sv = e.target.closest("[data-speed-input]"), sel0 = stage.querySelector(".mod.is-selected");
+    if (sv && sel0) {
+      if (Number(sv.value) === 1) delete sel0.dataset.speed; else sel0.dataset.speed = sv.value;
+      sv.parentElement.querySelector(".split-val").textContent = "×" + Number(sv.value).toFixed(2);
+      const rb = stage.querySelector("[data-mod-reset]"); if (rb) rb.disabled = isDefault(sel0);
+      const mm = meters.find(x => x.cv === sel0.querySelector("canvas")); if (mm) { mm.hist = []; mm.cenHist = []; }
+      return;
+    }
+    const r = e.target.closest("[data-split-input]"), sel = stage.querySelector(".mod.is-selected");
+    if (!r || !sel) return;
+    sel.dataset.split = r.value;
+    r.parentElement.querySelector(".split-val").textContent = r.value + "%";
+    if (Number(r.value) === SPLIT_DEFAULT) delete sel.dataset.split;
+    const rb = stage.querySelector("[data-mod-reset]"); if (rb) rb.disabled = isDefault(sel);
+    const m = meters.find(x => x.cv === sel.querySelector("canvas")); if (m) m.hist = [];
+  });
+  stage.addEventListener("click", e => {
+    const d = e.target.closest("[data-dir-set]");
+    if (d) {
+      const mod = d.closest(".mod"); mod.dataset.dir = d.dataset.dirSet;
+      d.parentElement.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === d)));
+      updateFit(mod); if (mod.classList.contains("is-selected")) renderInspector(stage); return;
+    }
+    const tg = e.target.closest("[data-toggle-mod]");
+    if (tg) {
+      const mod = stage.querySelector(`.mod[data-id="${tg.dataset.toggleMod}"]`);
+      const on = tg.getAttribute("aria-checked") === "true";
+      mod.dataset.on = on ? "on" : "off";
+      if (on && !mod.style.gridColumn) { mod.style.gridColumn = "7 / span 3"; mod.style.gridRow = "1 / span 2"; mod.dataset.dir = "right"; }
+      tg.closest(".mod-row").classList.toggle("is-off", !on); requestAnimationFrame(() => layoutSplitters(stage)); return;
+    }
+    const og = e.target.closest("[data-open-inspector]");
+    if (og) { const md = og.closest(".mod"); stage.querySelectorAll(".mod").forEach(x => x.classList.toggle("is-selected", x === md)); stage.querySelectorAll("[data-row]").forEach(r => r.classList.toggle("is-picked", r.dataset.row === md.dataset.id)); delete stage.dataset.pop; renderInspector(stage); return; }
+    if (e.target.closest("[data-close-inspector]")) { stage.dataset.pop = "closed"; renderInspector(stage); return; }
+    const sel = stage.querySelector(".mod.is-selected");
+    const cs = e.target.closest("[data-color-set]");
+    if (cs && sel) { sel.dataset.color = cs.dataset.colorSet; renderInspector(stage); return; }
+    const sm = e.target.closest("[data-smode-set]");
+    if (sm && sel) { sel.dataset.smode = sm.dataset.smodeSet; const mm = meters.find(x => x.cv === sel.querySelector("canvas")); if (mm) mm.ctx.clearRect(0, 0, mm.w, mm.h); updateFit(sel); renderInspector(stage); return; }
+    const sp = e.target.closest("[data-specmode-set]");
+    if (sp && sel) { sel.dataset.specmode = sp.dataset.specmodeSet; renderInspector(stage); return; }
+    const gh = e.target.closest("[data-toggle-ghost]");
+    if (gh && sel) { sel.dataset.ghost = sel.dataset.ghost === "off" ? "on" : "off"; renderInspector(stage); return; }
+    const wc = e.target.closest("[data-wcolor-set]");
+    if (wc && sel) { sel.dataset.wcolor = wc.dataset.wcolorSet; renderInspector(stage); return; }
+    const bl = e.target.closest("[data-toggle-blur]");
+    if (bl && sel) { sel.dataset.blur = sel.dataset.blur === "off" ? "on" : "off"; renderInspector(stage); return; }
+    const dt = e.target.closest("[data-dots-set]");
+    if (dt && sel) { sel.dataset.dots = dt.dataset.dotsSet; renderInspector(stage); return; }
+    const ch = e.target.closest("[data-ch-set]");
+    if (ch && sel) { sel.dataset.ch = ch.dataset.chSet; renderInspector(stage); return; }
+    const rs = e.target.closest("[data-mod-reset]");
+    if (rs && sel) { resetMod(sel); renderInspector(stage); return; }
+    const nw = e.target.closest("[data-toggle-now]");
+    if (nw && sel) { nw.setAttribute("aria-checked", String(nw.getAttribute("aria-checked") !== "true")); sel.dataset.now = nw.getAttribute("aria-checked") === "true" ? "on" : "off"; renderInspector(stage); return; }
+    const row = e.target.closest("[data-row]");
+    const md = row ? stage.querySelector(`.mod[data-id="${row.dataset.row}"]`) : e.target.closest(".mod");
+    if (md && md.dataset.on !== "off") {
+      stage.querySelectorAll(".mod").forEach(x => x.classList.toggle("is-selected", x === md));
+      stage.querySelectorAll("[data-row]").forEach(r => r.classList.toggle("is-picked", r.dataset.row === md.dataset.id));
+      renderInspector(stage);
+    }
+  });
+});
+
+const io = new IntersectionObserver(es => { for (const e of es) meters.filter(m => m.stage === e.target).forEach(m => { m.visible = e.isIntersecting; }); });
+document.querySelectorAll(".stage").forEach(s => io.observe(s));
+
+function glow(ctx, color, blur) { ctx.shadowColor = color; ctx.shadowBlur = blur; }
+function gridLines(ctx, w, h, nx, ny) {
+  ctx.shadowBlur = 0; ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.beginPath();
+  for (let i = 1; i < nx; i++) { const x = Math.round(w * i / nx) + 0.5; ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+  for (let j = 1; j < ny; j++) { const y = Math.round(h * j / ny) + 0.5; ctx.moveTo(0, y); ctx.lineTo(w, y); }
+  ctx.stroke();
+}
+
+/* 波形の描き方
+   履歴：音量の包絡を、1フレームあたり HIST_SCROLL px の速さで流す（速めに流してスパイクを鋭く見せる）
+   今の波形：硬い芯（振幅小・なめらか）と柔らかい外縁（振幅大・即応）の2本で描き、間を半透明で塗る。
+   両端固定：境目と反対側の端の両方で中心に戻るので、キックの間は履歴の細い線とそのままつながる */
+const HIST_SCROLL = 4;
+/* 流れる速さ（インスタンスの設定）：既定値に対する倍率。0.25〜3 */
+const speedOf = m => Number(m.cv.parentElement.dataset.speed || m.stage.dataset.speed) || 1;
+function drawWave(m, time, silent) {
+  const SCROLL_PX = Math.max(1, Math.round(HIST_SCROLL * speedOf(m)));
+  const { ctx, w, h } = m;
+  const mod = m.cv.parentElement;
+  const mono = mod.dataset.ch === "mono";
+  const nowOn = mod.dataset.now !== "off";
+  const ratio = (Number(mod.dataset.split) || SPLIT_DEFAULT) / 100;
+  const split = nowOn ? Math.round(w * ratio) : w;
+  const mid = h / 2;
+  const val = (tt, ch) => silent ? 0 : ch === 2 ? (waveSig(tt, 0) + waveSig(tt, 1)) / 2 : waveSig(tt, ch);
+
+  /* 履歴 */
+  /* 帯域の割合（低・中・高）も一緒に記録する。帯域別の色のときに使う */
+  const hp = (time / (BEAT / 2)) % 1, lo = Math.pow(kickEnv(time), 2.2), hi = hp < 0.08 ? Math.exp(-hp * 60) * 0.25 : 0, md = 0.012 + 0.03 * (0.5 + 0.5 * Math.sin(time * 1.7));
+  m.hist.push(silent ? [0.004, 0.004, 0, 1, 0] : [waveEnv(time, 0), waveEnv(time, 1), lo, md, hi]);
+  const cols = Math.ceil(split / SCROLL_PX) + 1; while (m.hist.length > cols) m.hist.shift();
+  ctx.clearRect(0, 0, w, h); gridLines(ctx, w, h, 8, 2);
+  const n = m.hist.length, start = split - (n - 1) * SCROLL_PX;
+  const amp = v => Math.max(0.6, Math.min(1, v) * mid * 0.92);
+  const band = (color, ch, up) => {
+    ctx.beginPath();
+    m.hist.forEach((v, i) => { const x = start + i * SCROLL_PX, a = amp(mono ? (v[0] + v[1]) / 2 : v[ch]); const y = up ? mid - a : mid + a; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.lineTo(split, mid); ctx.lineTo(start, mid); ctx.closePath();
+    glow(ctx, color, 8); ctx.fillStyle = color; ctx.globalAlpha = 0.9; ctx.fill(); ctx.globalAlpha = 1;
+  };
+  const multi = ((m.stage.dataset.wcolor || m.cv.parentElement.dataset.wcolor) || "solid") === "bands";
+  if (multi) {
+    /* 帯域別：列ごとに、強い帯域の色で塗る（低＝主色、中＝強調色、高＝副色） */
+    m.hist.forEach((v, i) => {
+      const x = start + i * SCROLL_PX, [, , lo, md, hi] = v, tot = lo + md + hi + 1e-6;
+      const color = lo / tot > 0.5 ? C["neon-a"] : hi / tot > 0.35 ? C["neon-b"] : C["neon-c"];
+      const aU = amp(mono ? (v[0] + v[1]) / 2 : v[0]), aD = amp(mono ? (v[0] + v[1]) / 2 : v[1]);
+      ctx.fillStyle = color; ctx.globalAlpha = 0.9; glow(ctx, color, 6); ctx.fillRect(x - SCROLL_PX / 2, mid - aU, SCROLL_PX, aU + aD);
+    });
+    ctx.globalAlpha = 1;
+  } else if (mono) { band(C["neon-a"], 0, true); band(C["neon-a"], 0, false); }
+  else { band(C["neon-a"], 0, true); band(C["neon-b"], 1, false); }
+  ctx.shadowBlur = 0;
+  if (!nowOn) return;
+
+  /* 境界線 */
+  ctx.strokeStyle = C["text-muted"]; ctx.globalAlpha = 0.6; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+  ctx.beginPath(); ctx.moveTo(split + 0.5, 0); ctx.lineTo(split + 0.5, h); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+
+  /* 今の波形 */
+  const span = Math.max(1, w - split);
+  const wnd = u => Math.pow(Math.sin(Math.PI * u / span), 0.8);   /* 両端固定 */
+  const N = Math.floor(span);
+  const raw = { 0: [], 1: [], 2: [] };
+  for (let u = 0; u <= N; u++) { const tt = time + u * 0.00006; raw[0].push(val(tt, 0)); raw[1].push(val(tt, 1)); raw[2].push(val(tt, 2)); }
+  /* 芯：混ぜた信号を強くならして小さく */
+  const R = Math.max(6, Math.round(N * 0.04)), core = [];
+  for (let u = 0; u <= N; u++) { let sum = 0, c = 0; for (let k = -R; k <= R; k++) { const j = u + k; if (j >= 0 && j <= N) { sum += raw[2][j]; c++; } } core.push(sum / c); }
+  const coreY = u => mid - core[u] * 0.35 * mid * wnd(u);
+  const outerY = (ch, u) => mid - raw[ch][u] * 0.9 * mid * wnd(u);
+  const lanes = mono ? [[2, C["neon-a"]]] : [[0, C["neon-a"]], [1, C["neon-b"]]];
+  for (const [ch, color] of lanes) {
+    ctx.beginPath();
+    for (let u = 0; u <= N; u++) { const y = outerY(ch, u); u ? ctx.lineTo(split + u, y) : ctx.moveTo(split + u, y); }
+    for (let u = N; u >= 0; u--) ctx.lineTo(split + u, coreY(u));
+    ctx.closePath(); ctx.fillStyle = color; ctx.globalAlpha = 0.22; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.beginPath(); for (let u = 0; u <= N; u++) { const y = outerY(ch, u); u ? ctx.lineTo(split + u, y) : ctx.moveTo(split + u, y); }
+    glow(ctx, color, 8); ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.globalAlpha = 0.75; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  ctx.beginPath(); for (let u = 0; u <= N; u++) { const y = coreY(u); u ? ctx.lineTo(split + u, y) : ctx.moveTo(split + u, y); }
+  glow(ctx, C["neon-a"], 4); ctx.strokeStyle = C["neon-a"]; ctx.lineWidth = 1.8; ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+/* スペクトラムの表示方式（data-specmode）：fill＝線＋塗り（既定）、bars＝LED風の区切りバー、mirror＝上下の鏡写し、radial＝円形
+   残像（data-ghost）：ピーク位置を細い線で残し、ゆっくり下げる */
+function drawSpec(m, time, silent) {
+  const { ctx, w, h } = m; const s = spectrum(time, silent);
+  const mode = (m.stage.dataset.specmode || m.cv.parentElement.dataset.specmode) || "fill", ghostOn = ((m.stage.dataset.ghost || m.cv.parentElement.dataset.ghost) || "on") !== "off";
+  for (let i = 0; i < BINS; i++) m.smooth[i] = Math.max(s[i], m.smooth[i] * 0.88);
+  if (!m.peakHold) m.peakHold = new Float32Array(BINS);
+  for (let i = 0; i < BINS; i++) m.peakHold[i] = Math.max(m.smooth[i], m.peakHold[i] - 0.004);
+  ctx.clearRect(0, 0, w, h);
+  const xOf = i => (i / (BINS - 1)) * w;
+  if (mode === "radial") {
+    const cx = w / 2, cy = h / 2, r0 = Math.min(w, h) * 0.16, r1 = Math.min(w, h) * 0.32;
+    const ring = (vals, scale) => { ctx.beginPath(); for (let k = 0; k <= BINS * 2; k++) { const i = k <= BINS ? Math.min(BINS - 1, k) : BINS * 2 - k; const a = -Math.PI / 2 + k / (BINS * 2) * Math.PI * 2, r = r0 + vals[i] * r1 * scale; const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r; k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); };
+    ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.arc(cx, cy, r0, 0, Math.PI * 2); ctx.moveTo(cx + r0 + r1, cy); ctx.arc(cx, cy, r0 + r1, 0, Math.PI * 2); ctx.stroke();
+    const g = ctx.createRadialGradient(cx, cy, r0 * 0.6, cx, cy, r0 + r1); g.addColorStop(0, "transparent"); g.addColorStop(1, C["neon-a"]);
+    ring(m.smooth, 1); ctx.fillStyle = g; ctx.globalAlpha = 0.75; glow(ctx, C["glow-a"], 20); ctx.fill(); ctx.globalAlpha = 1;
+    glow(ctx, C["neon-a"], 10); ctx.strokeStyle = C["neon-a"]; ctx.lineWidth = 1.6; ctx.stroke();
+    if (ghostOn) { ring(m.peakHold, 1); ctx.shadowBlur = 0; ctx.strokeStyle = C["neon-c"]; ctx.globalAlpha = 0.55; ctx.lineWidth = 1; ctx.stroke(); ctx.globalAlpha = 1; }
+    ctx.shadowBlur = 0; return;
+  }
+  gridLines(ctx, w, h, 10, 6);
+  if (mode === "bars") {
+    const n = 48, bw = w / n, seg = Math.max(3, h / 40), gap = Math.max(1, seg * 0.35);
+    for (let j = 0; j < n; j++) {
+      const v = m.smooth[Math.floor(j / n * BINS)], hh = v * h * 0.9, segs = Math.floor(hh / (seg + gap));
+      for (let k = 0; k < segs; k++) {
+        const y = h - (k + 1) * (seg + gap), hot = y < h * 0.3;
+        ctx.fillStyle = hot ? C["neon-c"] : C["neon-a"]; ctx.globalAlpha = 0.55 + 0.45 * (k / Math.max(1, segs));
+        ctx.fillRect(j * bw + 1, y, bw - 2, seg);
+      }
+      if (ghostOn) { const py = h - m.peakHold[Math.floor(j / n * BINS)] * h * 0.9; ctx.globalAlpha = 0.9; ctx.fillStyle = C["neon-b"]; ctx.fillRect(j * bw + 1, py - 2, bw - 2, 2); }
+    }
+    ctx.globalAlpha = 1;
+  } else if (mode === "mirror") {
+    const mid = h / 2;
+    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "transparent"); g.addColorStop(0.5, C["neon-a"]); g.addColorStop(1, "transparent");
+    ctx.beginPath(); ctx.moveTo(0, mid);
+    for (let i = 0; i < BINS; i++) ctx.lineTo(xOf(i), mid - m.smooth[i] * mid * 0.92);
+    for (let i = BINS - 1; i >= 0; i--) ctx.lineTo(xOf(i), mid + m.smooth[i] * mid * 0.92);
+    ctx.closePath(); ctx.globalAlpha = 0.8; glow(ctx, C["glow-a"], 20); ctx.fillStyle = g; ctx.fill(); ctx.globalAlpha = 1;
+    for (const sgn of [-1, 1]) { ctx.beginPath(); glow(ctx, C["neon-a"], 10); ctx.strokeStyle = C["neon-a"]; ctx.lineWidth = 1.4; for (let i = 0; i < BINS; i++) { const y = mid + sgn * m.smooth[i] * mid * 0.92; i ? ctx.lineTo(xOf(i), y) : ctx.moveTo(xOf(i), y); } ctx.stroke(); }
+    if (ghostOn) for (const sgn of [-1, 1]) { ctx.shadowBlur = 0; ctx.beginPath(); ctx.strokeStyle = C["neon-c"]; ctx.globalAlpha = 0.5; ctx.lineWidth = 1; for (let i = 0; i < BINS; i++) { const y = mid + sgn * m.peakHold[i] * mid * 0.92; i ? ctx.lineTo(xOf(i), y) : ctx.moveTo(xOf(i), y); } ctx.stroke(); ctx.globalAlpha = 1; }
+  } else {
+    /* 輪郭の下を塗りつぶして光量を出し、下端に向けて暗く消して下のメーターとの境目を切る */
+    const grad = ctx.createLinearGradient(0, h * 0.1, 0, h);
+    grad.addColorStop(0, C["neon-a"]); grad.addColorStop(0.55, C["neon-a"]); grad.addColorStop(1, "transparent");
+    ctx.beginPath(); ctx.moveTo(0, h);
+    for (let i = 0; i < BINS; i++) ctx.lineTo(xOf(i), h - m.smooth[i] * h * 0.9);
+    ctx.lineTo(w, h); ctx.closePath();
+    ctx.globalAlpha = 0.82; glow(ctx, C["glow-a"], 24); ctx.fillStyle = grad; ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    ctx.beginPath(); glow(ctx, C["neon-a"], 10); ctx.strokeStyle = C["neon-a"]; ctx.lineWidth = 1.6;
+    for (let i = 0; i < BINS; i++) { const y = h - m.smooth[i] * h * 0.9; i ? ctx.lineTo(xOf(i), y) : ctx.moveTo(xOf(i), y); }
+    ctx.stroke();
+    ctx.beginPath(); glow(ctx, C["neon-b"], 6); ctx.strokeStyle = C["neon-b"]; ctx.lineWidth = 1;
+    for (let i = 0; i < BINS; i++) { const y = h - s[i] * h * 0.78; i ? ctx.lineTo(xOf(i), y) : ctx.moveTo(xOf(i), y); }
+    ctx.stroke(); ctx.shadowBlur = 0;
+    if (ghostOn) { ctx.beginPath(); ctx.strokeStyle = C["neon-c"]; ctx.globalAlpha = 0.55; ctx.lineWidth = 1; for (let i = 0; i < BINS; i++) { const y = h - m.peakHold[i] * h * 0.9; i ? ctx.lineTo(xOf(i), y) : ctx.moveTo(xOf(i), y); } ctx.stroke(); ctx.globalAlpha = 1; }
+  }
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = C["text-muted"]; ctx.font = `${Math.max(8, Math.min(11, w / 60))}px "Azeret Mono", monospace`;
+  ctx.globalAlpha = 0.9; [["50", 0.06], ["200", 0.3], ["1k", 0.55], ["5k", 0.8], ["16k", 0.97]].forEach(([l, p]) => ctx.fillText(l, p * w - 8, h - 4)); ctx.globalAlpha = 1;
+}
+
+/* クロマ：12の音名ごとの強さを円環に並べる。中央に推定したキー（ダミーは2小節ごとにコードが変わる） */
+const NOTE_NAMES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
+const PROGRESSION = [[9, 0, 4], [5, 9, 0], [0, 4, 7], [7, 11, 2]];   /* Am → F → C → G */
+function drawChroma(m, time, silent) {
+  const { ctx, w, h } = m; ctx.clearRect(0, 0, w, h);
+  const chord = PROGRESSION[Math.floor(time / (BEAT * 8)) % PROGRESSION.length];
+  if (!m.chroma) m.chroma = new Float32Array(12);
+  for (let n = 0; n < 12; n++) {
+    let v = silent ? 0 : 0.08 + 0.05 * Math.sin(time * 2 + n);
+    if (!silent && chord.includes(n)) v += n === chord[0] ? 0.85 : 0.6;
+    if (!silent && n === 9) v += 0.15 * kickEnv(time);
+    m.chroma[n] += (v - m.chroma[n]) * 0.12;
+  }
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.42, r0 = R * 0.45;
+  ctx.font = `${Math.max(8, Math.min(12, R / 7))}px "Azeret Mono", monospace`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let n = 0; n < 12; n++) {
+    const a0 = -Math.PI / 2 + (n - 0.42) / 12 * Math.PI * 2, a1 = -Math.PI / 2 + (n + 0.42) / 12 * Math.PI * 2;
+    const v = Math.min(1, m.chroma[n]), r = r0 + (R - r0) * v;
+    ctx.beginPath(); ctx.arc(cx, cy, r0, a0, a1); ctx.arc(cx, cy, R, a1, a0, true); ctx.closePath(); ctx.fillStyle = C.grid; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, r0, a0, a1); ctx.arc(cx, cy, r, a1, a0, true); ctx.closePath();
+    const root = n === chord[0];
+    ctx.fillStyle = root ? C["neon-c"] : C["neon-a"]; ctx.globalAlpha = 0.25 + 0.75 * v; glow(ctx, ctx.fillStyle, 12 * v); ctx.fill(); ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    const am = -Math.PI / 2 + n / 12 * Math.PI * 2;
+    ctx.fillStyle = v > 0.5 ? C.text : C["text-muted"]; ctx.fillText(NOTE_NAMES[n], cx + Math.cos(am) * (R + R * 0.14), cy + Math.sin(am) * (R + R * 0.14));
+  }
+  /* 主表示：今のコード／副表示：推定したキー */
+  const chords = ["Am", "F", "C", "G"], idx = Math.floor(time / (BEAT * 8)) % 4;
+  ctx.fillStyle = silent ? C["text-muted"] : C["neon-b"]; glow(ctx, C["neon-b"], silent ? 0 : 8);
+  ctx.font = `600 ${Math.max(11, Math.min(26, R / 3.2))}px "Azeret Mono", monospace`; ctx.fillText(silent ? "—" : chords[idx], cx, cy - R * 0.06);
+  ctx.shadowBlur = 0; ctx.fillStyle = C["text-muted"];
+  ctx.font = `${Math.max(8, Math.min(11, R / 8))}px "Azeret Mono", monospace`; ctx.fillText(silent ? "" : t("meter.chroma_key", { key: "A minor" }), cx, cy + R * 0.2);
+  ctx.shadowBlur = 0; ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
+}
+
+/* 重心と変化量：音の明るさ（スペクトルの重心）の推移を線で、音色の変化の激しさ（フラックス）を下の棒で流す */
+function drawCentroid(m, time, silent) {
+  const { ctx, w, h } = m; ctx.clearRect(0, 0, w, h); gridLines(ctx, w, h, 8, 4);
+  const s = spectrum(time, silent);
+  let num = 0, den = 0; for (let i = 0; i < BINS; i++) { num += i * s[i]; den += s[i]; }
+  const cen = den > 0 ? num / den / (BINS - 1) : 0;
+  let flux = 0; if (m.prevSpec) for (let i = 0; i < BINS; i++) flux += Math.max(0, s[i] - m.prevSpec[i]); m.prevSpec = s;
+  flux = Math.min(1, flux / 6);
+  if (!m.cenHist) m.cenHist = [];
+  const sp = Math.max(1, 3 * speedOf(m));
+  m.cenHist.push([silent ? 0 : cen, silent ? 0 : flux]); const cols = Math.ceil(w / sp); while (m.cenHist.length > cols) m.cenHist.shift();
+  const fluxH = h * 0.28, top = 14, cenH = h - fluxH - top - 6, start = w - m.cenHist.length * sp;
+  m.cenHist.forEach(([, f], i) => { ctx.fillStyle = f > 0.55 ? C["neon-c"] : C["neon-b"]; ctx.globalAlpha = 0.3 + 0.7 * f; ctx.fillRect(start + i * sp, h - f * fluxH, Math.max(1, sp - 1), f * fluxH); });
+  ctx.globalAlpha = 1;
+  ctx.beginPath(); m.cenHist.forEach(([c], i) => { const y = top + cenH - c * cenH * 1.6; i ? ctx.lineTo(start + i * sp, y) : ctx.moveTo(start + i * sp, y); });
+  glow(ctx, C["neon-a"], 10); ctx.strokeStyle = C["neon-a"]; ctx.lineWidth = 1.6; ctx.stroke(); ctx.shadowBlur = 0;
+  const hz = Math.round(50 * Math.pow(16000 / 50, cen));
+  ctx.font = `${Math.max(8, Math.min(11, h / 10))}px "Azeret Mono", monospace`; ctx.fillStyle = C["text-muted"]; ctx.textAlign = "right";
+  ctx.fillText(silent ? "—" : `${hz >= 1000 ? (hz / 1000).toFixed(1) + " kHz" : hz + " Hz"}`, w - 6, top + 2);
+  ctx.fillText(silent ? "" : `Δ ${flux.toFixed(2)}`, w - 6, h - fluxH - 4); ctx.textAlign = "start";
+}
+
+/* 位相（ステレオ）の描き方：インスタンスの data-smode
+   lines：全周のリサージュ。連続するサンプルを線でつなぎ、残像を残す（点描を重ねる）
+   pan：周波数別の定位 */
+/* ダミーのステレオ信号：中央のキック・ベースに、広がりが時間で変わる左右の成分を足す */
+function stereoWidth(tt) { return 0.04 + 0.3 * Math.pow(0.5 + 0.5 * Math.sin(tt * 0.9), 2); }
+function stereoPair(tt) {
+  const wd = stereoWidth(tt);
+  const a = Math.sin(2 * Math.PI * 660 * tt) + 0.6 * Math.sin(2 * Math.PI * 1530 * tt + 1.1);
+  const b = Math.sin(2 * Math.PI * 660 * tt + 0.5 + tt * 3) + 0.6 * Math.sin(2 * Math.PI * 1530 * tt + 2.3);
+  return [waveSig(tt, 0) * 0.8 + a * wd, waveSig(tt, 1) * 0.8 - b * wd];
+}
+function drawStereo(m, time, silent) {
+  const { ctx, w, h } = m;
+  const style = (m.cv.parentElement.dataset.smode || m.stage.dataset.smode) === "pan" ? "pan" : "lines";
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = C.bg; ctx.globalAlpha = style === "pan" ? ((m.stage.dataset.blur || m.cv.parentElement.dataset.blur || "on") !== "off" ? 0.32 : 0.55) : 0.3; ctx.fillRect(0, 0, w, h); ctx.globalAlpha = 1;
+  ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+  if (style === "pan") {
+    /* 周波数別の定位：縦軸＝周波数（下が低域、対数目盛り）、横軸＝その帯域の左右の位置（中央が0）。
+       帯域を下から順に線でつなぎ、各帯域に音量に応じた大きさ・色の点を打つ。流れずにその場で描き直す */
+    const top = 8, bottom = h - 12, cx = w / 2, half = w * 0.44;
+    ctx.strokeStyle = C.grid; ctx.beginPath();
+    ctx.moveTo(cx + 0.5, top); ctx.lineTo(cx + 0.5, bottom);
+    for (const f of [0.25, 0.5, 0.75]) { const y = bottom - f * (bottom - top); ctx.moveTo(cx - half, y); ctx.lineTo(cx + half, y); }
+    ctx.moveTo(cx - half, top); ctx.lineTo(cx - half, bottom); ctx.moveTo(cx + half, top); ctx.lineTo(cx + half, bottom);
+    ctx.stroke();
+    ctx.font = `${Math.max(8, Math.min(10, w / 8))}px "Azeret Mono", monospace`; ctx.fillStyle = C["text-muted"];
+    ctx.fillText("L", cx - half + 2, h - 2); ctx.fillText("R", cx + half - 8, h - 2);
+    if (!silent) {
+      const B = 120, wd = stereoWidth(time) * 2.4, frame = Math.floor(time * 24);
+      const hash = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
+      const pts = [];
+      for (let i = 0; i < B; i++) {
+        const f = i / (B - 1), edge = Math.sin(Math.PI * f);              /* 両端の帯域はほぼ中央 */
+        let pan, lvl;
+        if (f < 0.28) { pan = wd * 0.35 * Math.sin(f * 30 + time * 2.2) * edge; lvl = 0.9 - f; }
+        else if (f < 0.8) { const n = hash(i, frame) * 2 - 1; pan = wd * (0.55 * n + 0.2 * Math.sin(f * 40 + time * 3)) * edge; lvl = 0.55 - (f - 0.28) * 0.6; }
+        else { pan = wd * 0.08 * (hash(i, frame) * 2 - 1) * edge; lvl = 0.18; }
+        lvl *= 0.75 + 0.25 * kickEnv(time) * (f < 0.3 ? 1 : 0.2);
+        pts.push([cx + Math.max(-1, Math.min(1, pan)) * half, bottom - f * (bottom - top), lvl]);
+      }
+      /* モーションブラー：前のフレームからの移動が速い帯域ほど、移動した道筋に尾を引く */
+      const blurOn = (m.stage.dataset.blur || m.cv.parentElement.dataset.blur || "on") !== "off";
+      if (blurOn && m.prevPts && m.prevPts.length === pts.length) {
+        ctx.beginPath(); m.prevPts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+        ctx.strokeStyle = C["neon-c"]; ctx.globalAlpha = 0.22; ctx.lineWidth = 1; ctx.stroke();
+        for (let i = 0; i < pts.length; i++) {
+          const [x, y, lvl] = pts[i], px0 = m.prevPts[i][0], dx = x - px0;
+          if (Math.abs(dx) < 2) continue;
+          const g = ctx.createLinearGradient(px0, y, x, y);
+          g.addColorStop(0, "transparent"); g.addColorStop(1, lvl > 0.45 ? C["neon-c"] : C["neon-a"]);
+          ctx.strokeStyle = g; ctx.globalAlpha = Math.min(0.85, 0.25 + Math.abs(dx) / 40); ctx.lineWidth = 0.8 + lvl * 2.2;
+          glow(ctx, C["neon-c"], 6); ctx.beginPath(); ctx.moveTo(px0, y); ctx.lineTo(x, y); ctx.stroke();
+        }
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      }
+      m.prevPts = pts;
+      ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      ctx.strokeStyle = C["neon-c"]; ctx.globalAlpha = 0.7; ctx.lineWidth = 1.1; glow(ctx, C["neon-c"], 6); ctx.stroke(); ctx.globalAlpha = 1;
+      for (const [x, y, lvl] of pts) {
+        const sz = 1 + lvl * 3.2;
+        ctx.fillStyle = lvl > 0.45 ? C["neon-c"] : C["neon-a"]; glow(ctx, ctx.fillStyle, 5);
+        ctx.globalAlpha = 0.45 + 0.55 * lvl; ctx.fillRect(x - sz / 2, y - sz / 2, sz, sz);
+      }
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    }
+  } else {
+    const cx = w / 2, cy = h * 0.47, r = Math.min(w, h * 0.86) * 0.42;
+    /* 平面上の点（x：Side、y：Mid）を画面に写す */
+    const proj = (x, y) => [cx + x * r, cy - y * r];
+    /* 外周の円と L・R の軸 */
+    ctx.beginPath();
+    for (let i = 0; i <= 64; i++) { const a = i / 64 * Math.PI * 2, [x, y] = proj(Math.cos(a), Math.sin(a)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.strokeStyle = C.line; ctx.stroke();
+    ctx.strokeStyle = C.grid; ctx.beginPath();
+    for (const [x1, y1, x2, y2] of [[-0.707, -0.707, 0.707, 0.707], [0.707, -0.707, -0.707, 0.707], [0, -1, 0, 1]]) { const a = proj(x1, y1), b = proj(x2, y2); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+    ctx.stroke();
+    if (!silent) {
+      const N = 260, pts = [];
+      for (let i = 0; i < N; i++) {
+        const tt = time + i * 0.00009, [l, rr] = stereoPair(tt);
+        const side = (l - rr) / Math.SQRT2, mid = (l + rr) / Math.SQRT2;
+        pts.push(proj(side, mid));
+      }
+      const dotSet = m.stage.dataset.dots || m.cv.parentElement.dataset.dots || "both";
+      const dotMode = dotSet === "none" ? "" : dotSet;
+      glow(ctx, C["neon-c"], 6); ctx.strokeStyle = C["neon-c"];
+      for (let i = 1; i < N; i++) {
+        const a = pts[i - 1], b = pts[i];
+        ctx.globalAlpha = 0.25 + 0.75 * (i / N);
+        ctx.lineWidth = 1.1;
+        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      }
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      /* 点描の重ね描き（data-dots）：size＝点を大きく、bright＝点を明るく、both＝両方 */
+      if (dotMode) {
+        const big = dotMode === "size" || dotMode === "both", bright = dotMode === "bright" || dotMode === "both";
+        const sz = big ? 3.2 : 1.6;
+        for (let i = 0; i < N; i += 3) {
+          const p = pts[i], fade = 0.3 + 0.7 * (i / N);
+          ctx.globalAlpha = fade;
+          glow(ctx, C["neon-c"], big ? 8 : 4); ctx.fillStyle = C["neon-c"];
+          ctx.fillRect(p[0] - sz / 2, p[1] - sz / 2, sz, sz);
+          if (bright) { ctx.shadowBlur = 0; ctx.fillStyle = C.text; const c = Math.max(1, sz * 0.55); ctx.fillRect(p[0] - c / 2, p[1] - c / 2, c, c); }
+        }
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      }
+    }
+  }
+  const corr = 0.62 + Math.sin(time * 0.7) * 0.12;
+  const bx = w * 0.12, bw = w * 0.76, by = h - 6;
+  ctx.fillStyle = C.grid; ctx.fillRect(bx, by, bw, 2);
+  ctx.fillStyle = C["neon-b"]; glow(ctx, C["neon-b"], 6); ctx.fillRect(bx + bw / 2 + corr * bw / 2 - 2, by - 3, 4, 8); ctx.shadowBlur = 0;
+}
+
+function drawGram(m, time, silent) {
+  const { ctx, w, h, bctx, buf } = m;
+  if (buf.width !== w || buf.height !== h) { buf.width = w; buf.height = h; m.dirty = true; }
+  if (m.dirty) { bctx.fillStyle = C.bg; bctx.fillRect(0, 0, w, h); m.dirty = false; }
+  const sh = Math.max(1, Math.round(2 * speedOf(m)));
+  bctx.drawImage(buf, -sh, 0);
+  const s = spectrum(time, silent);
+  for (let y = 0; y < h; y += 2) {
+    const v = s[Math.floor((1 - y / h) * (BINS - 1))];
+    const a = Math.max(0, v - 0.25) * 1.4;
+    bctx.fillStyle = C.bg; bctx.fillRect(w - sh, y, sh, 2);
+    if (a > 0) { bctx.globalAlpha = Math.min(1, a); bctx.fillStyle = v > 0.72 ? C["neon-c"] : C["neon-a"]; bctx.fillRect(w - sh, y, sh, 2); bctx.globalAlpha = 1; }
+  }
+  ctx.clearRect(0, 0, w, h); ctx.drawImage(buf, 0, 0);
+}
+
+function drawLoud(m, time, silent) {
+  const { ctx, w, h } = m; ctx.clearRect(0, 0, w, h);
+  const val = silent ? -70 : -9.8 + Math.sin(time * 0.9) * 1.6 + kickEnv(time) * 0.8;
+  const el = m.stage.querySelector(".loud-val");
+  if (el && (!m.last || time - m.last > 0.25)) { el.textContent = silent ? "−∞" : (val < 0 ? "−" : "") + Math.abs(val).toFixed(1); el.classList.toggle("peak", !silent && val > -8.6); m.last = time; }
+  const bars = 24, bw = w / bars;
+  const level = silent ? 0 : Math.min(1, (val + 30) / 30);
+  for (let i = 0; i < bars; i++) {
+    const on = i / bars < level;
+    ctx.fillStyle = !on ? C.grid : i / bars > 0.8 ? C["neon-c"] : C["neon-b"];
+    ctx.globalAlpha = on ? 0.9 : 1;
+    ctx.fillRect(i * bw + 1, h - 8, bw - 2, 4);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawLevel(m, time, silent) {
+  const { ctx, w, h } = m; ctx.clearRect(0, 0, w, h);
+  const top = 22, bottom = h - 18, span = bottom - top;
+  const dbs = [0, -6, -12, -18, -24, -36, -48];
+  const toY = db => top + (Math.min(0, -db) / 60) * span * -1 + 0;
+  const yOf = db => top + (-db / 60) * span;
+  ctx.font = `${Math.max(8, Math.min(10, w / 10))}px "Azeret Mono", monospace`;
+  ctx.fillStyle = C["text-muted"];
+  dbs.forEach(db => { const y = yOf(db); ctx.fillText(String(db), 4, y + 3); ctx.fillStyle = C.grid; ctx.fillRect(w * 0.44, y, w * 0.5, 1); ctx.fillStyle = C["text-muted"]; });
+  if (!m.peak) m.peak = [-60, -60];
+  const bw = Math.max(2, w * 0.08), gap = Math.max(2, w * 0.05), x0 = w * 0.5;
+  [0, 1].forEach(ch => {
+    let lv = -60;
+    if (!silent) { let pk = 0; for (let i = 0; i < 24; i++) pk = Math.max(pk, Math.abs(sample(time + i * 0.0015, ch))); lv = Math.max(-60, 20 * Math.log10(pk + 1e-6)); }
+    m.peak[ch] = Math.max(lv, m.peak[ch] - 0.35);
+    const x = x0 + ch * (bw + gap);
+    ctx.fillStyle = C.grid; ctx.fillRect(x, top, bw, span);
+    const y = yOf(lv), color = ch ? C["neon-b"] : C["neon-a"];
+    const grad = ctx.createLinearGradient(0, bottom, 0, top);
+    grad.addColorStop(0, color); grad.addColorStop(0.85, color); grad.addColorStop(0.9, C["neon-c"]);
+    ctx.globalAlpha = 0.55; glow(ctx, color, 3); ctx.fillStyle = grad; ctx.fillRect(x, y, bw, bottom - y); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    ctx.fillStyle = C["neon-c"]; ctx.fillRect(x, yOf(m.peak[ch]) - 1, bw, 2);
+  });
+  ctx.fillStyle = C["text-muted"]; ctx.fillText("L", x0 + bw / 2 - 3, h - 5); ctx.fillText("R", x0 + bw + gap + bw / 2 - 3, h - 5);
+}
+
+/* 方向の回転：各モジュールは既定の向きで描き、キャンバスを回して4方向にする */
+const DIRS = ["right", "down", "left", "up"];
+function withDirection(m, fn) {
+  const mod = m.cv.parentElement, base = MODULES[m.kind].base;
+  const rot = base ? (DIRS.indexOf(mod.dataset.dir || base) - DIRS.indexOf(base) + 4) % 4 : 0;
+  const W = m.w, H = m.h, ctx = m.ctx;
+  ctx.setTransform(m.dpr, 0, 0, m.dpr, 0, 0);
+  if (rot === 1) { ctx.translate(W, 0); ctx.rotate(Math.PI / 2); }
+  if (rot === 2) { ctx.translate(W, H); ctx.rotate(Math.PI); }
+  if (rot === 3) { ctx.translate(0, H); ctx.rotate(-Math.PI / 2); }
+  if (rot % 2) { m.w = H; m.h = W; }
+  if (m.rot !== rot) { m.rot = rot; m.hist = []; m.dirty = true; ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, m.cv.width, m.cv.height); ctx.restore(); }
+  /* インスタンスの配色：発光色の組を差し替えて描く */
+  const pal = mod.dataset.color || "a", saveA = C["neon-a"], saveB = C["neon-b"];
+  if (pal === "b") { C["neon-a"] = saveB; C["neon-b"] = saveA; }
+  if (pal === "c") { C["neon-a"] = C["neon-c"]; C["neon-b"] = saveA; }
+  if (pal === "d") { C["neon-a"] = CUSTOM_PALETTE.main; C["neon-b"] = CUSTOM_PALETTE.sub; }
+  try { fn(); } finally { m.w = W; m.h = H; C["neon-a"] = saveA; C["neon-b"] = saveB; }
+}
+
+/* VUメーター：針式。L（主色）とR（副色）の2本の針を重ね、振れた跡を残像として残す */
+function drawVU(m, time, silent) {
+  const { ctx, w, h } = m;
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = C.bg; ctx.globalAlpha = 0.24; ctx.fillRect(0, 0, w, h); ctx.globalAlpha = 1;
+  const px = w / 2, py = h * 0.9, R = Math.min(w * 0.46, h * 0.78);
+  const span = 0.9;   /* 片側の振れ幅（ラジアン） */
+  const ang = db => -Math.PI / 2 + (Math.max(-20, Math.min(3, db)) + 8.5) / 11.5 * span;
+  const at = (a, r) => [px + Math.cos(a) * r, py + Math.sin(a) * r];
+  /* 目盛り：点の弧と、0〜+3の強調帯 */
+  ctx.fillStyle = C["text-muted"];
+  for (let db = -20; db <= 3; db += 0.5) { const [x, y] = at(ang(db), R); const major = [-20, -10, -7, -5, -3, -2, -1, 0, 1, 2, 3].includes(db); ctx.globalAlpha = major ? 0.9 : 0.4; ctx.fillRect(x - (major ? 1.5 : 1), y - (major ? 1.5 : 1), major ? 3 : 2, major ? 3 : 2); }
+  ctx.globalAlpha = 1;
+  ctx.beginPath(); ctx.arc(px, py, R * 0.92, ang(0), ang(3)); ctx.strokeStyle = C["neon-c"]; ctx.lineWidth = 3; glow(ctx, C["neon-c"], 6); ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.font = `${Math.max(8, Math.min(11, R / 9))}px "Azeret Mono", monospace`; ctx.fillStyle = C["text-muted"]; ctx.textAlign = "center";
+  [[-20, "-20"], [-10, "-10"], [-5, "-5"], [0, "0"], [3, "+3"]].forEach(([db, l]) => { const [x, y] = at(ang(db), R * 1.1); ctx.fillText(l, x, y + 3); });
+  ctx.fillText("VU", px, py - R * 0.35); ctx.textAlign = "start";
+  /* 針：実効値に追従（ゆっくり立ち上がり、ゆっくり戻る） */
+  if (!m.vu) m.vu = [-20, -20];
+  [0, 1].forEach(ch => {
+    let sum = 0; for (let i = 0; i < 40; i++) { const v = silent ? 0 : waveSig(time - i * 0.0008, ch); sum += v * v; }
+    const db = silent ? -20 : 20 * Math.log10(Math.sqrt(sum / 40) / 0.25 + 1e-6);
+    m.vu[ch] += (db - m.vu[ch]) * 0.12;
+    const [x, y] = at(ang(m.vu[ch]), R * 0.98), color = ch ? C["neon-b"] : C["neon-a"];
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.strokeStyle = color; ctx.lineWidth = 1.4; glow(ctx, color, 8); ctx.stroke();
+  });
+  ctx.shadowBlur = 0; ctx.fillStyle = C["text-muted"]; ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fill();
+}
+
+const draw = { chroma: drawChroma, centroid: drawCentroid, vu: drawVU, level: drawLevel, wave: drawWave, spec: drawSpec, stereo: drawStereo, gram: drawGram, loud: drawLoud };
+let t0 = performance.now();
+function frame(now) {
+  const time = (now - t0) / 1000;
+  for (const m of meters) {
+    if (!m.visible || !m.w) continue;
+    const silent = m.mode === "silent" || m.mode === "loading" || m.mode === "error";
+    if (silent && m.drawnSilent && m.kind !== "wave") continue;
+    withDirection(m, () => draw[m.kind](m, m.mode === "error" ? 0 : time, silent));
+    if (silent) m.drawnSilent = true;
+  }
+  if (!reduce) requestAnimationFrame(frame);
+}
+if (reduce) { setTimeout(() => frame(performance.now() + 2000), 300); }
+else requestAnimationFrame(frame);
+</script>

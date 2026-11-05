@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- sonar_spectra アイコンのマスター
+       余白ルール：タイルは1024四方いっぱい、図形は中央の800四方（四辺112）に収める
+       色は sonar_spectra_tokens.css のダーク値（bg / neon-a / neon-b / neon-c） -->
+  <rect x="0" y="0" width="1024" height="1024" rx="200" fill="#07060f"/>
+  <!-- ソナーの輪（シアン）：発光は太い半透明の線で表す -->
+  <circle cx="512" cy="512" r="330" fill="none" stroke="#18e4ff" stroke-opacity="0.22" stroke-width="120"/>
+  <circle cx="512" cy="512" r="330" fill="none" stroke="#18e4ff" stroke-width="56"/>
+  <!-- 両端を固定した波形（マゼンタ） -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M182 512 H330 L392 600 L456 330 L536 712 L604 420 L660 552 L700 512 H842" stroke="#ff2bd6" stroke-opacity="0.25" stroke-width="128"/>
+    <path d="M182 512 H330 L392 600 L456 330 L536 712 L604 420 L660 552 L700 512 H842" stroke="#ff2bd6" stroke-width="60"/>
+  </g>
+  <!-- ピーク（アンバー） -->
+  <circle cx="456" cy="330" r="46" fill="#ffb547"/>
+</svg>
