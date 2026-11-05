@@ -1,0 +1,39 @@
+# 自動検査（bun run check）。push とプルリクエストで、Windows のランナーで実行する。
+# 初版の対象は Windows x64 だけ（出力音声の取得に WASAPI を使うため）
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Bun の版は package.json の packageManager に合わせる
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: 依存のインストール
+        run: bun install --frozen-lockfile
+
+      - name: 自動検査
+        run: bun run check

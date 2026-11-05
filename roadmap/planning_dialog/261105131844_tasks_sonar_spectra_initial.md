@@ -71,8 +71,19 @@
     - ファビコンとして、マスターSVGを`public/favicon.svg`に、`icon.ico`を`public/favicon.ico`にコピーする
   - 実施メモ：生成物は、PNG各種（32・64・128・128@2x・`icon.png` 512、Windowsストア用のSquare*）、`icon.ico`（16・24・32・48・64・256）、`icon.icns`。`tauri.conf.json`の`bundle.icon`の参照先がすべて存在することを確かめた（設定の変更はなし）。`index.html`にファビコン（ico・svg）を登録した
   - 実施メモ：余白の比率は、生成したPNGの画素で確かめた。地の色と異なる画素の外接矩形を測ると、四辺の余白は`icon.png`（512）で59〜61px、`128x128@2x.png`（256）で29〜30pxで、いずれも112/1024以上だった。角は透明（タイルの角丸）。32pxでは発光の線のぼかしが1画素はみ出して3px（期待3.5px）で、縮小によるものとして許容した
-- [ ] T1-8 【エージェント】`.github/workflows/ci.yml`を作る（push・プルリクエストで`bun run check`を実行。Windowsランナー）
+- [x] T1-8 【エージェント】`.github/workflows/ci.yml`を作る（push・プルリクエストで`bun run check`を実行。Windowsランナー）
   - 依存: T1-5
+  - 実施メモ：`windows-latest`で次の順に実行する。同じブランチの古い実行は取り消す（`concurrency`）。権限は`contents: read`だけ
+    - `actions/checkout@v7`
+    - `oven-sh/setup-bun@v2`
+    - `dtolnay/rust-toolchain@stable`（clippyつき）
+    - `Swatinem/rust-cache@v2`
+    - `bun install --frozen-lockfile`
+    - `bun run check`
+  - 実施メモ：各Actionの最新のリリース（checkout v7.0.1、setup-bun v2.2.0、rust-cache v2.9.3）を、GitHubのリリース情報で確かめた
+  - 実施メモ：Bunの版は、`package.json`に`"packageManager": "bun@1.4.3"`（手元と同じ版）を加え、setup-bunの`bun-version-file`で読ませる
+  - 実施メモ：CIでは`dist/`がない状態でRustの検査が走る。手元で`dist/`を消して`check:rust`が通ることを確かめた。YAMLとして正しく読めることも確かめた。実際の実行はW1-9（push後）で確かめる
+  - 実施メモ：Rustはstableの最新を使う（手元は1.98.0）。clippyの新しい警告で`-D warnings`が失敗することがあれば、`rust-toolchain.toml`で版を固定する
 - [ ] T1-9 【エージェント】`CONTRIBUTING.md`に、確認・検査のコマンド、疑似ロケールでの起動、アイコンの生成、リポジトリ構成（`roadmap/`・`roadmap/timeline.md`・`docs/brand/`の役割）を追記する
   - 依存: T1-2, T1-5, T1-7
 
