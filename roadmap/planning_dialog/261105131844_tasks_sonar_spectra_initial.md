@@ -84,8 +84,10 @@
   - 実施メモ：Bunの版は、`package.json`に`"packageManager": "bun@1.4.3"`（手元と同じ版）を加え、setup-bunの`bun-version-file`で読ませる
   - 実施メモ：CIでは`dist/`がない状態でRustの検査が走る。手元で`dist/`を消して`check:rust`が通ることを確かめた。YAMLとして正しく読めることも確かめた。実際の実行はW1-9（push後）で確かめる
   - 実施メモ：Rustはstableの最新を使う（手元は1.98.0）。clippyの新しい警告で`-D warnings`が失敗することがあれば、`rust-toolchain.toml`で版を固定する
-- [ ] T1-9 【エージェント】`CONTRIBUTING.md`に、確認・検査のコマンド、疑似ロケールでの起動、アイコンの生成、リポジトリ構成（`roadmap/`・`roadmap/timeline.md`・`docs/brand/`の役割）を追記する
+- [x] T1-9 【エージェント】`CONTRIBUTING.md`に、確認・検査のコマンド、疑似ロケールでの起動、アイコンの生成、リポジトリ構成（`roadmap/`・`roadmap/timeline.md`・`docs/brand/`の役割）を追記する
   - 依存: T1-2, T1-5, T1-7
+  - 実施メモ：追記した節は「開発版での確認」（部品ギャラリーの開き方、`bun run dev:pseudo`）、「確認と検査」（`bun run check`と各段、CIとの関係、文言の決まり、値の決まり）、「アイコンの生成」（`bun run icons`と、`docs/brand/`の写しを先に更新すること）、「リポジトリ構成」（`roadmap/`の各フォルダと`timeline.md`・`docs/brand/`の役割）。開発環境のBunに、版を`packageManager`で固定していることを書き足した
+  - 実施メモ：記載したスクリプト名とファイルのパスが、すべて実在することを確かめた
 
 ## Phase 2: 音の取得から最初の表示まで（レベル・波形・状態表示）
 
