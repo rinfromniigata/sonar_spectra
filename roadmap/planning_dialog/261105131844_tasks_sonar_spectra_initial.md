@@ -49,9 +49,17 @@
   - 実施メモ：`check:unit`（`vitest.config.ts`。Viteの設定を引き継ぐ）。T1-4の`locale`・`pseudo`・`format`と、検査スクリプトの中身の単体テスト、計25件
   - 実施メモ：`check:rust`は`cargo clippy --all-targets -- -D warnings`と`cargo test`（いまはテスト0件）
   - 実施メモ：雛形の`src/vite-env.d.ts`の`DefineComponent<{}, {}, any>`を`DefineComponent`に、`vite.config.ts`の`@ts-expect-error`（`@types/node`がない前提）を削除した。いずれもlintと型検査を通すため
-- [ ] T1-6 【エージェント】基本部品（ボタン、アイコンボタン、スイッチ、セグメント切り替え、スライダー、セレクト、配色の見本、チップ、ドロワー、ポップオーバー）を`src/components/ui/`に作り、開発時だけ開ける部品ギャラリーに状態ごとに並べる
+- [x] T1-6 【エージェント】基本部品（ボタン、アイコンボタン、スイッチ、セグメント切り替え、スライダー、セレクト、配色の見本、チップ、ドロワー、ポップオーバー）を`src/components/ui/`に作り、開発時だけ開ける部品ギャラリーに状態ごとに並べる
   - 依存: T1-3, T1-4
   - 画面: PARTS
+  - 実施メモ：部品は`UiButton`・`UiIconButton`・`UiSwitch`・`UiSegmented`・`UiSlider`・`UiSelect`・`UiPaletteSwatch`・`UiChip`・`UiDrawer`・`UiPopover`と、補助の`UiIcon`（アイコンの形はモックと同じものを`icons.ts`に要素の配列で持つ。`v-html`は使わない）。文言は部品に持たせず、呼び出し側が`useT()`で引いて渡す。読み上げ用の名前（`label`）は、アイコンボタン・スイッチ・セグメント・スライダー・セレクトで必須にした。例外は`UiDrawer`・`UiPopover`の閉じるボタンで、部品の中で`common.close`を引く
+  - 実施メモ：ドロワーとポップオーバーは、メーターを動かしたまま開くため、モーダルにしない（`role="dialog"`）。開くと中へフォーカスを移し、Escで閉じ、閉じると開く前の要素へフォーカスを戻す（`use_dismiss.ts`）。ポップオーバーの置き場所は、モックの規則（右→左→内側に寄せる、幅は使える幅の45%かつ最大幅まで、上下は領域内）を`popover_position.ts`の純粋関数に移し、単体テストを6件加えた
+  - 実施メモ：セレクトはOS標準の`<select>`に見た目を当てた（キーボード操作と読み上げをそのまま使えるため）
+  - 実施メモ：モックの部品の寸法（ボタンの高さ30px、アイコンボタン22px、スイッチ34×18px、線の太さ1px、フォーカスの線2px、チップ、ドロワーの幅380px、ポップオーバーの最大幅280pxなど）は`tokens.css`にないため、`src/theme/component_metrics.css`にカスタムプロパティとして集めた（コンポーネントへのトークン適用として扱った）。`tokens.css`の値は変えていない。フォーカスの見た目は`src/theme/focus_ring.css`で共通にした
+  - 実施メモ：ギャラリーは`src/dev/PartsGallery.vue`。開発時（`import.meta.env.DEV`）だけ、`Ctrl+Shift+P`かURLの`#parts`で開く。公開版のビルドではコードごと除かれることを確かめた（辞書の`dev_gallery.*`の文言だけは残る）。各部品を、通常・ホバー・フォーカス・押下・選択中・無効と、長い文字列（チップ・セレクト）で並べた。ホバー・フォーカス・押下は`is-hover`・`is-focus`・`is-pressing`のクラスで固定して見せる。W1-6用に、ギャラリーの上部にダーク／ライト／OS設定の切り替えを置いた（`data-theme`を直接切り替える。設定へのつなぎ込みはT4-4）
+  - 実施メモ：辞書に`dev_gallery.*`の見出しと状態名（`title`・`hint`・`part_*`・`open_drawer`・`open_popover`・`state_pressing`・`state_selected`・`state_long`）を加えた
+  - 実施メモ：`check:i18n`を一部変更。ギャラリーで見本に使っただけで、本物の画面より先に使用予定から外れてしまうためで、`src/dev/`での使用は`dev_gallery.*`のキーだけを数えるようにした。使用予定からは、Phase 1の`dev_gallery.*`と、ドロワー・ポップオーバーで使い始めた`common.close`を外した
+  - 実施メモ：`bun run check`が通ることを確認した。画面での見た目と操作は、W1-4〜W1-6で確かめる
 - [ ] T1-7 【エージェント】マスターSVGからアイコン一式（Windows・macOS向けとファビコン）を生成し、`src-tauri/icons/`に置く
   - 依存: T1-1
   - `tauri icon`の入力形式とオプションは、インストール済みバージョンの公式ドキュメントで確認する。余白の比率（四辺112/1024）を保つ

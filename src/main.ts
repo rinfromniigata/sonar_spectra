@@ -1,7 +1,9 @@
 import { createApp } from "vue";
 import "./theme/fonts";
 import "./theme/tokens.css";
+import "./theme/component_metrics.css";
 import "./theme/base.css";
+import "./theme/focus_ring.css";
 import App from "./App.vue";
 import { i18n, initLocale } from "./i18n";
 

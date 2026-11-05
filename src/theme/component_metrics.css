@@ -1,0 +1,40 @@
+/* 部品の寸法。tokens.css にない、部品ごとの大きさをここに集める（値はモックの部品に合わせた）。
+   色・余白・角丸・書体・発光・モーションは tokens.css のトークンを使い、ここでは定義しない。
+   src/theme/ の外では px を直書きせず、これらと tokens.css のカスタムプロパティを参照する。 */
+:root {
+  /* 線 */
+  --border-width: 1px;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --indicator-width: 2px; /* セグメント切り替えの選択中の下線 */
+  --radius-pill: 999px; /* 両端が丸い形（スイッチ・チップ） */
+
+  /* ボタン */
+  --control-height: 30px;
+  --icon-button-size: 22px;
+  --icon-size-sm: 12px;
+  --icon-size-md: 14px;
+  --icon-stroke-sm: 1.4;
+  --icon-stroke-md: 1.6;
+
+  /* スイッチ */
+  --switch-width: 34px;
+  --switch-height: 18px;
+  --switch-knob: 12px;
+  --switch-inset: 2px;
+
+  /* チップ・配色の見本 */
+  --chip-height: 22px;
+  --chip-max-width: 360px;
+  --chip-dot: 7px;
+  --swatch-size: 12px;
+
+  /* ドロワー・ポップオーバー */
+  --drawer-width: 380px;
+  --drawer-max-ratio: 44%;
+  --popover-max-width: 280px;
+  --backdrop-blur: 6px;
+  --glow-soft-a: 0 0 10px var(--color-glow-a);
+  --glow-soft-b: 0 0 10px var(--color-glow-b);
+  --glow-panel-a: 0 0 12px var(--color-glow-a);
+}

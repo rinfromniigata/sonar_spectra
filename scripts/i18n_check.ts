@@ -47,14 +47,22 @@ for (const file of listFiles(LOCALES, [".ts"])) {
   issues.push(...checkSyntax(target, locale));
 }
 
+// 開発時だけの画面（src/dev/：部品ギャラリーなど）での使用は、dev_gallery.* のキーだけを数える。
+// ほかのキーは、本物の画面で使われるまで「使用予定」に残す（ギャラリーで見本に使っただけで外れないように）
+const DEV = join(SRC, "dev");
+const DEV_ONLY_PREFIX = "dev_gallery.";
 const codeFiles = listFiles(SRC, [".ts", ".vue"]).filter(
   (file) => !file.startsWith(LOCALES + sep) && !file.endsWith(".test.ts"),
 );
-const used = findUsedKeys(
-  codeFiles.map((file) => readFileSync(file, "utf8")),
-  new Set(source.keys()),
-);
-issues.push(...checkUsage(new Set(source.keys()), used, PENDING_KEYS));
+const allKeys = new Set(source.keys());
+const read = (files: string[]) => files.map((file) => readFileSync(file, "utf8"));
+const used = new Set([
+  ...findUsedKeys(read(codeFiles.filter((file) => !file.startsWith(DEV + sep))), allKeys),
+  ...[...findUsedKeys(read(codeFiles.filter((file) => file.startsWith(DEV + sep))), allKeys)].filter((key) =>
+    key.startsWith(DEV_ONLY_PREFIX),
+  ),
+]);
+issues.push(...checkUsage(allKeys, used, PENDING_KEYS));
 
 const pendingCount = PENDING_KEYS.filter((key) => source.has(key) && !used.has(key)).length;
 if (issues.length > 0) {

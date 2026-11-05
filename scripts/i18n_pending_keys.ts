@@ -1,19 +1,8 @@
 // 使用予定のキー。辞書にはあるが、使う画面がまだできていないもの。
 // 画面を作ってキーを使い始めたら、ここから外す（外し忘れは bun run check:i18n がエラーにする）。
+// 開発時だけの画面（src/dev/）での使用は数えない（dev_gallery.* のキーを除く）。本物の画面で使ったときに外す。
 // 初回リリース（0.1.0）の準備までに、この一覧は空になる。
 export const PENDING_KEYS: readonly string[] = [
-  // Phase 1：部品ギャラリー（T1-6）
-  "dev_gallery.state_default",
-  "dev_gallery.state_hover",
-  "dev_gallery.state_focus",
-  "dev_gallery.state_disabled",
-  "dev_gallery.state_primary",
-  "dev_gallery.state_on",
-  "dev_gallery.state_off",
-  "dev_gallery.chip_live",
-  "dev_gallery.chip_silent",
-  "dev_gallery.chip_unavailable",
-
   // Phase 2：タイトル帯・状態の表示・最初のモジュール（T2-10〜T2-14）
   "app.window_title",
   "app.version",
@@ -42,7 +31,6 @@ export const PENDING_KEYS: readonly string[] = [
   "modules.loudness_peak",
 
   // Phase 4：設定パネルとウィンドウ（T4-2〜T4-6）
-  "common.close",
   "title_bar.fullscreen_exit",
   "config.section",
   "config.default_name",

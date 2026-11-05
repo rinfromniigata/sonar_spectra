@@ -1,0 +1,6 @@
+/* 部品のフォーカス表示（キーボード操作のときだけ）。ギャラリーで状態を固定して見せる .is-focus も同じ見た目にする */
+.ui-focusable:focus-visible,
+.ui-focusable.is-focus {
+  outline: var(--focus-ring-width) solid var(--color-neon-b);
+  outline-offset: var(--focus-ring-offset);
+}
