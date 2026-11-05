@@ -15,8 +15,9 @@
   - 実施メモ：テンプレートのデモ（英語の直書き文言、外部リンク、`greet`コマンド、`tauri-plugin-opener`、Vite・Tauri・Vueのロゴ）は、直書き禁止と外部送信なしに合わせて取り除き、`App.vue`は文言のない枠だけにした。`index.html`は`lang="ja"`
   - 実施メモ：`src-tauri/icons/`はテンプレートの既定アイコンのまま。T1-7でマスターSVGから生成し直す
   - 実施メモ：`bun run build`と`cargo build`が通ることを確認した
-- [ ] T1-2 【エージェント】`CONTRIBUTING.md`の骨格を作る（受け付け方針、開発環境、セットアップ）
+- [x] T1-2 【エージェント】`CONTRIBUTING.md`の骨格を作る（受け付け方針、開発環境、セットアップ）
   - 依存: T1-1
+  - 実施メモ：受け付け方針は「不具合はIssue、プルリクエストは事前にIssueで相談」。開発環境はWindows x64、Bun、Rust 1.85以降（edition 2024）、C++ Build Tools、WebView2。セットアップは`bun install`と`bun run tauri dev`まで。検査・アイコン・リポジトリ構成はT1-9、ビルドとリリースはT9-3で追記する
 - [ ] T1-3 【エージェント】トークンと書体を配置する。`specs/`のトークンを`src/theme/tokens.css`へ、`brand.md`とマスターSVGを`docs/brand/`へコピーし、書体（Syncopate・Azeret Mono・Zen Kaku Gothic New）を`@fontsource`で同梱する。地の色・文字色などの基本スタイルをトークン経由で当て、テーマの初期値をダークにする
   - 依存: T1-1
 - [ ] T1-4 【エージェント】i18nの基盤を作る。`vue-i18n`（11.4系、Composition API）を入れ、モックの辞書のうちアプリの文言を`src/i18n/locales/ja.ts`へ移し（キーは機能ごと・スネークケースに整える）、`ja.ts`の型でキーを型検査する。ロケールの判定・保持・フォールバック、`<html lang>`の更新、疑似ロケール（`bun run dev:pseudo`）、`Intl`による日付・数値の整形関数を用意する
