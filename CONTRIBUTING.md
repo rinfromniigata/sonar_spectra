@@ -53,7 +53,7 @@ bun run dev:pseudo
 bun run check
 ```
 
-次の検査を順に実行し、最初に失敗したところで止まります。CI（`.github/workflows/ci.yml`）も、pushとプルリクエストのたびに同じコマンドを実行します。個別に実行することもできます。
+次の検査を順に実行し、最初に失敗したところで止まります。CI（`.github/workflows/ci.yml`）も、pushとプルリクエストのたびに同じコマンドを実行します。ただし、`roadmap/`・`docs/`・Markdown・`LICENSE`だけの変更では実行しません（どの検査もこれらを読まないため）。個別に実行することもできます。
 
 - `bun run check:types`：型検査（`vue-tsc`と`tsc`）。存在しない辞書のキーや、プレースホルダの過不足もここで見つかります
 - `bun run check:lint`：ESLint。UIの文字列の直書き（テンプレート、`aria-label`などの属性、スクリプト内の日本語）と、`useT()`を通らない翻訳を検出します

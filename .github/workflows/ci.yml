@@ -1,10 +1,21 @@
 # 自動検査（bun run check）。push とプルリクエストで、Windows のランナーで実行する。
 # 初版の対象は Windows x64 だけ（出力音声の取得に WASAPI を使うため）
+# bun run check が読まないファイル（計画と記録・ブランドの写し・文書）だけの変更では実行しない
 name: CI
 
 on:
   push:
+    paths-ignore:
+      - "roadmap/**"
+      - "docs/**"
+      - "**/*.md"
+      - "LICENSE"
   pull_request:
+    paths-ignore:
+      - "roadmap/**"
+      - "docs/**"
+      - "**/*.md"
+      - "LICENSE"
 
 permissions:
   contents: read
