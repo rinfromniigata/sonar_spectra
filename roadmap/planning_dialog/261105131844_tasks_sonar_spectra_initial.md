@@ -18,8 +18,13 @@
 - [x] T1-2 【エージェント】`CONTRIBUTING.md`の骨格を作る（受け付け方針、開発環境、セットアップ）
   - 依存: T1-1
   - 実施メモ：受け付け方針は「不具合はIssue、プルリクエストは事前にIssueで相談」。開発環境はWindows x64、Bun、Rust 1.85以降（edition 2024）、C++ Build Tools、WebView2。セットアップは`bun install`と`bun run tauri dev`まで。検査・アイコン・リポジトリ構成はT1-9、ビルドとリリースはT9-3で追記する
-- [ ] T1-3 【エージェント】トークンと書体を配置する。`specs/`のトークンを`src/theme/tokens.css`へ、`brand.md`とマスターSVGを`docs/brand/`へコピーし、書体（Syncopate・Azeret Mono・Zen Kaku Gothic New）を`@fontsource`で同梱する。地の色・文字色などの基本スタイルをトークン経由で当て、テーマの初期値をダークにする
+- [x] T1-3 【エージェント】トークンと書体を配置する。`specs/`のトークンを`src/theme/tokens.css`へ、`brand.md`とマスターSVGを`docs/brand/`へコピーし、書体（Syncopate・Azeret Mono・Zen Kaku Gothic New）を`@fontsource`で同梱する。地の色・文字色などの基本スタイルをトークン経由で当て、テーマの初期値をダークにする
   - 依存: T1-1
+  - 実施メモ：コピー先は`src/theme/tokens.css`（v1と同一内容）、`docs/brand/brand.md`、`docs/brand/icon_master.svg`（`docs/brand/`は版番号なしの固定名）
+  - 実施メモ：書体は`@fontsource/syncopate`・`@fontsource/azeret-mono`・`@fontsource/zen-kaku-gothic-new`（5.3系）を入れ、`src/theme/fonts.ts`でモックが使う字重だけを読み込む（Syncopate 400・700、Azeret Mono 400・600、Zen Kaku Gothic New 400・500・700）。ビルド結果に外部URLがないことを確認した
+  - 実施メモ：Syncopateのライセンスは、パッケージの記載ではApache-2.0だった（SPEC 9節は3書体ともSIL OFLとしている）。同梱に支障はなく、READMEのクレジットを書くときに正しいライセンスを記載する
+  - 実施メモ：基本スタイルは`src/theme/base.css`（地の色・文字色・UI書体・文字サイズをトークンから取る。`body`はスクロールさせない）。読み込み順は`fonts.ts`→`tokens.css`→`base.css`（`src/main.ts`）
+  - 実施メモ：テーマの初期値は、`index.html`の`<html data-theme="dark">`で決める。OSがライトでもダークで始まる。切り替えはT4-4でつなぐ
 - [ ] T1-4 【エージェント】i18nの基盤を作る。`vue-i18n`（11.4系、Composition API）を入れ、モックの辞書のうちアプリの文言を`src/i18n/locales/ja.ts`へ移し（キーは機能ごと・スネークケースに整える）、`ja.ts`の型でキーを型検査する。ロケールの判定・保持・フォールバック、`<html lang>`の更新、疑似ロケール（`bun run dev:pseudo`）、`Intl`による日付・数値の整形関数を用意する
   - 依存: T1-1
 - [ ] T1-5 【エージェント】自動検査を`bun run check`1つにまとめる：`vue-tsc`、`scripts/i18n_check.ts`（キーの過不足・プレースホルダ・未使用キー）、`@intlify/eslint-plugin-vue-i18n`（直書き）、`scripts/token_check.ts`（色・px値の直書き）、`vitest`、`cargo clippy`・`cargo test`

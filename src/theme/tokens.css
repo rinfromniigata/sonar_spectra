@@ -1,0 +1,106 @@
+/* sonar_spectra デザイントークン（確定。値の正本）
+   ダークが既定。ライトは昼のリハーサル用。 */
+
+:root {
+  /* 色：ダーク（既定） */
+  --color-bg: #07060f;
+  --color-surface: #0f0d1c;
+  --color-surface-raised: #17142a;
+  --color-line: #2a2545;
+  --color-grid: #1c1832;
+  --color-text: #e9e6ff;
+  --color-text-muted: #8f88b8;
+  --color-neon-a: #ff2bd6;        /* マゼンタ：L / Mid */
+  --color-neon-b: #18e4ff;        /* シアン：R / Side */
+  --color-neon-c: #ffb547;        /* アンバー：ピーク・注意 */
+  --color-danger: #ff4d6a;
+  --color-glow-a: rgb(255 43 214 / 0.55);
+  --color-glow-b: rgb(24 228 255 / 0.5);
+  --color-scanline: rgb(0 0 0 / 0.28);
+  --color-vignette: rgb(0 0 0 / 0.55);
+  --color-scrim: rgb(4 3 10 / 0.72);
+  color-scheme: dark;
+
+  /* タイポグラフィ（ロケールごとに --font-ui を差し替える） */
+  --font-display: "Syncopate", "Arial Black", sans-serif;
+  --font-numeric: "Azeret Mono", "Consolas", ui-monospace, monospace;
+  --font-ui: "Zen Kaku Gothic New", "Yu Gothic UI", "Meiryo", sans-serif;
+  --font-size-xs: 0.6875rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-md: 0.9375rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 2rem;
+  --font-size-hero: clamp(2rem, 6vw, 4.5rem);
+  --tracking-label: 0.14em;
+
+  /* 余白 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* 角丸（ネオン管の端を意識して小さめ） */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* 影・発光 */
+  --glow-line-a: 0 0 6px var(--color-glow-a), 0 0 18px var(--color-glow-a);
+  --glow-line-b: 0 0 6px var(--color-glow-b), 0 0 18px var(--color-glow-b);
+  --shadow-panel: 0 12px 40px rgb(0 0 0 / 0.6);
+
+  /* モーション */
+  --motion-fast: 120ms;
+  --motion-base: 220ms;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:lang(ja) { --font-ui: "Zen Kaku Gothic New", "Yu Gothic UI", "Meiryo", sans-serif; }
+:lang(zh-Hans) { --font-ui: "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+:lang(en) { --font-ui: "Zen Kaku Gothic New", "Segoe UI", sans-serif; }
+
+/* ライト：OS設定がライトで、明示指定がないとき */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --color-bg: #f3f1fb;
+    --color-surface: #ffffff;
+    --color-surface-raised: #ebe8f7;
+    --color-line: #cdc7e6;
+    --color-grid: #e1ddf2;
+    --color-text: #17132e;
+    --color-text-muted: #5f587f;
+    --color-neon-a: #c4069f;
+    --color-neon-b: #007f9c;
+    --color-neon-c: #a85d00;
+    --color-danger: #c41634;
+    --color-glow-a: rgb(196 6 159 / 0.18);
+    --color-glow-b: rgb(0 127 156 / 0.18);
+    --color-scanline: rgb(23 19 46 / 0.05);
+    --color-vignette: rgb(23 19 46 / 0.08);
+    --color-scrim: rgb(243 241 251 / 0.8);
+    color-scheme: light;
+  }
+}
+
+/* ライト：明示指定 */
+:root[data-theme="light"] {
+  --color-bg: #f3f1fb;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ebe8f7;
+  --color-line: #cdc7e6;
+  --color-grid: #e1ddf2;
+  --color-text: #17132e;
+  --color-text-muted: #5f587f;
+  --color-neon-a: #c4069f;
+  --color-neon-b: #007f9c;
+  --color-neon-c: #a85d00;
+  --color-danger: #c41634;
+  --color-glow-a: rgb(196 6 159 / 0.18);
+  --color-glow-b: rgb(0 127 156 / 0.18);
+  --color-scanline: rgb(23 19 46 / 0.05);
+  --color-vignette: rgb(23 19 46 / 0.08);
+  --color-scrim: rgb(243 241 251 / 0.8);
+  color-scheme: light;
+}
