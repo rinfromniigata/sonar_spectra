@@ -40,7 +40,7 @@ const model = defineModel<number>({ required: true });
 }
 .value {
   flex: none;
-  min-width: 3.2em;
+  min-width: var(--slider-value-min-width);
   font-family: var(--font-numeric);
   font-size: var(--font-size-sm);
   font-variant-numeric: tabular-nums;

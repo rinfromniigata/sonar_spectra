@@ -26,7 +26,10 @@ export type MessageArgs<K extends MessageKey> = [Placeholders<ValueAt<SourceMess
   ? []
   : [params: Record<Placeholders<ValueAt<SourceMessages, K>>, string | number>];
 
-export type Translate = <K extends MessageKey>(key: K, ...args: MessageArgs<K>) => string;
+export type Translate = <K extends string>(
+  key: K extends MessageKey ? K : MessageKey,
+  ...args: K extends MessageKey ? MessageArgs<K> : []
+) => string;
 
 export function useT(): { t: Translate } {
   const { t } = useI18n({ useScope: "global" });

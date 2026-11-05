@@ -33,6 +33,10 @@
   --drawer-width: 380px;
   --drawer-max-ratio: 44%;
   --popover-max-width: 280px;
+  --popover-max-height: 84%; /* ポップオーバーを置く領域の高さに対する割合 */
+
+  /* スライダー */
+  --slider-value-min-width: 3.2em; /* 値の欄（「100%」「×3.00」が収まる幅） */
   --backdrop-blur: 6px;
   --glow-soft-a: 0 0 10px var(--color-glow-a);
   --glow-soft-b: 0 0 10px var(--color-glow-b);

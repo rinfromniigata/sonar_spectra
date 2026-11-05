@@ -75,7 +75,7 @@ watch(
   z-index: 8;
   display: grid;
   gap: var(--space-2);
-  max-height: 84%;
+  max-height: var(--popover-max-height);
   padding: var(--space-3);
   padding-right: calc(var(--space-3) + var(--icon-button-size));
   overflow: auto;
