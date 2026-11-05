@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:pseudo": "tauri dev --config src-tauri/tauri.pseudo.conf.json",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri"
@@ -14,7 +15,8 @@
     "@fontsource/syncopate": "^5.3.0",
     "@fontsource/zen-kaku-gothic-new": "^5.3.1",
     "@tauri-apps/api": "~2.12.4",
-    "vue": "^3.5.44"
+    "vue": "^3.5.44",
+    "vue-i18n": "~11.4"
   },
   "devDependencies": {
     "@tauri-apps/cli": "~2.12.4",

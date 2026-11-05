@@ -1,0 +1,5 @@
+{
+  "build": {
+    "beforeDevCommand": "bun run vite --mode pseudo"
+  }
+}

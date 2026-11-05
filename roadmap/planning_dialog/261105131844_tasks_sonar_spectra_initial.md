@@ -25,8 +25,15 @@
   - 実施メモ：Syncopateのライセンスは、パッケージの記載ではApache-2.0だった（SPEC 9節は3書体ともSIL OFLとしている）。同梱に支障はなく、READMEのクレジットを書くときに正しいライセンスを記載する
   - 実施メモ：基本スタイルは`src/theme/base.css`（地の色・文字色・UI書体・文字サイズをトークンから取る。`body`はスクロールさせない）。読み込み順は`fonts.ts`→`tokens.css`→`base.css`（`src/main.ts`）
   - 実施メモ：テーマの初期値は、`index.html`の`<html data-theme="dark">`で決める。OSがライトでもダークで始まる。切り替えはT4-4でつなぐ
-- [ ] T1-4 【エージェント】i18nの基盤を作る。`vue-i18n`（11.4系、Composition API）を入れ、モックの辞書のうちアプリの文言を`src/i18n/locales/ja.ts`へ移し（キーは機能ごと・スネークケースに整える）、`ja.ts`の型でキーを型検査する。ロケールの判定・保持・フォールバック、`<html lang>`の更新、疑似ロケール（`bun run dev:pseudo`）、`Intl`による日付・数値の整形関数を用意する
+- [x] T1-4 【エージェント】i18nの基盤を作る。`vue-i18n`（11.4系、Composition API）を入れ、モックの辞書のうちアプリの文言を`src/i18n/locales/ja.ts`へ移し（キーは機能ごと・スネークケースに整える）、`ja.ts`の型でキーを型検査する。ロケールの判定・保持・フォールバック、`<html lang>`の更新、疑似ロケール（`bun run dev:pseudo`）、`Intl`による日付・数値の整形関数を用意する
   - 依存: T1-1
+  - 実施メモ：`vue-i18n` 11.4.18。構成は`src/i18n/`に`index.ts`（createI18n、`initLocale`・`setLocale`、`<html lang>`）、`locale.ts`（判定・保持・フォールバックの純粋関数）、`use_t.ts`（型つきの`t`）、`format.ts`（`Intl`）、`pseudo.ts`、`locales/ja.ts`
+  - 実施メモ：キーの最上位は`app`・`common`・`title_bar`・`source`・`status`・`modules`・`module_shape`・`shape_fit`・`layout_edit`・`instance`（`direction`・`waveform`・`spectrum`・`phase`）・`palette`・`config`・`settings`・`dev_gallery`。モックの説明用の文言（`doc.*`・`screen.*`・表示方式の説明文・`auto.*`・`new.*`・`notes.*`）と、見本のデータ（デバイス名、構成名とメタ情報、「マイ配色 1」）は移さず、見本のデータはプレースホルダに置き換えた（例：`source.chip_live`「出力音声 · {device}」、`config.meta`「{layout_mode}・モジュール{count}・{date}」、`app.version`「v{version}」）。S01cの「設定」ボタンは`status.open_settings`とした
+  - 実施メモ：vue-i18nの`t`・`$t`は、キーの型を補完に使うだけで任意の文字列も受け付けることを、型定義と試験用のファイルで確かめた。そこで`useT()`（`use_t.ts`）を作り、辞書の型からキーとプレースホルダの名前を決めた。存在しないキー、末端でないキー、プレースホルダの不足・名前違い・余分が、`vue-tsc`でエラーになることを確かめた。`$t`は注入しない（`globalInjection: false`）。コンポーネントの文言はすべて`useT()`から引く
+  - 実施メモ：判定は「保存値 → OSの言語（`navigator.languages`）→ `ja`」。初版は言語が1つで切り替えUIがなく、`state.json`のデータモデルにロケールの項目がないため、保存値はWebViewの`localStorage`（キー`sonar_spectra.locale`）に置いた。言語を追加する仕様変更のときに`state.json`へ移す
+  - 実施メモ：疑似ロケールは`ja-x-pseudo`（文字列を約35%伸ばし`⟦…⟧`で囲む。プレースホルダは保つ）。`bun run dev:pseudo`は`tauri dev --config src-tauri/tauri.pseudo.conf.json`で、Viteを`--mode pseudo`で起動する。疑似ロケールでも`<html lang>`と`Intl`は`ja`。公開版のビルドに疑似ロケールが含まれないこと、`--mode pseudo`のビルドでは別チャンクになることを確かめた。Tauriのウィンドウでの起動はW1-4で確かめる
+  - 実施メモ：整形関数は`formatDate`（jaで「2026/11/04」）、`formatDecibel`（小数1桁）、`formatMultiplier`（小数2桁。「×」は辞書の`common.speed_value`）、`formatPercent`（0〜100を受けて「72%」）、`formatInteger`
+  - 実施メモ：T1-5への申し送り。現時点では辞書のキーがほぼすべて未使用のため、`i18n_check.ts`の未使用キーの検出をどう扱うか（画面ができるまでは警告にとどめる等）を決める必要がある。あわせて、`src/i18n/`以外での`useI18n`・`$t`の直接使用も検査で禁止する
 - [ ] T1-5 【エージェント】自動検査を`bun run check`1つにまとめる：`vue-tsc`、`scripts/i18n_check.ts`（キーの過不足・プレースホルダ・未使用キー）、`@intlify/eslint-plugin-vue-i18n`（直書き）、`scripts/token_check.ts`（色・px値の直書き）、`vitest`、`cargo clippy`・`cargo test`
   - 依存: T1-3, T1-4
 - [ ] T1-6 【エージェント】基本部品（ボタン、アイコンボタン、スイッチ、セグメント切り替え、スライダー、セレクト、配色の見本、チップ、ドロワー、ポップオーバー）を`src/components/ui/`に作り、開発時だけ開ける部品ギャラリーに状態ごとに並べる
