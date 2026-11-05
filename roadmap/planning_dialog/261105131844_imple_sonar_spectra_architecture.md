@@ -1,0 +1,311 @@
+# sonar_spectra 実装設計（imple）
+
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v1.md` と同版のデザインアセット
+- 種別：Agentic Coding
+- 対になるドキュメント：`261105131844_tasks_sonar_spectra_initial.md`、`261105131844_walk_sonar_spectra_initial.md`
+
+## 1. 方針
+
+- **音の流れに沿って層を分ける**：入力源 → 解析 → 送出 →（Channel）→ 受信 → モジュールの描画。各層は1つ前の層のインターフェースだけを知る。Macの取得方式や入力デバイスは「入力源」の実装を足すだけで済むようにする
+- **モジュールは登録制**：モジュールの種類ごとに「解析結果のどこを読むか・どう描くか・どんな設定を持つか」を1組にまとめ、レジストリに登録する。配置・設定パネル・レイアウト編集は、モジュールの中身を知らない
+- **値はトークン経由のみ**：色・サイズ・余白・角丸・発光・モーションは`src/theme/tokens.css`のカスタムプロパティだけを参照する。Canvasで使う色も、描画時に`getComputedStyle`で読み出したトークンから取る（テーマ切り替えで読み直す）
+- **文言は辞書経由のみ**：`vue-i18n`のComposition APIで、`src/i18n/locales/ja.ts`の型からキーの型を作る。直書きと文字列連結をしない
+- **状態は1か所に集める**：UIの状態（構成・設定・編集中かどうか）はストアにまとめ、保存はRust側の`settings_store`に任せる。ルーターは使わない
+
+## 2. リポジトリ構成
+
+```
+sonar_spectra/
+├─ src/                         UI（Vue 3 + TypeScript）
+│  ├─ main.ts
+│  ├─ App.vue                   メーター画面を置き、ドロワー・編集モードを状態で切り替える
+│  ├─ theme/
+│  │  ├─ tokens.css             specs/ の tokens をコピー（値の正本の写し。編集しない）
+│  │  ├─ fonts.ts               @fontsource の書体を同梱して読み込む
+│  │  └─ canvas_colors.ts       トークンを読み出して Canvas 用の色を作る
+│  ├─ i18n/
+│  │  ├─ index.ts               createI18n、ロケールの判定・保持・フォールバック、<html lang> 更新
+│  │  ├─ locales/ja.ts          原文の辞書（文言の正本）
+│  │  └─ pseudo.ts              疑似ロケール（開発時のみ）
+│  ├─ frame_client/             受信：バイト列 → 解析結果の型、最新値の保持
+│  ├─ modules/                  モジュール（種類ごとにフォルダ）とレジストリ
+│  ├─ layout/                   自動整列・手動配置（12×8の格子）
+│  ├─ config/                   インスタンス設定・配色・構成・永続化の呼び出し
+│  ├─ render/                   描画ループ（requestAnimationFrame）、最小化時の停止
+│  ├─ components/               画面と基本部品
+│  │  ├─ ui/                    ボタン、アイコンボタン、スイッチ、セグメント、スライダー、セレクト、配色の見本、チップ、ドロワー、ポップオーバー
+│  │  └─ ...                    TitleBar、MeterGrid、ModuleFrame、StatusOverlay、SettingsDrawer など
+│  └─ dev/                      開発時だけ使うギャラリー（部品の状態・各モジュールの表示方式）
+├─ src-tauri/                   Rust
+│  ├─ src/
+│  │  ├─ main.rs / lib.rs       Tauri の組み立て、プラグイン登録、コマンド登録
+│  │  ├─ audio_source/          入力源（trait と WASAPI ループバック実装）
+│  │  ├─ analysis/              解析（種類ごとのファイル）
+│  │  ├─ frame_transport/       約60回/秒のまとめと、バイト列への符号化
+│  │  ├─ settings_store/        設定と構成のJSON
+│  │  └─ commands.rs            UI から呼ぶコマンド
+│  ├─ icons/                    マスターSVGから生成したアイコン一式（リポジトリに含める）
+│  └─ tauri.conf.json
+├─ scripts/                     i18n の自動検査、トークン直書きの検査
+├─ docs/
+│  ├─ brand/                    specs/ の brand.md とマスターSVGのコピー
+│  └─ images/                   README 用スクリーンショット
+├─ .github/workflows/           ci.yml（検査）、release.yml（v* タグでドラフトリリース）
+├─ README.md / CONTRIBUTING.md / CHANGELOG.md / LICENSE
+└─ roadmap/
+```
+
+## 3. Rust側
+
+### 3.1 入力源（audio_source）
+
+```rust
+pub struct DeviceInfo { pub id: String, pub name: String, pub is_default: bool }
+
+pub enum SourceStatus { Opening, Live, Silent, Unavailable { reason: UnavailableReason } }
+pub enum UnavailableReason { NotFound, Disconnected, InUse, Other }
+
+pub struct AudioFormat { pub sample_rate: u32, pub channels: u16 } // 解析側にはステレオ f32 に揃えて渡す
+
+pub trait AudioSource: Send {
+    fn list_devices(&self) -> Result<Vec<DeviceInfo>, SourceError>;
+    /// device_id が None なら既定の出力デバイス。sink にはステレオ・f32・インターリーブのフレームを渡す
+    fn start(&mut self, device_id: Option<&str>, sink: FrameSink, on_status: StatusSink) -> Result<AudioFormat, SourceError>;
+    fn stop(&mut self);
+}
+```
+
+- 初版の実装は`WasapiLoopback`だけ（`wasapi`クレート 0.26系。APIはインストール後のドキュメントで確認する）。取得はイベント駆動の専用スレッドで行う
+- モノラルや多チャンネルのデバイスは、この層でステレオに揃える（解析は常にL・Rの2チャンネルを前提にできる）
+- 既定のデバイスが変わった・切断された場合は`Unavailable`か`Opening`を通知し、再オープンを試みる
+- 無音の判定（一定時間しきい値以下）は、解析ではなくこの層の状態として出す。取得中であることと音が来ていないことを区別する（S01b）
+- `FrameSink`はリングバッファ（数秒分）への書き込み口。描画や送出が詰まっても取得スレッドは止まらない
+
+### 3.2 解析（analysis）
+
+```rust
+pub trait Analyzer: Send {
+    fn id(&self) -> SectionId;
+    /// 最新のサンプル窓を受けて、自分のセクションを書き出す
+    fn process(&mut self, window: &StereoWindow, ctx: &AnalysisContext, out: &mut SectionWriter);
+}
+```
+
+- 解析の種類ごとにファイルを分ける：`level`、`waveform`、`spectrum`、`stereo`（リサージュの点列と周波数別の定位）、`loudness`（LOUDの近似とピーク）、`vu`、`chroma`（12音名＋コード・キーの推定、時間方向の平滑化つき）、`centroid`（重心とフラックス）
+- FFTは`rustfft` 6.4系。スペクトラム・定位・クロマ・重心で1回のFFT結果を共有する（`AnalysisContext`に置く）
+- 解析を追加するときは、ファイルを足して登録するだけで、既存の解析に手を入れない
+- 解析結果を使うモジュールが1つも有効でないときは、その解析を止められるように、有効な解析の一覧をUIから受け取る（`set_active_sections`）
+
+### 3.3 送出（frame_transport）
+
+- 送出用スレッドが約60回/秒（16.7msごと）に、リングバッファの最新の窓で各解析を回し、1つのバイト列にまとめて`tauri::ipc::Channel`で送る
+- バイト列の形式（リトルエンディアン）：
+
+```
+ヘッダ   : magic "SS"(u16) / format_version(u8) / flags(u8) / seq(u32) / sample_rate(u32) / section_count(u16)
+セクション: section_id(u8) / reserved(u8) / length(u32) / payload(f32 の並び)
+```
+
+- 形式を知るのは送出側（Rust）と受信側（`frame_client`）だけ。セクションIDと中身の対応表は`frame_transport/format.rs`と`src/frame_client/format.ts`に置き、format_versionで食い違いを検出する
+- ウィンドウが最小化されている間は、UIからの通知で解析と送出を止める（取得は続ける）
+
+### 3.4 保存（settings_store）
+
+- 保存先：アプリのデータフォルダ（`%APPDATA%\com.rinontech.sonar-spectra\state.json`）
+- 書き込みは一時ファイルに書いてから置き換える（書き込み中に落ちても前の状態が残る）
+- 読み込み時に`schema`を確かめ、古い形式は移行し、読めない場合は既定の状態で起動して元のファイルを`state.broken-{日時}.json`として残す
+- 構成の書き出し・読み込みは、UIで`tauri-plugin-dialog`で場所を選び、`tauri-plugin-fs`で読み書きする（fsの権限はダイアログで選んだパスに限る）。中身の検証は`settings_store`のコマンドで行う
+
+### 3.5 コマンドとイベント（UI ⇔ Rust のインターフェース）
+
+- `start_stream(on_frame: Channel)`：取得と送出を開始する。結果のバイト列は`on_frame`へ
+- `list_output_devices() -> Vec<DeviceInfo>`
+- `select_output_device(device_id: Option<String>)`：入力源を切り替える（`Opening` → `Live`）
+- `retry_source()`：S01cの「再試行」
+- `set_render_paused(paused: bool)`：最小化の通知
+- `set_active_sections(ids: Vec<u8>)`
+- `load_state() -> PersistedState` / `save_state(state: PersistedState)`
+- `validate_config_file(text: String) -> Config`：読み込んだファイルの検証と移行
+- イベント`source-status`：`SourceStatus`と`DeviceInfo`（出力系統のチップ、S01b〜S01dの表示に使う）
+
+## 4. UI側
+
+### 4.1 受信（frame_client）
+
+- Channelのバイト列を`DataView`で読み、`AnalysisFrame`（セクションごとの`Float32Array`のビュー）に戻す。コピーを避ける
+- 最新のフレームだけを保持し、描画ループが毎回それを読む（受信と描画のタイミングを切り離す）
+- 波形の履歴とスペクトログラムの履歴は、受信側でリングバッファに積む（モジュールのインスタンス間で共有）
+
+### 4.2 モジュール（modules）
+
+```ts
+type ModuleKind = "level" | "wave" | "spec" | "stereo" | "gram" | "loud" | "vu" | "chroma" | "centroid";
+type Shape = "long" | "compact" | "free";            // 推奨の形
+type Direction = "up" | "right" | "down" | "left";
+
+interface ModuleDefinition<O> {
+  kind: ModuleKind;
+  labelKey: MessageKey;                // 見出しの辞書キー
+  shape: Shape;
+  baseDirection: Direction | null;     // null は方向なし
+  flows: boolean;                      // 流れる速さの設定を持つか
+  sections: SectionId[];               // 必要な解析
+  defaultOptions: O;
+  inspectorFields: InspectorField<O>[];// インスタンスの設定に出す項目（辞書キーで記述）
+  createRenderer(ctx: RenderContext): ModuleRenderer<O>;
+}
+
+interface ModuleRenderer<O> {
+  resize(geom: Geometry): void;        // 枠の大きさ・向き・DPR
+  draw(frame: AnalysisFrame, history: Histories, opts: O, colors: PaletteColors, dt: number): void;
+  dispose(): void;
+}
+```
+
+- レジストリ（`modules/registry.ts`）に登録するだけで、配置・レイアウト編集・インスタンスの設定に現れる
+- 流れる方向は、モジュールの枠（`ModuleFrame`）側でCanvasの座標系を回して実現し、目盛りや文字も枠ごと回す。描画側は常に既定の向きで描けばよい
+- 描画の細部（線の太さ、残像の減衰、平滑化の係数）はモックの見え方に近づける（委任事項）
+
+### 4.3 配置（layout）
+
+- 格子：12列×8行。インスタンスの位置は`{ c, r, cs, rs }`（1始まり、モックと同じ）
+- **自動整列**：有効なインスタンスと画面比から配置を選ぶ純粋関数`autoArrange(instances, aspect) -> Map<id, Rect>`
+  - 画面比の帯：帯 2.4以上／横長 1.5〜2.4／標準 1.1〜1.5／縦長 1.1未満（定数。設定には出さない）
+  - 帯ごとのテンプレートはモックのS04の並びを格子に置き換えたもの。2つ目の位相（周波数別の定位）は専用の位置を持つ
+  - 同じ種類が複数あるときは、2つ目以降を同じ種類の隣に並べる（隣の領域を分割する）
+  - 縦長の帯では、レベルを横向き（右へ）にする
+- **手動配置**：ドラッグでの移動、右下の角での大きさ変更、境界線の移動（両側を同時に変える）、矢印キーで1マスずつ。どのモジュールも1マス未満にしない
+- 手で動かした時点で`mode = "manual"`になり、そのときの自動配置の結果を各インスタンスの`rect`に固定する。「自動整列」で`mode = "auto"`に戻す
+- 推奨の形との適合判定（「適」「もっと細長く」など、S03の見出しのバッジ）も、純粋関数として持つ
+
+### 4.4 インスタンス設定・配色・構成（config）
+
+- ストア：`useConfigStore`（現在の構成、保存済みの構成、使用中の構成のID、変更ありかどうか）と、`useRuntimeStore`（入力源の状態、編集中かどうか、開いているドロワー。保存しない）
+- 配色：標準のプリセット（マゼンタ主・シアン主・アンバー主）はコードに持ち、トークンの`neon-a/b/c`の組み合わせで表す（値を直書きしない）。自分で作った配色は主色・副色・強調色をダーク用の値で持ち、ライト用は自動で暗く・彩度を落として作る（OKLCHで明度と彩度を下げ、地の色に対して4.5:1以上になるまで明度を下げる）
+- 保存：状態が変わるたびに、少し間を置いて（300ms程度）`save_state`を呼ぶ
+
+### 4.5 画面（components）
+
+- `App.vue`：`MeterScreen`（タイトル帯＋格子＋走査線と周辺減光）を常に表示し、その上に`StatusOverlay`（S01b〜S01d）、`SettingsDrawer`（S02）／`PaletteDrawer`（S02a）／`ConfigDrawer`（S02b）、`LayoutEditPanel`と`InstanceInspector`（S03）を状態で重ねる
+- ボーダレスフルスクリーン：`@tauri-apps/api`のウィンドウAPIで全画面にする（Windowsではボーダレスになることを実機で確認する）。タイトル帯と操作系は残し、ボタンは終了のアイコンに変える（S01a）
+- ウィンドウ状態：`tauri-plugin-window-state`で位置・大きさ・ディスプレイを記憶する。全画面の状態は記憶しない（StateFlagsから外す）
+- ライトテーマで小さな文字に`neon-b`・`neon-c`を使う部品（適合判定のバッジ、手動配置のバッジ、LOUDの数値など）は、文字を`--color-text`にし、枠線だけ発光色を残す（SPEC 9節）
+
+### 4.6 描画ループ（render）
+
+- `requestAnimationFrame`を1本だけ回し、表示中のモジュールを順に描く（画面のリフレッシュに合わせる）
+- ウィンドウが最小化されたら止め、`set_render_paused(true)`を送る。復帰したら再開する
+- 描画が重い場合も受信・取得は止まらない（最新のフレームだけを描く）
+
+### 4.7 国際化
+
+- `vue-i18n` 11.4系（Composition API、`legacy: false`）。辞書はロケールごとのTypeScriptファイルで、`ja.ts`の型を`MessageSchema`としてキーを型検査する
+- ロケールの判定：保存値 → OSのロケール → 原文（`ja`）の順。初版は`ja`だけなので切り替えUIは出さない。フォールバックは`ja`
+- `<html lang>`はロケールの確定時と切り替え時に更新し、`tokens.css`の`:lang()`で`--font-ui`が切り替わる
+- 疑似ロケール：`bun run dev:pseudo`で起動したときだけ有効（`ja`の文字列を3〜4割伸ばし`⟦…⟧`で囲む）。公開版には含めない
+- 日付（構成の保存日）と数値（dB、倍率、%）は`Intl`にロケールを渡して整形する
+- 辞書のキーはモックの辞書を出発点にし、機能ごとの階層・スネークケースに整える（画面IDは使わない）。モックの説明用の文言（`doc.*`、`screen.*`、表示方式の説明文など）は移さない
+
+### 4.8 自動検査（`bun run check`）
+
+- `vue-tsc --noEmit`：存在しないキーの参照を型で検出
+- `scripts/i18n_check.ts`：ロケール間のキーの過不足とプレースホルダの一致、未使用キーの検出
+- `@intlify/eslint-plugin-vue-i18n`：テンプレートとスクリプト内の文字列の直書きを検出
+- `scripts/token_check.ts`：`src/theme/`以外にある色（`#…`、`rgb(`、`hsl(`、`oklch(`）・px値の直書きを検出
+- `cargo clippy`と`cargo test`、`vitest`
+- CIの`ci.yml`でも同じコマンドを実行する
+
+## 5. データモデル
+
+### 5.1 構造
+
+`state.json`（アプリのデータフォルダ）：
+
+```ts
+interface PersistedState {
+  schema: 1;
+  current: Config;                 // 今表示している構成（作業中の写し）
+  activeConfigId: string;          // 使用中の保存済み構成
+  dirty: boolean;                  // 保存後に変更があるか（S02の「保存後に変更あり」）
+  savedConfigs: SavedConfig[];
+  source: { deviceId: string | null }; // null は既定の出力デバイス。構成には含めない
+}
+
+interface SavedConfig extends Config { id: string; name: string; savedAt: string /* ISO 8601 */ }
+
+interface Config {
+  layout: { mode: "auto" | "manual"; instances: Instance[] };
+  customPalettes: Palette[];       // 自分で作った配色
+  theme: "dark" | "light" | "system";
+  display: { scanline: boolean; alwaysOnTop: boolean; startFullscreen: boolean };
+}
+
+interface Instance {
+  id: string;
+  kind: ModuleKind;
+  enabled: boolean;
+  rect: { c: number; r: number; cs: number; rs: number } | null; // 自動配置中は null
+  slot?: "pan";                    // 既定の配置で専用の位置を持つもの
+  direction: Direction | null;
+  paletteId: string;               // "preset.a" など、または自分で作った配色のID
+  sourceId: "default";             // 初版は既定の1系統だけ
+  options: ModuleOptions[kind];    // 種類ごとの設定
+}
+
+interface Palette { id: string; name: string; main: string; sub: string; accent: string } // ダーク用の値
+```
+
+種類ごとの設定（`options`）と既定値：
+
+- `wave`：`channel: "stereo"`、`showNow: true`、`split: 72`、`histColor: "solid"`、`speed: 1`
+- `spec`：`mode: "fill"`、`ghost: true`
+- `stereo`：`mode: "lissajous"`、`dots: "both"`、`blur: true`
+- `gram`・`centroid`：`speed: 1`
+- `level`・`loud`・`vu`・`chroma`：なし
+
+ウィンドウの位置・大きさ・ディスプレイは`tauri-plugin-window-state`の別ファイルに保存し、構成には含めない。
+
+### 5.2 動きで見るデータの変化
+
+架空の利用者「Aさん」の操作を時系列で追う。
+
+1. **初めて起動する** → `state.json`がないので既定の状態を作る。`savedConfigs`に「既定」を1件作って`activeConfigId`に入れ、`current`はその写し。インスタンスは10件（レベル・波形・スペクトラム・位相・スペクトログラム・ラウドネス・位相〔周波数別の定位、`slot: "pan"`〕は有効、VU・クロマ・重心と変化量は無効）、`mode: "auto"`、`rect`はすべて`null`。`source.deviceId: null`。ファイルに保存する
+2. **音楽を再生する** → 何も変わらない（解析結果はメモリ上だけで、保存しない）
+3. **ウィンドウを動かして大きさを変える** → `state.json`は変わらない。window-stateのファイルが終了時に更新される。自動配置なので配置は描画時に計算し直すだけ
+4. **設定でテーマをライトにする** → `current.theme = "light"`、`dirty = true`
+5. **レイアウト編集でスペクトラムをドラッグする** → `current.layout.mode = "manual"`。その時点の自動配置の結果が全インスタンスの`rect`に入り、スペクトラムの`rect`がドラッグ後の値になる。`dirty = true`
+6. **スペクトラムを複製する** → 新しい`id`のインスタンスが1件増える。`options`・`direction`・`paletteId`は複製元と同じ。`rect`は同じ大きさが入る空きを左上から探して置き、空きがなければ1マスの空きに置く。1マスの空きもなければ`enabled: false`・`rect: null`で追加する
+7. **複製したスペクトラムの設定で表示方式を「バー」、配色を「シアン主」にする** → そのインスタンスの`options.mode`と`paletteId`だけが変わる
+8. **そのインスタンスで「既定に戻す」を押す** → `options`・`direction`・`paletteId`が既定値に戻る。`rect`と`sourceId`は変わらない
+9. **「名前を付けて保存」で「クラブ用」と付ける** → `savedConfigs`に`current`の写しが新しい`id`・`name`・`savedAt`で1件増え、`activeConfigId`がそれになり、`dirty = false`
+10. **配色を作る（主色・副色・強調色）** → `current.customPalettes`に1件増える。`dirty = true`。どのインスタンスもまだ使っていない
+11. **構成を「既定」に切り替える** → `dirty = true`なので、上書き・別名で保存・破棄を確認する。破棄を選ぶと`current`は「既定」の写しになり、`activeConfigId`が「既定」、`dirty = false`。10で作った配色は「クラブ用」に保存していないので消える
+12. **「クラブ用」を書き出す** → `state.json`は変わらない。選んだ場所に`{ format: "sonar_spectra.config", schema: 1, config: SavedConfig }`のJSONを書く
+13. **別のPCでそのファイルを読み込む** → 検証してから、新しい`id`を振って`savedConfigs`に1件増やす。`activeConfigId`は変えない（読み込んだ構成は一覧から切り替えて使う）
+14. **入力源のデバイスを変える** → `source.deviceId`だけが変わる。構成は変わらず、`dirty`も変わらない
+15. **アプリを終了して起動し直す** → `state.json`から`current`をそのまま復元し、`display.startFullscreen`がオンなら全画面で始める。ウィンドウの位置・大きさはwindow-stateから復元する（そのディスプレイがなければOSが置く位置）
+
+### 5.3 画面の項目とデータの対応
+
+- タイトル帯の出力系統のチップ（S01、S01b〜S01d）：`source-status`イベント（保存しない）と`source.deviceId`
+- 設定パネル（S02）：構成の欄 → `activeConfigId`の`name`と`dirty`／入力源 → `source.deviceId`／テーマ → `current.theme`／表示 → `current.display.*`
+- 配色の管理（S02a）：標準 → コード上のプリセット／自分で作った配色 → `current.customPalettes`
+- 構成の管理（S02b）：一覧 → `savedConfigs`（名前、配置の種類・モジュール数・保存日は`layout.mode`・有効なインスタンスの数・`savedAt`から作る）／使用中 → `activeConfigId`
+- レイアウト編集（S03）：置いたモジュールの一覧 → `current.layout.instances`（`enabled`はスイッチ）／見出しの矢印 → `direction`／自動配置・手動配置のバッジ → `layout.mode`
+- インスタンスの設定（S03）：入力源 → `sourceId`／配色 → `paletteId`／その他 → `options`
+
+### 5.4 削除・修正・二重操作
+
+- **インスタンスの削除**：そのインスタンスだけを消す。手動配置では空いたマスはそのまま残り、自動配置では残りで並べ直す。種類の最後の1つも消せる（「＋ モジュールを追加」で戻せる）
+- **自分で作った配色の削除**：その配色を使っていたインスタンスは`paletteId`が既定（マゼンタ主）に戻る
+- **保存済み構成の削除**：使用中の構成は削除できない（ボタンを無効にする）。それ以外は一覧から消えるだけで、`current`は変わらない
+- **同じ名前での保存**：名前の重複は許し、`id`で区別する（上書きは「上書き」の操作だけで行う）
+- **同じファイルの二重読み込み**：2件として増える（それぞれ新しい`id`）
+- **壊れた・形式の違うファイルの読み込み**：検証で拒否し、`state.json`は変えない
+- **書き込み中の異常終了**：一時ファイルからの置き換えなので、前回の`state.json`が残る
+
+## 6. 配布
+
+- tauri-actionでWindows x64のインストーラーだけをビルドする（SPEC 7節。macOSはスコープ外のため、`release.md`の「macOS Universal」はこのプロジェクトでは作らない）
+- 識別子：`com.rinontech.sonar-spectra`。バージョンは`package.json`・`tauri.conf.json`・`Cargo.toml`で同じ値（初回`0.1.0`）
+- コード署名なし。READMEにSmartScreenの警告と開き方を書く
