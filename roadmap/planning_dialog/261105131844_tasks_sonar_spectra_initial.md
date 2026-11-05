@@ -60,9 +60,17 @@
   - 実施メモ：辞書に`dev_gallery.*`の見出しと状態名（`title`・`hint`・`part_*`・`open_drawer`・`open_popover`・`state_pressing`・`state_selected`・`state_long`）を加えた
   - 実施メモ：`check:i18n`を一部変更。ギャラリーで見本に使っただけで、本物の画面より先に使用予定から外れてしまうためで、`src/dev/`での使用は`dev_gallery.*`のキーだけを数えるようにした。使用予定からは、Phase 1の`dev_gallery.*`と、ドロワー・ポップオーバーで使い始めた`common.close`を外した
   - 実施メモ：`bun run check`が通ることを確認した。画面での見た目と操作は、W1-4〜W1-6で確かめる
-- [ ] T1-7 【エージェント】マスターSVGからアイコン一式（Windows・macOS向けとファビコン）を生成し、`src-tauri/icons/`に置く
+- [x] T1-7 【エージェント】マスターSVGからアイコン一式（Windows・macOS向けとファビコン）を生成し、`src-tauri/icons/`に置く
   - 依存: T1-1
   - `tauri icon`の入力形式とオプションは、インストール済みバージョンの公式ドキュメントで確認する。余白の比率（四辺112/1024）を保つ
+  - 実施メモ：インストール済みの`tauri icon`（CLI 2.12.4）のヘルプで、入力に正方形のSVGをそのまま使えることを確かめた。`bun run icons`（`scripts/generate_icons.ts`）で生成する。このスクリプトは次の順に動く
+    - `roadmap/specs/`の最新版のマスターSVG（`_v{n}`の最大）を入力にする
+    - `docs/brand/icon_master.svg`がそれと一致しなければ止める
+    - `tauri icon`で`src-tauri/icons/`を作り直す
+    - モバイル向け（`android/`・`ios/`）を消す（初版はデスクトップだけのため）
+    - ファビコンとして、マスターSVGを`public/favicon.svg`に、`icon.ico`を`public/favicon.ico`にコピーする
+  - 実施メモ：生成物は、PNG各種（32・64・128・128@2x・`icon.png` 512、Windowsストア用のSquare*）、`icon.ico`（16・24・32・48・64・256）、`icon.icns`。`tauri.conf.json`の`bundle.icon`の参照先がすべて存在することを確かめた（設定の変更はなし）。`index.html`にファビコン（ico・svg）を登録した
+  - 実施メモ：余白の比率は、生成したPNGの画素で確かめた。地の色と異なる画素の外接矩形を測ると、四辺の余白は`icon.png`（512）で59〜61px、`128x128@2x.png`（256）で29〜30pxで、いずれも112/1024以上だった。角は透明（タイルの角丸）。32pxでは発光の線のぼかしが1画素はみ出して3px（期待3.5px）で、縮小によるものとして許容した
 - [ ] T1-8 【エージェント】`.github/workflows/ci.yml`を作る（push・プルリクエストで`bun run check`を実行。Windowsランナー）
   - 依存: T1-5
 - [ ] T1-9 【エージェント】`CONTRIBUTING.md`に、確認・検査のコマンド、疑似ロケールでの起動、アイコンの生成、リポジトリ構成（`roadmap/`・`roadmap/timeline.md`・`docs/brand/`の役割）を追記する

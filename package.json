@@ -9,6 +9,7 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "icons": "bun scripts/generate_icons.ts",
     "check": "bun run check:types && bun run check:lint && bun run check:i18n && bun run check:tokens && bun run check:unit && bun run check:rust",
     "check:types": "vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
     "check:lint": "eslint --max-warnings 0 .",
