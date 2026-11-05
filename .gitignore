@@ -1,1 +1,28 @@
 roadmap/archived/
+
+# 依存とビルド成果物
+node_modules/
+dist/
+dist-ssr/
+src-tauri/target/
+src-tauri/gen/schemas/
+*.local
+
+# ログ
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# エディタ
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

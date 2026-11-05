@@ -6,9 +6,15 @@
 
 ## Phase 1: 基盤（雛形・トークン・i18n・検査・部品・アイコン）
 
-- [ ] T1-1 【エージェント】create-tauri-app（Vue＋TypeScript、Bun）で雛形を作り、識別子`com.rinontech.sonar-spectra`・製品名・バージョン`0.1.0`・ウィンドウの最小幅960pxを設定する
+- [x] T1-1 【エージェント】create-tauri-app（Vue＋TypeScript、Bun）で雛形を作り、識別子`com.rinontech.sonar-spectra`・製品名・バージョン`0.1.0`・ウィンドウの最小幅960pxを設定する
   - 既存の`LICENSE`・`roadmap/`・`.gitignore`を残す。`.gitignore`には雛形の除外（`node_modules/`、`dist/`、`src-tauri/target/`）を追記する
   - 依存のバージョンはSPEC 4節に合わせる（Tauri 2.12系、Vue 3.5系、Vite 8.3系、`@vitejs/plugin-vue` 6系）。コマンドはインストール済みのcreate-tauri-appのヘルプで確認する
+  - 実施メモ：`bun x create-tauri-app@latest sonar_spectra -m bun -t vue-ts --identifier com.rinontech.sonar-spectra --tauri-version 2 -y`で一時フォルダに生成してから、リポジトリへコピーした（テンプレートの`README.md`と`.gitignore`は持ち込まず、`.gitignore`は既存のものに追記）
+  - 実施メモ：解決した版は`@tauri-apps/cli`・`@tauri-apps/api` 2.12.4、`tauri`クレート 2.12.5、Vue 3.5.44、Vite 8.3.5、`@vitejs/plugin-vue` 6.0.10。crates.ioには`tauri` 3.0.0-alphaがあるため、`Cargo.toml`は`2.12`、`package.json`のTauri・Viteは`~`で系列内に固定した
+  - 実施メモ：製品名とウィンドウのタイトルは`sonar_spectra`（モックの辞書`app.window_title`と同じ）。ウィンドウは初期1280×800、最小幅960px
+  - 実施メモ：テンプレートのデモ（英語の直書き文言、外部リンク、`greet`コマンド、`tauri-plugin-opener`、Vite・Tauri・Vueのロゴ）は、直書き禁止と外部送信なしに合わせて取り除き、`App.vue`は文言のない枠だけにした。`index.html`は`lang="ja"`
+  - 実施メモ：`src-tauri/icons/`はテンプレートの既定アイコンのまま。T1-7でマスターSVGから生成し直す
+  - 実施メモ：`bun run build`と`cargo build`が通ることを確認した
 - [ ] T1-2 【エージェント】`CONTRIBUTING.md`の骨格を作る（受け付け方針、開発環境、セットアップ）
   - 依存: T1-1
 - [ ] T1-3 【エージェント】トークンと書体を配置する。`specs/`のトークンを`src/theme/tokens.css`へ、`brand.md`とマスターSVGを`docs/brand/`へコピーし、書体（Syncopate・Azeret Mono・Zen Kaku Gothic New）を`@fontsource`で同梱する。地の色・文字色などの基本スタイルをトークン経由で当て、テーマの初期値をダークにする
