@@ -34,8 +34,21 @@
   - 実施メモ：疑似ロケールは`ja-x-pseudo`（文字列を約35%伸ばし`⟦…⟧`で囲む。プレースホルダは保つ）。`bun run dev:pseudo`は`tauri dev --config src-tauri/tauri.pseudo.conf.json`で、Viteを`--mode pseudo`で起動する。疑似ロケールでも`<html lang>`と`Intl`は`ja`。公開版のビルドに疑似ロケールが含まれないこと、`--mode pseudo`のビルドでは別チャンクになることを確かめた。Tauriのウィンドウでの起動はW1-4で確かめる
   - 実施メモ：整形関数は`formatDate`（jaで「2026/11/04」）、`formatDecibel`（小数1桁）、`formatMultiplier`（小数2桁。「×」は辞書の`common.speed_value`）、`formatPercent`（0〜100を受けて「72%」）、`formatInteger`
   - 実施メモ：T1-5への申し送り。現時点では辞書のキーがほぼすべて未使用のため、`i18n_check.ts`の未使用キーの検出をどう扱うか（画面ができるまでは警告にとどめる等）を決める必要がある。あわせて、`src/i18n/`以外での`useI18n`・`$t`の直接使用も検査で禁止する
-- [ ] T1-5 【エージェント】自動検査を`bun run check`1つにまとめる：`vue-tsc`、`scripts/i18n_check.ts`（キーの過不足・プレースホルダ・未使用キー）、`@intlify/eslint-plugin-vue-i18n`（直書き）、`scripts/token_check.ts`（色・px値の直書き）、`vitest`、`cargo clippy`・`cargo test`
+- [x] T1-5 【エージェント】自動検査を`bun run check`1つにまとめる：`vue-tsc`、`scripts/i18n_check.ts`（キーの過不足・プレースホルダ・未使用キー）、`@intlify/eslint-plugin-vue-i18n`（直書き）、`scripts/token_check.ts`（色・px値の直書き）、`vitest`、`cargo clippy`・`cargo test`
   - 依存: T1-3, T1-4
+  - 実施メモ：`bun run check`は`check:types`→`check:lint`→`check:i18n`→`check:tokens`→`check:unit`→`check:rust`の順に実行し、最初に失敗したところで止まる。各段は単独でも実行できる。全段が通ることを確認した
+  - 実施メモ：版はESLint 10.14、`@intlify/eslint-plugin-vue-i18n` 4.5.1、`eslint-plugin-vue` 10.12、`typescript-eslint` 8.72（TypeScript 6.1未満に対応）、vitest 5.1、`@intlify/message-compiler` 11.4.18、`@types/node` 24
+  - 実施メモ：`check:types`は`vue-tsc --noEmit`（`src/`）と`tsc --noEmit -p tsconfig.node.json`（`scripts/`・`vite.config.ts`・`vitest.config.ts`）。参照されるプロジェクトには`noEmit`を指定できないため、tsconfigどうしの参照（`references`）をやめ、2つを独立して検査する形にした。ルートのtsconfigは`types: []`にして、UIのコードからNodeの型が見えないようにした
+  - 実施メモ：`check:lint`（`eslint.config.js`）。i18nのプラグインは`flat/base`の上に`no-raw-text`（テンプレートの文字列と、`aria-label`・`title`・`placeholder`・`alt`。記号と数字だけの文字列は対象外）と`no-v-html`を有効にした。`no-raw-text`はスクリプトを見ないため、CJK文字を含む文字列リテラルを`no-restricted-syntax`で検出する（英語の直書きは、スクリプト内では検出できない）。あわせて、`src/i18n/`の外での`vue-i18n`のimportと、`$t`などの参照を禁止した。`--max-warnings 0`。試験用のファイルで、各規則が検出することを確かめた
+  - 実施メモ：`check:i18n`（`scripts/i18n_check.ts`、中身は`i18n_check_core.ts`）。`locales/`の`ja.ts`以外の各ロケールについて、キーの過不足とプレースホルダの一致を照合する。あわせて、全メッセージのvue-i18nの構文（`@`は連結キーとして解釈されるなど）を検査する。キーの使用は、`src/`の`.ts`・`.vue`（辞書とテストを除く）で、キーが引用符つきの文字列として現れるかで判定する。そのため、キーは組み立てずに文字列のまま書き、コメントに引用符つきでキーを書かない
+  - 実施メモ：T1-4の申し送りへの対応。未使用キーは、画面ができるまで`scripts/i18n_pending_keys.ts`（使用予定のキーをPhaseごとに挙げる）に置く。次はすべてエラーになるため、Phaseが進むにつれて一覧は自動的に減り、0.1.0の準備までに空になる
+    - 使用予定にない未使用キー
+    - 使用予定に挙げたまま使われ始めたキー
+    - 辞書にない使用予定のキー
+  - 実施メモ：`check:tokens`（`scripts/token_check.ts`、中身は`token_check_core.ts`）。`src/theme/`以外の`.vue`・`.ts`・`.css`で、色（`#rgb`〜`#rrggbbaa`、`rgb(`・`hsl(`・`hwb(`・`lab(`・`lch(`・`oklab(`・`oklch(`）とpx値（0pxを除く）を検出する。やむを得ない行には`token-check-ignore: 理由`を付ける（理由のない印は無効）。色名（`white`など）は検出しない
+  - 実施メモ：`check:unit`（`vitest.config.ts`。Viteの設定を引き継ぐ）。T1-4の`locale`・`pseudo`・`format`と、検査スクリプトの中身の単体テスト、計25件
+  - 実施メモ：`check:rust`は`cargo clippy --all-targets -- -D warnings`と`cargo test`（いまはテスト0件）
+  - 実施メモ：雛形の`src/vite-env.d.ts`の`DefineComponent<{}, {}, any>`を`DefineComponent`に、`vite.config.ts`の`@ts-expect-error`（`@types/node`がない前提）を削除した。いずれもlintと型検査を通すため
 - [ ] T1-6 【エージェント】基本部品（ボタン、アイコンボタン、スイッチ、セグメント切り替え、スライダー、セレクト、配色の見本、チップ、ドロワー、ポップオーバー）を`src/components/ui/`に作り、開発時だけ開ける部品ギャラリーに状態ごとに並べる
   - 依存: T1-3, T1-4
   - 画面: PARTS

@@ -4,7 +4,7 @@
 import { useI18n } from "vue-i18n";
 import type { SourceMessages } from "./locales/ja";
 
-/** 辞書の末端（文字列）までのキー。例: "title_bar.settings" */
+/** 辞書の末端（文字列）までのキー。例: title_bar.settings */
 export type MessageKey = LeafPaths<SourceMessages>;
 
 type LeafPaths<T, Prefix extends string = ""> = {

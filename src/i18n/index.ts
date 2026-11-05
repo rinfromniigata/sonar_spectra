@@ -12,8 +12,9 @@ import {
   saveLocale,
 } from "./locale";
 
-// ja.ts の型を辞書の型にし、存在しないキーの参照を型検査で検出する
+// ja.ts の型を vue-i18n の辞書の型にする（補完用）。キーとプレースホルダの型検査は use_t.ts の useT() が受け持つ
 declare module "vue-i18n" {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- 型の拡張（宣言のマージ）に必要
   export interface DefineLocaleMessage extends MessageSchema {}
 }
 
