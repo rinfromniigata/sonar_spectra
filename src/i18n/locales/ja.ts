@@ -202,6 +202,10 @@ const ja = {
     chip_live: "入力中",
     chip_silent: "無音",
     chip_unavailable: "エラー",
+    modules_title: "モジュールの表示方式",
+    modules_hint:
+      "合成した信号で動かします（音声の取得は使いません）。開発時だけ開ける画面です。Ctrl+Shift+M でメーター画面と切り替えます。",
+    caption_option: "{option}：{state}",
   },
 } as const;
 

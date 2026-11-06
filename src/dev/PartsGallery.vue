@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 部品ギャラリー（画面ID: PARTS）。開発時だけ開ける。各部品を状態ごとに並べる。
 // ホバー・フォーカス・押下は、見比べられるよう is-hover・is-focus・is-pressing のクラスで固定して見せる
-import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from "vue";
+import { computed, ref, useTemplateRef } from "vue";
 import { formatMultiplier, formatPercent } from "../i18n/format";
 import { useT } from "../i18n/use_t";
 import UiButton from "../components/ui/UiButton.vue";
@@ -14,29 +14,12 @@ import UiSegmented from "../components/ui/UiSegmented.vue";
 import UiSelect from "../components/ui/UiSelect.vue";
 import UiSlider from "../components/ui/UiSlider.vue";
 import UiSwitch from "../components/ui/UiSwitch.vue";
+import { useGalleryTheme } from "./use_gallery_theme";
 
 const { t } = useT();
 
 // テーマ：ダークとライトで見比べる（設定パネルへのつなぎ込みは T4-4）
-type Theme = "dark" | "light" | "system";
-const theme = ref<Theme>((document.documentElement.dataset.theme as Theme | undefined) ?? "system");
-const themeOptions = computed(() => [
-  { value: "dark" as const, label: t("settings.theme_dark") },
-  { value: "light" as const, label: t("settings.theme_light") },
-  { value: "system" as const, label: t("settings.theme_system") },
-]);
-const initialTheme = document.documentElement.dataset.theme;
-watch(
-  theme,
-  (value) => {
-    if (value === "system") delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = value;
-  },
-  { immediate: true },
-);
-onBeforeUnmount(() => {
-  if (initialTheme) document.documentElement.dataset.theme = initialTheme;
-});
+const { theme, themeOptions } = useGalleryTheme();
 
 // 見本のデータ（デバイス名はOSから来る値なので辞書に置かない）
 const DEVICE_SHORT = "Speakers (Realtek High Definition Audio)";
