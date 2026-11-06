@@ -47,19 +47,19 @@ describe("MeterScreen", () => {
     expect(html).toContain("入力源を開いています");
   });
 
-  it("登録されたモジュール（レベル・波形）の既定のインスタンスを、格子の位置に置く", async () => {
+  it("登録されたモジュール（レベル・波形・スペクトラム）の既定のインスタンスを、格子の位置に置く", async () => {
     const html = await render();
     const frames = [...html.matchAll(/<section[^>]*data-kind="(\w+)"[^>]*style="grid-area:([^";]+)/g)].map((m) => [
       m[1],
       m[2].trim(),
     ]);
-    expect(frames.map(([kind]) => kind)).toEqual(["level", "wave"]);
+    expect(frames.map(([kind]) => kind)).toEqual(["level", "wave", "spec"]);
     for (const [, area] of frames) expect(area).toMatch(/^\d+ \/ \d+ \/ span \d+ \/ span \d+$/);
   });
 
-  it("起動時に source-status の listen を始め、必要な解析（レベル・波形）を Rust に伝える", async () => {
+  it("起動時に source-status の listen を始め、必要な解析（レベル・波形・スペクトラム）を Rust に伝える", async () => {
     await render();
     expect(listen).toHaveBeenCalledWith("source-status", expect.any(Function));
-    expect(invoke).toHaveBeenCalledWith("set_active_sections", { ids: [1, 2] });
+    expect(invoke).toHaveBeenCalledWith("set_active_sections", { ids: [1, 2, 3] });
   });
 });

@@ -53,7 +53,9 @@ export function recordingCanvas(): RecordingCanvas {
     setLineDash: (segments: number[]) => {
       dash = [...segments];
     },
+    arc: (x: number, y: number) => path.push([x, y]),
     createLinearGradient: () => ({ addColorStop() {} }),
+    createRadialGradient: () => ({ addColorStop() {} }),
     clearRect: () => {},
     save: () => {},
     restore: () => {},
