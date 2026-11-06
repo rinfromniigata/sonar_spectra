@@ -272,10 +272,18 @@ Phaseの推奨: Opus・high以上
     - i18nの使用予定の一覧から、使い始めた5キー（`common.retry`・`status.silent`・`status.unavailable_title`・`status.unavailable_body`・`status.open_settings`）を外した
     - 単体テスト8件（`overlayMode`2・`retrySource`2・`StatusOverlay`のサーバー側レンダリング4）を加えた。表示の確認は、取得中は重ねないこと、無音・起動中・使えないそれぞれの文言・役割・ボタン（使えないときは4つの理由すべて）、状態がまだ届いていないとき。実際の見た目と、再生の停止・デバイスの無効化での遷移は、T2-14で組み立ててからW2-6（ユーザー）・W2-7で確かめる。`bun run check`は終了コード0で通った
     - 気づいた点：テストで、`beforeEach`が関数（モック）を返すと、vitestがそれをテスト後の後始末として呼んでしまい、拒否するモックの設定が後始末で失敗として現れた。`beforeEach`は何も返さない形にした
-- [ ] T2-14 【エージェント】メーター画面（タイトル帯、格子、状態の表示）を`App.vue`に組み立て、起動と同時に取得を始める
+- [x] T2-14 【エージェント】メーター画面（タイトル帯、格子、状態の表示）を`App.vue`に組み立て、起動と同時に取得を始める
   - 推奨: Opus・high以上
   - 依存: T2-8, T2-9, T2-10, T2-11, T2-12, T2-13
   - 画面: S01
+  - 実施: Opus
+  - 実施メモ（261106）：`src/components/MeterScreen.vue`（メーター画面）を作り、`App.vue`の雛形の枠をこれに置き換えた（開発時の部品ギャラリーとの切り替えはそのまま）
+    - 組み立て：`TitleBar`・`MeterGrid`（自動配置）・`StatusOverlay`を縦に重ねる。画面の要素を`container-type: inline-size`にし、タイトル帯の高さ（`--title-h`のcqi）が画面の幅で決まるようにした。状態の表示はタイトル帯の下から重なる
+    - 起動の順序：`useSourceStatus`で`source-status`のlistenを始め、`ready`を待ってから`startFrameStream`で`start_stream`を呼ぶ（T2-5・T2-12の取り決め。起動直後の`Opening`を取りこぼさない）。`provideRenderLoop`で描画ループを始め、格子の中の`ModuleFrame`がループに登録される。必要な解析は、起動時に`set_active_sections`でレベル・波形（1・2）が伝わる
+    - インスタンス：レジストリ（`src/modules`の入口を読み込んで登録を済ませる）から`createDefaultInstances`で既定の構成を作る。Phase 2で登録されているのはレベルと波形の2つなので、その2つが自動整列で置かれ、ほかの領域は隣に吸収される。構成の保存と復元は、ストアを作るT4-2で置き換える
+    - タイトル帯のボタンと、状態の表示の「設定」は、まだつながない（設定・全画面はPhase 4、レイアウト編集はPhase 5）。ギャラリーから戻るとメーター画面が作り直されて`start_stream`がもう一度呼ばれるが、Rust側は送り先を付け替えて最後の状態を送り直す（T2-5）
+    - 単体テスト3件（Tauri側のAPIを差し替えたサーバー側レンダリングで、タイトル帯・格子・状態の表示の重なりと起動中の表示、レベルと波形の枠が格子の位置に置かれること、`source-status`のlistenと`set_active_sections`の呼び出し）を加えた。公開用のビルド（`bun run build`）も通った。`bun run check`は終了コード0で通った
+    - アプリを実際に起動しての確認（音楽でレベルと波形が動く、約60回/秒、最小化での停止、状態の表示の遷移、モックとの見比べ）は、Phase 2のwalk（W2-4〜W2-8）で行う
 
 ## Phase 3: 既定のモジュール一式（スペクトラム・位相・スペクトログラム・ラウドネス）
 

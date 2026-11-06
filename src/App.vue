@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from "vue";
+import MeterScreen from "./components/MeterScreen.vue";
 
-// メーター画面は T2-14 で組み立てる。ここでは雛形の枠と、開発時だけ開ける部品ギャラリーを置く
+// メーター画面を常に表示する。開発時だけ、部品ギャラリーと切り替えられる。
+// ドロワー・レイアウト編集などの重ねる画面は、作る Phase で MeterScreen に加える
 
 /** 開発時だけ読み込む（公開版のビルドでは import.meta.env.DEV が false になり、ギャラリーごと除かれる） */
 const PartsGallery = import.meta.env.DEV ? defineAsyncComponent(() => import("./dev/PartsGallery.vue")) : null;
@@ -33,5 +35,5 @@ onBeforeUnmount(() => {
 
 <template>
   <component :is="PartsGallery" v-if="PartsGallery && showGallery" />
-  <main v-else class="app-root"></main>
+  <MeterScreen v-else />
 </template>
