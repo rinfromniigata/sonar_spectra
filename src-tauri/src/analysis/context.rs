@@ -154,9 +154,10 @@ impl AnalysisContext {
         &self.right
     }
 
-    /// L・R を平均した信号のうち、`low_hz` 以上 `high_hz` 未満の成分の振幅
+    /// `low_hz` 以上 `high_hz` 未満の成分の振幅。L・R それぞれのエネルギーを平均して求める
     ///
-    /// その帯域に振幅 A の正弦波が1つだけあれば、およそ A を返す（窓の二乗和で換算する）。
+    /// L と R に同じ振幅 A の正弦波が1つだけあれば、およそ A を返す（窓の二乗和で換算する）。
+    /// 片側だけなら A/√2。L・R を足し合わせないので、逆位相（L = −R）でも打ち消し合わない。
     /// 直流（0 Hz）は含めない。
     pub fn band_amplitude(&self, low_hz: f32, high_hz: f32) -> f32 {
         if !self.ready {
@@ -169,7 +170,7 @@ impl AnalysisContext {
             return 0.0;
         }
         let energy: f32 = (first..last)
-            .map(|k| ((self.left[k] + self.right[k]) * 0.5).norm_sqr())
+            .map(|k| (self.left[k].norm_sqr() + self.right[k].norm_sqr()) * 0.5)
             .sum();
         (4.0 * energy / (self.size as f32 * self.window_power)).sqrt()
     }
@@ -223,6 +224,29 @@ mod tests {
         let a = ctx.band_amplitude(250.0, 4_000.0);
         assert!((a - 0.5).abs() < 0.01, "amplitude {a}");
         assert!(ctx.band_amplitude(4_000.0, 20_000.0) < 0.01);
+    }
+
+    #[test]
+    fn band_amplitude_does_not_cancel_in_antiphase_and_halves_energy_on_one_side() {
+        let rate = 48_000;
+        let s = sine(1_000.0, 0.5, rate, 4096);
+        let neg: Vec<f32> = s.iter().map(|v| -v).collect();
+        let silent = vec![0.0; s.len()];
+        let mut ctx = AnalysisContext::new();
+
+        // 逆位相：同じ音が両側にあるときと同じ値（平均した信号では 0 になっていた）
+        ctx.prepare(&stereo_window(&s, &neg, rate));
+        let a = ctx.band_amplitude(250.0, 4_000.0);
+        assert!((a - 0.5).abs() < 0.01, "antiphase {a}");
+
+        // 片側だけ：振幅の 1/√2。L だけでも R だけでも同じ
+        let expected = 0.5 / 2f32.sqrt();
+        ctx.prepare(&stereo_window(&s, &silent, rate));
+        let left = ctx.band_amplitude(250.0, 4_000.0);
+        ctx.prepare(&stereo_window(&silent, &s, rate));
+        let right = ctx.band_amplitude(250.0, 4_000.0);
+        assert!((left - expected).abs() < 0.01, "left only {left}");
+        assert!((right - left).abs() < 1e-6, "right only {right}");
     }
 
     #[test]
