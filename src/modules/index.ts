@@ -1,4 +1,9 @@
-// モジュールの入口。モジュールを作ったら、ここで moduleRegistry に登録する（T2-10 以降）。
+// モジュールの入口。モジュールを作ったら、ここで moduleRegistry に登録する。
+
+import { levelModule } from "./level";
+import { moduleRegistry } from "./registry";
+
+moduleRegistry.register(levelModule);
 
 export { MODULE_KINDS, type Direction, type ModuleKind, type ModuleOptions, type Shape } from "./options";
 export type {
