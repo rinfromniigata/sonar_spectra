@@ -19,7 +19,6 @@ export const PENDING_KEYS: readonly string[] = [
   "status.unavailable_title",
   "status.unavailable_body",
   "status.open_settings",
-  "modules.waveform",
 
   // Phase 3：既定のモジュール一式（T3-2〜T3-5）
   "modules.spectrum",

@@ -2,8 +2,10 @@
 
 import { levelModule } from "./level";
 import { moduleRegistry } from "./registry";
+import { waveModule } from "./wave";
 
 moduleRegistry.register(levelModule);
+moduleRegistry.register(waveModule);
 
 export { MODULE_KINDS, type Direction, type ModuleKind, type ModuleOptions, type Shape } from "./options";
 export type {
