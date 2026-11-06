@@ -119,9 +119,16 @@ Phaseの推奨: Sonnet・high以上
 
 Phaseの推奨: Opus・high以上
 
-- [ ] T2-1 【エージェント】入力源のインターフェース（`AudioSource`トレイト、`DeviceInfo`、`SourceStatus`、`FrameSink`のリングバッファ）を作る
+- [x] T2-1 【エージェント】入力源のインターフェース（`AudioSource`トレイト、`DeviceInfo`、`SourceStatus`、`FrameSink`のリングバッファ）を作る
   - 推奨: Opus・high以上
   - 依存: T1-1
+  - 実施: Opus
+  - 実施メモ（261106）：`src-tauri/src/audio_source/`に、`mod.rs`（型とトレイト）と`ring_buffer.rs`（リングバッファ）を作った。`lib.rs`で`pub mod`として公開した（まだ使う側がなく、非公開だとclippyの未使用の警告で`-D warnings`に落ちるため）
+    - impleの3.1にない、委任の範囲で決めたもの：`StatusSink`（`StatusEvent { status, device }`を受けるコールバック。イベント`source-status`の中身にそのまま使える）、`SourceError`（`NotFound`・`InUse`・`Backend`と、`UnavailableReason`への対応）、読み出し口の`FrameReader::copy_latest`と`WindowInfo`（サンプルレート・書き込みの累計・埋まっているフレーム数）、サンプルレートの変更を伝える`FrameSink::reset`
+    - リングバッファ：満杯なら古い側から上書きし、書き込みは読み出しを待たない。ロックはコピーの間だけ持つ。既定の容量`DEFAULT_RING_FRAMES`は384,000フレーム（192 kHzで約2秒、48 kHzで約8秒）
+    - JSONの形：`SourceStatus`は`{ "state": "unavailable", "reason": "disconnected" }`、`DeviceInfo`は`isDefault`のキャメルケース。UI側の型（T2-6・T2-12）はこれに合わせる
+    - モノラル・多チャンネルのステレオへの変換と無音の判定は、T2-2（`WasapiLoopback`）で行う。`FrameSink::push`はステレオのインターリーブだけを受ける
+    - 単体テスト12件（巻き戻り・不足分の0埋め・容量超えの書き込み・`reset`・並行の読み書き・トレイトの形・JSONの形）を付けた。`bun run check`は終了コード0で通った
 - [ ] T2-2 【エージェント】`wasapi`クレート（0.26系）で`WasapiLoopback`を実装する。既定の出力デバイスのループバック取得、ステレオ・f32への変換、無音の判定、切断と既定デバイスの変更時の再オープン
   - 推奨: Opus・high以上
   - 依存: T2-1
