@@ -246,11 +246,19 @@ Phaseの推奨: Opus・high以上
     - 境目の割合は10〜90%に収める（モックのスライダーの範囲）。数値（流す幅4px、振幅の割合0.92・0.9・0.35、芯をならす幅4%・6px以上、不透明度・発光の大きさ）はモックの値で、色は`PaletteColors`だけを使う
     - i18nの使用予定の一覧から`modules.waveform`を外した
     - 単体テスト21件（計算12・描画9。描画は偽のCanvasで、ステレオ・モノラルの色と位置、境目の点線、外縁2本と芯、両端が中心に戻ること、今の波形を出さないとき、帯域別の色、流れる速さ、STALEのフレーム、フレームなしを確かめた）。実際の見た目は、T2-14で組み立ててからW2-8で確かめる。`bun run check`は終了コード0で通った
-- [ ] T2-12 【エージェント】タイトル帯を作る。SONAR/SPECTRAとバージョン、出力系統のチップ（`source-status`の状態とデバイス名）、レイアウト編集・設定・ボーダレスフルスクリーンのボタン（読み上げ用の名前つき）
+- [x] T2-12 【エージェント】タイトル帯を作る。SONAR/SPECTRAとバージョン、出力系統のチップ（`source-status`の状態とデバイス名）、レイアウト編集・設定・ボーダレスフルスクリーンのボタン（読み上げ用の名前つき）
   - 推奨: Sonnet・high以上
   - 依存: T1-6, T2-5
   - 画面: S01
   - ボタンの動作は、設定がPhase 4、全画面がPhase 4、レイアウト編集がPhase 5でつなぐ
+  - 実施: Sonnet
+  - 実施メモ（261106）：`src/components/TitleBar.vue`（タイトル帯）、`src/source/`（`source_status.ts`＝イベント`source-status`の型と`chipView`、`use_source_status.ts`＝`listen`で最新の状態を保持する`useSourceStatus`、`index.ts`）、`src/app/use_app_version.ts`（`getVersion()`でtauri.conf.jsonのバージョンを取る。Tauriの外では空）を作った
+    - `TitleBar`：ロゴタイプ（`SONAR`・スラッシュを副色で光らせる・`SPECTRA`。翻訳する文言ではないので、コード内の定数）、バージョン（`app.version`「v{version}」。空なら出さない）、出力系統のチップ（`UiChip`）、レイアウト編集・設定・ボーダレスフルスクリーンの`UiIconButton`（読み上げ用の名前は辞書から。全画面中は「ボーダレスフルスクリーンを終了」とアイコンの切り替え、レイアウト編集中は押された状態）。ボタンとチップはイベント（`source`・`layoutEdit`・`settings`・`fullscreen`）で知らせるだけで、動作は持たない
+    - チップの表示（`chipView`）：取得中＝デバイス名つき（`source.chip_live`）・点灯、無音＝`source.chip_silent`・消灯、使えない＝`source.chip_unavailable`・危険色（理由によらず同じ）。起動中・切り替え中は、デバイスが分かればデバイス名つきで消灯（モックのS01d）、分からなければ`status.opening`。状態がまだ届いていない起動直後も同じ。取得中なのにデバイスが分からない場合は、デバイス名の欠けた文言を出さず`status.opening`にする
+    - タイトル帯の高さは、モックの`--title-h`（画面の幅に応じて20〜44px）を`component_metrics.css`に`--title-h`として加え、ボタン・チップの高さとアイコンの大きさをモックと同じ割合（0.72・0.34）で連動させた。cqiの単位を使うため、置く側（T2-14のメーター画面）が`container-type: inline-size`を持つこと。メーターの格子や重ねる画面も、この高さの下から始める。チップの文字の下限は`--chip-font-min`として加えた
+    - `useSourceStatus`は`ready`（listenの準備ができたら解決）を返す。T2-14では、これを待ってから`start_stream`を呼ぶ（T2-5の取り決め）
+    - i18nの使用予定の一覧から、使い始めた10キー（`app.version`・`title_bar.*`の5つ・`source.chip_*`の3つ・`status.opening`）を外した。`status.opening`はT2-13の状態の表示でも使う
+    - 単体テスト11件（`chipView`6・RustのJSONの形1・`TitleBar`のサーバー側レンダリング4。ロゴとバージョン、チップの文言と色、ボタンの読み上げ用の名前、押された状態、全画面中の名前の切り替え）を加えた。実際の見た目（高さの連動、モックとの見比べ）は、T2-14で組み立ててからW2-8で確かめる。`bun run check`は終了コード0で通った
 - [ ] T2-13 【エージェント】状態の表示（S01b 無音、S01c 入力源が使えない＋再試行、S01d 起動中・切り替え中）を作る
   - 推奨: Sonnet・high以上
   - 依存: T2-5, T2-12

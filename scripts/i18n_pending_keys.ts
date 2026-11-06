@@ -5,17 +5,8 @@
 export const PENDING_KEYS: readonly string[] = [
   // Phase 2：タイトル帯・状態の表示・最初のモジュール（T2-10〜T2-14）
   "app.window_title",
-  "app.version",
   "common.retry",
-  "title_bar.source",
-  "title_bar.layout_edit",
-  "title_bar.settings",
-  "title_bar.fullscreen",
-  "source.chip_live",
-  "source.chip_silent",
-  "source.chip_unavailable",
   "status.silent",
-  "status.opening",
   "status.unavailable_title",
   "status.unavailable_body",
   "status.open_settings",
@@ -29,7 +20,6 @@ export const PENDING_KEYS: readonly string[] = [
   "modules.loudness_peak",
 
   // Phase 4：設定パネルとウィンドウ（T4-2〜T4-6）
-  "title_bar.fullscreen_exit",
   "config.section",
   "config.default_name",
   "config.modified",

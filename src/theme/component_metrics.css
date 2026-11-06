@@ -27,6 +27,7 @@
   --chip-height: 22px;
   --chip-max-width: 360px;
   --chip-dot: 7px;
+  --chip-font-min: 8px; /* タイトル帯の狭い画面で、チップの文字をここまで縮める */
   --swatch-size: 12px;
 
   /* ドロワー・ポップオーバー */
@@ -34,6 +35,10 @@
   --drawer-max-ratio: 44%;
   --popover-max-width: 280px;
   --popover-max-height: 84%; /* ポップオーバーを置く領域の高さに対する割合 */
+
+  /* タイトル帯：高さは画面の幅（置く側の container-type: inline-size）に応じて 20〜44px。
+     メーターの格子や重ねる画面（ドロワー・状態の表示）も、この高さの下から始める */
+  --title-h: clamp(20px, 3.4cqi, 44px);
 
   /* モジュールの枠の見出し（枠の幅に合わせて縮み、この大きさより小さくしない） */
   --module-tag-min-size: 7px;
