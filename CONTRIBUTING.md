@@ -68,6 +68,12 @@ bun run check
 cargo test --manifest-path src-tauri/Cargo.toml -- --ignored
 ```
 
+解析結果のバイト列の形式（`src-tauri/src/frame_transport/format.rs`と`src/frame_client/format.ts`）は、送出側と受信側で同じテスト用データ（`src-tauri/src/frame_transport/fixtures/frame_format_v1.json`）を使って検査します。形式を変えたときは、両方の`FORMAT_VERSION`を上げ、環境変数`SONAR_UPDATE_FIXTURE=1`を付けて次のコマンドでデータを作り直してください（PowerShellでは、先に`$env:SONAR_UPDATE_FIXTURE = "1"`を実行します）。環境変数がなければ、データは書き換わりません。
+
+```sh
+SONAR_UPDATE_FIXTURE=1 cargo test --manifest-path src-tauri/Cargo.toml regenerate_shared_fixture -- --ignored
+```
+
 ### 文言の決まり
 
 - UIの文字列は、すべて`src/i18n/locales/ja.ts`（原文の辞書）に置き、コンポーネントからは`src/i18n/use_t.ts`の`useT()`で引きます。`vue-i18n`の`useI18n`や`$t`は直接使いません（キーとプレースホルダを型で検査するため）

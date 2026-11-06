@@ -8,6 +8,8 @@
 //! - 有効なセクションの切り替え（`set_active_sections`）は、次の回から反映する
 
 pub mod format;
+#[cfg(test)]
+mod shared_fixture;
 
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::thread::{self, JoinHandle};
