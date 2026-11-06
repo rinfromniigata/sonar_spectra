@@ -83,6 +83,13 @@ bun run icons
 
 `roadmap/specs/`にある最新版のマスターSVG（`sonar_spectra_icon_master_v{n}.svg`）から、`tauri icon`で`src-tauri/icons/`のアイコン一式を作り直し、ファビコンを`public/`に置きます。マスターSVGの写し`docs/brand/icon_master.svg`が最新版と一致していないときは、生成を止めます。マスターSVGが変わったら、先に写しを更新してから実行してください。
 
+マスターSVGは角のない正方形で、角丸と余白は持ちません。生成するときに、形式ごとに次のとおり足します。
+
+- Windows向け（`icon.ico`・PNG）とファビコン：1024四方のまま、角丸半径200で切り抜きます（余白は足しません）
+- macOS向けの従来形式（`icon.icns`）：824四方に縮めて中央に置き（四辺に100の余白）、角丸半径185.4で切り抜きます
+
+モバイル向けは作りません。レイヤーごとのSVGの書き出しと、Apple環境向けの`AppIcon.icon`は、macOSに対応するまで作りません。
+
 ## リポジトリ構成
 
 ```

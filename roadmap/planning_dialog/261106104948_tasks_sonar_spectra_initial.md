@@ -109,9 +109,11 @@ Phaseの推奨: Sonnet・high以上
     - ファビコン：`public/favicon.svg`はWindows用のSVG（角丸で切り抜いたもの）、`public/favicon.ico`は`icon.ico`の写し
     - `docs/brand/icon_master.svg`が最新版のマスターSVGと一致しないときに止める確認は、そのまま残した。`src-tauri/icons/`は、毎回いったん空にして作り直す
   - 実施メモ：`bun run icons`を実行し、`src-tauri/icons/`が17ファイル（v1と同じ構成。モバイル向けなし）になること、`tauri.conf.json`の`bundle.icon`の5件が存在することを確かめた。`icon.png`を目で見て、角が透明に丸く切り抜かれ、v2の色・形（輪・波形・ピーク）が出ていることを確かめた。`check:types`・`check:lint`・`check:tokens`が通ることを確かめた。余白と角丸の寸法の測定と、`bun run check`全体は、W1-12・W1-14で行う
-- [ ] T1-12 【エージェント】`CONTRIBUTING.md`の「アイコンの生成」節を、形式ごとの展開に合わせて直す
+- [x] T1-12 【エージェント】`CONTRIBUTING.md`の「アイコンの生成」節を、形式ごとの展開に合わせて直す
   - 推奨: Sonnet・medium以上
   - 依存: T1-9, T1-11
+  - 実施：Sonnet
+  - 実施メモ：「アイコンの生成」節に、マスターSVGが角のない正方形であること、Windows向け・ファビコン（角丸半径200、余白なし）とmacOSの`.icns`（824四方、四辺100、角丸半径185.4）の違い、モバイル向けと`AppIcon.icon`を作らないことを書き足した。コマンドとパス（`bun run icons`、`docs/brand/icon_master.svg`）は変えていない
 
 ## Phase 2: 音の取得から最初の表示まで（レベル・波形・状態表示）
 
