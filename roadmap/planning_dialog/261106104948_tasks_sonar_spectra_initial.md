@@ -165,9 +165,17 @@ Phaseの推奨: Opus・high以上
     - `set_active_sections`は、次の回から`Pipeline`に反映する
     - 気づいた点：セクションの見出しが6バイトのため、2つ目以降のセクションのペイロードが4バイト境界にそろわないことがある（1つ目は20バイト目でそろう）。impleの4.1の「`Float32Array`のビューでコピーを避ける」は、そろっていないセクションではできない。T2-6では、そろっていればビュー、そろっていなければコピーとする。形式を変える（見出しを8バイトにする等）なら仕様変更として扱う
     - 単体テスト8件（形式4・送出4。バイト単位の配置、復元、版の食い違いの検出、STALE、新しいフレームだけがレベルに効くこと、約60回/秒・セクションの切り替え・一時停止と再開・一時停止中の停止）を加えた。時間に依存するテストは5回続けて通った。`bun run check`は終了コード0で通った
-- [ ] T2-5 【エージェント】コマンド（`start_stream`、`list_output_devices`、`select_output_device`、`retry_source`、`set_render_paused`、`set_active_sections`）とイベント`source-status`を作る
+- [x] T2-5 【エージェント】コマンド（`start_stream`、`list_output_devices`、`select_output_device`、`retry_source`、`set_render_paused`、`set_active_sections`）とイベント`source-status`を作る
   - 推奨: Opus・high以上
   - 依存: T2-2, T2-4
+  - 実施: Opus
+  - 実施メモ（261106）：`src-tauri/src/commands.rs`（コマンド6つ）と`src-tauri/src/audio_engine.rs`（`AudioEngine`）を作り、`lib.rs`の`setup`でエンジンを管理状態に入れ、コマンドを登録した。`audio_engine.rs`はimpleの2節の構成にないファイルで、コマンドを薄い入口にとどめ、状態と手順を入力源・送り先を差し替えて確かめられるようにするため、委任の範囲で足した
+    - コマンドは、すべて`#[tauri::command(async)]`でメインスレッドの外で実行する（デバイスを開く間にUIを止めないため。属性の扱いはインストールしたtauri-macros 2.7.4のソースで確かめた）。戻り値は`Result<_, String>`。JavaScriptからの引数名は`onFrame`・`deviceId`・`paused`・`ids`
+    - イベント`source-status`の中身は`StatusEvent`（`{ status: { state, reason? }, device: { id, name, isDefault } | null }`）。状態の記憶と通知は、エンジン本体とは別のロックで行う（入力源の開始を待っている間に取得スレッドが通知しても、互いに待ち合わないため）
+    - `start_stream`を呼び直したとき（ページの再読み込み）は、送出を新しい`Channel`に付け替え、入力源は開き直さずに最後の状態を送り直す。UIは`source-status`をlistenしてから`start_stream`を呼ぶ（起動直後の`Opening`を取りこぼさないため。T2-14で守る）
+    - `select_output_device`は選んだデバイスで、`retry_source`は今の選択で、入力源を開き直す。結果は`source-status`で届く。一時停止と有効なセクションは、送出を始め直しても引き継ぐ。選んだデバイスの保存は、`settings_store`を作るときに扱う（今はメモリ上だけ）
+    - Windows以外でもアプリを組み立てられるよう、常に「使えない」を返す`UnsupportedSource`を足し、OSごとの既定の入力源を`audio_source::default_source`で選ぶようにした
+    - 単体テスト8件（エンジン7・`UnsupportedSource`1）を加えた。実機の出力デバイスでエンジン越しにフレームが届き、`Opening`→`Live`が通知され、デバイスを選べることを確かめるテスト1件を`#[ignore]`で加え、手元で`-- --ignored`を付けて実行して通った（既存の3件も通った）。`bun run check`は終了コード0で通った
 - [ ] T2-6 【エージェント】受信（`frame_client`）を作る。バイト列を解析結果の型に戻し、最新の値と、波形・スペクトログラム用の履歴を保持する
   - 推奨: Opus・high以上
   - 依存: T2-4

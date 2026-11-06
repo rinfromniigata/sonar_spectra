@@ -10,6 +10,7 @@ mod convert;
 mod ring_buffer;
 #[cfg_attr(not(windows), allow(dead_code))]
 mod state;
+mod unsupported;
 #[cfg(windows)]
 mod wasapi_loopback;
 
@@ -19,8 +20,21 @@ use std::sync::Arc;
 use serde::Serialize;
 
 pub use ring_buffer::{DEFAULT_RING_FRAMES, FrameReader, FrameSink, WindowInfo, frame_ring};
+pub use unsupported::UnsupportedSource;
 #[cfg(windows)]
 pub use wasapi_loopback::WasapiLoopback;
+
+/// この OS の既定の入力源（Windows は WASAPI のループバック、ほかはまだない）
+pub fn default_source() -> Box<dyn AudioSource> {
+    #[cfg(windows)]
+    {
+        Box::new(WasapiLoopback::new())
+    }
+    #[cfg(not(windows))]
+    {
+        Box::new(UnsupportedSource)
+    }
+}
 
 /// 出力デバイスの情報（出力系統のチップと、デバイスの選択肢に使う）
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
