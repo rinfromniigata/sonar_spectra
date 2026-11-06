@@ -90,7 +90,7 @@ defineExpose({ draw });
 onMounted(() => {
   context = canvas.value?.getContext("2d") ?? null;
   if (!context) return;
-  renderer = props.definition.createRenderer({ ctx: context }) as AnyRenderer;
+  renderer = props.definition.createRenderer({ ctx: context, translate: t }) as AnyRenderer;
   updateGeometry();
   observer = new ResizeObserver(updateGeometry);
   if (root.value) observer.observe(root.value);

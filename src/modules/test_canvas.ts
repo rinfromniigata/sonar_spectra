@@ -13,7 +13,7 @@ export interface DrawnShape {
 export interface RecordingCanvas {
   ctx: CanvasRenderingContext2D;
   shapes: DrawnShape[];
-  texts: { text: string; x: number; y: number }[];
+  texts: { text: string; x: number; y: number; style: string; font: string }[];
   /** drawImage の呼び出し（画像と、続く引数） */
   images: { image: unknown; args: number[] }[];
   clear(): void;
@@ -21,7 +21,7 @@ export interface RecordingCanvas {
 
 export function recordingCanvas(): RecordingCanvas {
   const shapes: DrawnShape[] = [];
-  const texts: { text: string; x: number; y: number }[] = [];
+  const texts: { text: string; x: number; y: number; style: string; font: string }[] = [];
   const images: { image: unknown; args: number[] }[] = [];
   const state: Record<string, unknown> = {
     fillStyle: "",
@@ -52,7 +52,8 @@ export function recordingCanvas(): RecordingCanvas {
         [x, y],
         [x + w, y + h],
       ]),
-    fillText: (text: string, x: number, y: number) => texts.push({ text, x, y }),
+    fillText: (text: string, x: number, y: number) =>
+      texts.push({ text, x, y, style: styleOf(state.fillStyle), font: String(state.font) }),
     drawImage: (image: unknown, ...args: number[]) => images.push({ image, args }),
     setTransform: () => {},
     setLineDash: (segments: number[]) => {

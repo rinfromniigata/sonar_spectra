@@ -2,6 +2,7 @@
 
 import { gramModule } from "./gram";
 import { levelModule } from "./level";
+import { loudModule } from "./loud";
 import { moduleRegistry } from "./registry";
 import { specModule } from "./spec";
 import { stereoModule } from "./stereo";
@@ -12,6 +13,7 @@ moduleRegistry.register(waveModule);
 moduleRegistry.register(specModule);
 moduleRegistry.register(stereoModule);
 moduleRegistry.register(gramModule);
+moduleRegistry.register(loudModule);
 
 export { MODULE_KINDS, type Direction, type ModuleKind, type ModuleOptions, type Shape } from "./options";
 export type {

@@ -3,7 +3,7 @@
 // レジストリに登録する。配置・設定パネル・レイアウト編集は、モジュールの中身を知らない。
 
 import type { AnalysisFrame, Histories, SectionId } from "../frame_client";
-import type { MessageKey } from "../i18n/use_t";
+import type { MessageKey, Translate } from "../i18n/use_t";
 import type { CanvasColors } from "../theme/canvas_colors";
 import type { Direction, ModuleKind, ModuleOptions, Shape } from "./options";
 
@@ -48,6 +48,8 @@ export interface RenderContext {
   ctx: CanvasRenderingContext2D;
   /** 画面に出さない画像を作る（幅と高さはデバイスピクセル）。省略すると、ブラウザのキャンバスで作る */
   createBuffer?: (width: number, height: number) => OffscreenBuffer;
+  /** 辞書から文言を引く。Canvas に文言を描くモジュール（LOUD の単位とピーク）が、描画のたびに呼ぶ */
+  translate?: Translate;
 }
 
 /** ブラウザのキャンバスで、画面に出さない画像を作る */

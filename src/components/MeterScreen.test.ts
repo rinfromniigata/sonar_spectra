@@ -47,22 +47,22 @@ describe("MeterScreen", () => {
     expect(html).toContain("入力源を開いています");
   });
 
-  it("登録されたモジュール（レベル・波形・スペクトラム・位相2つ・スペクトログラム）の既定のインスタンスを、格子の位置に置く", async () => {
+  it("登録されたモジュール（レベル・波形・スペクトラム・位相2つ・スペクトログラム・LOUD）の既定のインスタンスを、格子の位置に置く", async () => {
     const html = await render();
     const frames = [...html.matchAll(/<section[^>]*data-kind="(\w+)"[^>]*style="grid-area:([^";]+)/g)].map((m) => [
       m[1],
       m[2].trim(),
     ]);
-    expect(frames.map(([kind]) => kind)).toEqual(["level", "wave", "spec", "stereo", "gram", "stereo"]);
+    expect(frames.map(([kind]) => kind)).toEqual(["level", "wave", "spec", "stereo", "gram", "loud", "stereo"]);
     for (const [, area] of frames) expect(area).toMatch(/^\d+ \/ \d+ \/ span \d+ \/ span \d+$/);
     // 2つの位相は別の位置に置く（2つ目は周波数別の定位の専用の位置）
     const stereoAreas = frames.filter(([kind]) => kind === "stereo").map(([, area]) => area);
     expect(new Set(stereoAreas).size).toBe(2);
   });
 
-  it("起動時に source-status の listen を始め、必要な解析（レベル・波形・スペクトラム・位相。スペクトログラムはスペクトラムを使う）を Rust に伝える", async () => {
+  it("起動時に source-status の listen を始め、必要な解析（レベル・波形・スペクトラム・位相・ラウドネス。スペクトログラムはスペクトラムを使う）を Rust に伝える", async () => {
     await render();
     expect(listen).toHaveBeenCalledWith("source-status", expect.any(Function));
-    expect(invoke).toHaveBeenCalledWith("set_active_sections", { ids: [1, 2, 3, 4] });
+    expect(invoke).toHaveBeenCalledWith("set_active_sections", { ids: [1, 2, 3, 4, 5] });
   });
 });
