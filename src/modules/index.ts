@@ -3,11 +3,13 @@
 import { levelModule } from "./level";
 import { moduleRegistry } from "./registry";
 import { specModule } from "./spec";
+import { stereoModule } from "./stereo";
 import { waveModule } from "./wave";
 
 moduleRegistry.register(levelModule);
 moduleRegistry.register(waveModule);
 moduleRegistry.register(specModule);
+moduleRegistry.register(stereoModule);
 
 export { MODULE_KINDS, type Direction, type ModuleKind, type ModuleOptions, type Shape } from "./options";
 export type {

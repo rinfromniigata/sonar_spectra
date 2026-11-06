@@ -37,16 +37,32 @@ export function bandCenterHz(band: number): number {
   return SPECTRUM_MIN_HZ * ratio ** ((band + 0.5) / SPECTRUM_BANDS);
 }
 
+/** 中心の周波数 hz の帯域の傾きの補正（dB） */
+export function tiltDb(hz: number): number {
+  return TILT_DB_PER_OCTAVE * Math.log2(hz / TILT_REFERENCE_HZ);
+}
+
 /** 各帯域の傾きの補正（dB）。帯域の中心の周波数から決まるので、一度だけ作る */
-const TILT_DB: Float32Array = Float32Array.from({ length: SPECTRUM_BANDS }, (_, band) =>
-  TILT_DB_PER_OCTAVE * Math.log2(bandCenterHz(band) / TILT_REFERENCE_HZ),
-);
+const TILT_DB: Float32Array = Float32Array.from({ length: SPECTRUM_BANDS }, (_, band) => tiltDb(bandCenterHz(band)));
+
+/** 傾きの補正を加えた dB を、表示の高さ（0〜1）にする */
+function dbToDisplay(db: number): number {
+  return Math.min(1, Math.max(0, (db - SPEC_FLOOR_DB) / (SPEC_CEIL_DB - SPEC_FLOOR_DB)));
+}
 
 /** 線形の振幅（帯域 band）を、表示の高さ（0〜1）にする */
 export function toDisplay(amplitude: number, band: number): number {
   if (!(amplitude > 0)) return 0;
-  const db = 20 * Math.log10(amplitude) + TILT_DB[band];
-  return Math.min(1, Math.max(0, (db - SPEC_FLOOR_DB) / (SPEC_CEIL_DB - SPEC_FLOOR_DB)));
+  return dbToDisplay(20 * Math.log10(amplitude) + TILT_DB[band]);
+}
+
+/**
+ * 中心の周波数が hz の帯域の線形の振幅を、スペクトラムと同じ換算で表示の高さ（0〜1）にする。
+ * 帯域の分け方が違う解析（位相の周波数別の定位）が使う
+ */
+export function amplitudeToDisplay(amplitude: number, hz: number): number {
+  if (!(amplitude > 0)) return 0;
+  return dbToDisplay(20 * Math.log10(amplitude) + tiltDb(hz));
 }
 
 /** 解析の帯域ごとの振幅を、表示の高さにして `out` に書く。`bands` が null なら 0 */
