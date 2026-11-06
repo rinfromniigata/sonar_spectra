@@ -3,15 +3,23 @@
 
 import { decodeFrame, type AnalysisFrame } from "./format";
 import { RowHistory } from "./history";
-import { WAVE_SUMMARY_LEN, readWaveform } from "./sections";
+import { SPECTRUM_LEN, WAVE_SUMMARY_LEN, readSpectrum, readWaveform } from "./sections";
 
 /** 波形の履歴に積む行数（約60行/秒で約68秒分。広い画面で流れる速さを最も遅くしても足りる量） */
 export const WAVE_HISTORY_CAPACITY = 4096;
+
+/**
+ * スペクトログラムの履歴に積む行数（約60行/秒で約34秒分）。画面を最も細かく流しても（1行を1ピクセルの幅にする）、
+ * 4K 相当の幅の列を作り直せる量。ふだんの流れは描画側が持つ画像で動き、履歴は作り直しのときだけ読む
+ */
+export const GRAM_HISTORY_CAPACITY = 2048;
 
 /** モジュールのインスタンス間で共有する履歴 */
 export interface Histories {
   /** 波形：1行＝履歴用の要約（`WaveSummary` の並び） */
   wave: RowHistory;
+  /** スペクトログラム：1行＝スペクトラムの帯域ごとの振幅（線形。低い順） */
+  gram: RowHistory;
 }
 
 /** 受信の状況（確かめるときと、食い違いを知らせるときに使う） */
@@ -31,6 +39,7 @@ export class FrameClient {
   latest: AnalysisFrame | null = null;
   readonly histories: Histories = {
     wave: new RowHistory(WAVE_SUMMARY_LEN, WAVE_HISTORY_CAPACITY),
+    gram: new RowHistory(SPECTRUM_LEN, GRAM_HISTORY_CAPACITY),
   };
   readonly stats: FrameStats = { received: 0, rejected: 0, missed: 0, incompatibleVersion: null };
 
@@ -51,6 +60,8 @@ export class FrameClient {
     if (!frame.stale) {
       const wave = readWaveform(frame);
       if (wave) this.histories.wave.push(wave.summary);
+      const spectrum = readSpectrum(frame);
+      if (spectrum) this.histories.gram.push(spectrum.bands);
     }
     return true;
   }
@@ -59,6 +70,7 @@ export class FrameClient {
   reset(): void {
     this.latest = null;
     this.histories.wave.clear();
+    this.histories.gram.clear();
   }
 
   private countMissed(seq: number): void {

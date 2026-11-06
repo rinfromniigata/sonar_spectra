@@ -7,7 +7,6 @@ export const PENDING_KEYS: readonly string[] = [
   "app.window_title",
 
   // Phase 3：既定のモジュール一式（T3-2〜T3-5）
-  "modules.spectrogram",
   "modules.loudness",
   "modules.loudness_unit",
   "modules.loudness_peak",

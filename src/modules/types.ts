@@ -37,8 +37,27 @@ export interface PaletteColors {
   theme: "dark" | "light";
 }
 
+/** 描画側が持つ、画面に出さない画像（流れるモジュールが、すでに描いた分をずらして使う） */
+export interface OffscreenBuffer {
+  /** 画面のキャンバスに `drawImage` できるもの。幅と高さは、デバイスピクセルで指定した値 */
+  canvas: CanvasImageSource & { width: number; height: number };
+  ctx: CanvasRenderingContext2D;
+}
+
 export interface RenderContext {
   ctx: CanvasRenderingContext2D;
+  /** 画面に出さない画像を作る（幅と高さはデバイスピクセル）。省略すると、ブラウザのキャンバスで作る */
+  createBuffer?: (width: number, height: number) => OffscreenBuffer;
+}
+
+/** ブラウザのキャンバスで、画面に出さない画像を作る */
+export function createBrowserBuffer(width: number, height: number): OffscreenBuffer {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("2D canvas context is not available");
+  return { canvas, ctx };
 }
 
 export interface ModuleRenderer<O> {

@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { FrameClient } from "./client";
 import { FLAG_STALE, FORMAT_VERSION } from "./format";
-import { LEVEL_LEN, SectionId, WAVE_LEN, WAVE_NOW_POINTS, WAVE_SUMMARY_LEN, readLevel, readWaveform } from "./sections";
+import {
+  LEVEL_LEN,
+  SPECTRUM_LEN,
+  SectionId,
+  WAVE_LEN,
+  WAVE_NOW_POINTS,
+  WAVE_SUMMARY_LEN,
+  readLevel,
+  readWaveform,
+} from "./sections";
 import { encodeTestFrame } from "./test_frames";
 
 /** 要約が [env, env, low, mid, high]、今の波形の L が全部 nowL、R が全部 nowR の波形のペイロード */
@@ -50,6 +59,30 @@ describe("FrameClient", () => {
     expect(client.latest!.stale).toBe(true);
   });
 
+  it("スペクトラムを履歴（スペクトログラム用）に積む。STALE のフレームと、スペクトラムのないフレームは積まない", () => {
+    const client = new FrameClient();
+    const spectrum = (seq: number, level: number, flags = 0) =>
+      encodeTestFrame({ seq, flags, sections: [[SectionId.Spectrum, Array(SPECTRUM_LEN).fill(level)]] });
+    client.receive(spectrum(0, 0.1));
+    client.receive(spectrum(1, 0.2));
+    client.receive(spectrum(2, 0.3, FLAG_STALE));
+    client.receive(frame(3, 0.5)); // スペクトラムのセクションがない
+
+    const gram = client.histories.gram;
+    expect(gram.width).toBe(SPECTRUM_LEN);
+    expect(gram.length).toBe(2);
+    expect(gram.row(0)[0]).toBeCloseTo(0.1, 6);
+    expect(gram.row(1)[SPECTRUM_LEN - 1]).toBeCloseTo(0.2, 6);
+    // 波形の履歴とは別に積む
+    expect(client.histories.wave.length).toBe(1);
+  });
+
+  it("長さの合わないスペクトラムは履歴に積まない", () => {
+    const client = new FrameClient();
+    client.receive(encodeTestFrame({ sections: [[SectionId.Spectrum, Array(SPECTRUM_LEN + 1).fill(1)]] }));
+    expect(client.histories.gram.length).toBe(0);
+  });
+
   it("seq の飛びを数え、送出の始め直し（0 に戻る）は数えない", () => {
     const client = new FrameClient();
     client.receive(frame(10, 0));
@@ -96,8 +129,10 @@ describe("FrameClient", () => {
   it("reset で最新の値と履歴を捨てる", () => {
     const client = new FrameClient();
     client.receive(frame(0, 0.5));
+    client.receive(encodeTestFrame({ seq: 1, sections: [[SectionId.Spectrum, Array(SPECTRUM_LEN).fill(1)]] }));
     client.reset();
     expect(client.latest).toBeNull();
     expect(client.histories.wave.length).toBe(0);
+    expect(client.histories.gram.length).toBe(0);
   });
 });

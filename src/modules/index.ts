@@ -1,5 +1,6 @@
 // モジュールの入口。モジュールを作ったら、ここで moduleRegistry に登録する。
 
+import { gramModule } from "./gram";
 import { levelModule } from "./level";
 import { moduleRegistry } from "./registry";
 import { specModule } from "./spec";
@@ -10,6 +11,7 @@ moduleRegistry.register(levelModule);
 moduleRegistry.register(waveModule);
 moduleRegistry.register(specModule);
 moduleRegistry.register(stereoModule);
+moduleRegistry.register(gramModule);
 
 export { MODULE_KINDS, type Direction, type ModuleKind, type ModuleOptions, type Shape } from "./options";
 export type {
