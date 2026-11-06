@@ -447,6 +447,7 @@ Phaseの推奨: Opus・xhigh以上
 - [ ] T9-1 【エージェント】全モジュールを有効にした状態で、CPU・GPUの使用率と1フレームの描画時間を測り、重いモジュールを軽くする（必要ならそのモジュールだけWebGLへ移す案を報告する）
   - 推奨: Opus・xhigh以上
   - 依存: T8-5
+  - W2-5の実施メモの気づき：モジュール2つでも可視のときWebView2側のCPUが1コアの約145〜160%（開発用のビルド、約120 Hzのディスプレイ）。描画の回数（受信の約60回/秒に合わせて間引く）と、発光（`shadowBlur`）の負荷を確かめる
 - [ ] T9-2 【エージェント】`.github/workflows/release.yml`を作る（`v*`タグのpushで起動、`bun run check`、tauri-actionでWindows x64のインストーラーをビルドし、GitHub Releasesにドラフトを作る）
   - 推奨: Opus・high以上
   - 依存: T1-8
