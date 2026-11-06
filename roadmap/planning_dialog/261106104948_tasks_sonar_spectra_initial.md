@@ -96,11 +96,19 @@ Phaseの推奨: Sonnet・high以上
   - change: `development/261106052155_change_icon_layer_structure.md`（以下T1-12まで同じ）
   - 実施：Sonnet
   - 実施メモ：`specs/`のv2の`brand.md`・`icon_master.svg`を、`docs/brand/`の同名の写しへコピーし、`cmp`で差分がないことを確かめた。`src/theme/tokens.css`はv2の`tokens.css`と一致していて更新は不要だった。`bun run icons`はT1-11で実行する
-- [ ] T1-11 【エージェント】`scripts/generate_icons.ts`を、形式ごとに角丸と余白を足す展開（imple 7節。Windows向けは1024四方のまま角丸半径200、macOSの`.icns`は824四方に縮めて角丸半径185.4）に改め、`bun run icons`でv2のマスターSVGからアイコン一式とファビコンを作り直す
+- [x] T1-11 【エージェント】`scripts/generate_icons.ts`を、形式ごとに角丸と余白を足す展開（imple 7節。Windows向けは1024四方のまま角丸半径200、macOSの`.icns`は824四方に縮めて角丸半径185.4）に改め、`bun run icons`でv2のマスターSVGからアイコン一式とファビコンを作り直す
   - 推奨: Sonnet・high以上
   - 依存: T1-7, T1-10
   - `tauri icon`の入力とオプションは、インストール済みのバージョンのヘルプで確かめ直す
   - レイヤーごとのSVGの書き出しと`AppIcon.icon`は、macOS対応まで作らない（SPEC 8節）
+  - 実施：Sonnet
+  - 実施メモ：`tauri icon`（CLI 2.12.4）のヘルプで、入力にSVGを使えること、`--output`で出力先を変えられることを確かめた（v1と同じ）。オプションの変更は不要だった
+  - 実施メモ：`scripts/generate_icons.ts`を、マスターSVGの中身（`<svg>`の中）を取り出し、形式ごとに`clipPath`と`transform`で包んだ一時的なSVGを作る形に改めた。一時的なSVGは作業用の一時フォルダに置き、終了時に消す
+    - Windows用：1024四方のまま、角丸半径200で切り抜く。`tauri icon`の出力から、`.icns`とモバイル向け（`android/`・`ios/`）を除いて`src-tauri/icons/`に集める
+    - macOS用：824四方に縮めて中央に置き（四辺100）、角丸半径185.4で切り抜く。`tauri icon`の出力から、`icon.icns`だけを取る
+    - ファビコン：`public/favicon.svg`はWindows用のSVG（角丸で切り抜いたもの）、`public/favicon.ico`は`icon.ico`の写し
+    - `docs/brand/icon_master.svg`が最新版のマスターSVGと一致しないときに止める確認は、そのまま残した。`src-tauri/icons/`は、毎回いったん空にして作り直す
+  - 実施メモ：`bun run icons`を実行し、`src-tauri/icons/`が17ファイル（v1と同じ構成。モバイル向けなし）になること、`tauri.conf.json`の`bundle.icon`の5件が存在することを確かめた。`icon.png`を目で見て、角が透明に丸く切り抜かれ、v2の色・形（輪・波形・ピーク）が出ていることを確かめた。`check:types`・`check:lint`・`check:tokens`が通ることを確かめた。余白と角丸の寸法の測定と、`bun run check`全体は、W1-12・W1-14で行う
 - [ ] T1-12 【エージェント】`CONTRIBUTING.md`の「アイコンの生成」節を、形式ごとの展開に合わせて直す
   - 推奨: Sonnet・medium以上
   - 依存: T1-9, T1-11

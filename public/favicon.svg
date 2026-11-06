@@ -1,16 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <!-- sonar_spectra アイコンのマスター
-       余白ルール：タイルは1024四方いっぱい、図形は中央の800四方（四辺112）に収める
-       色は sonar_spectra_tokens.css のダーク値（bg / neon-a / neon-b / neon-c） -->
-  <rect x="0" y="0" width="1024" height="1024" rx="200" fill="#07060f"/>
-  <!-- ソナーの輪（シアン）：発光は太い半透明の線で表す -->
-  <circle cx="512" cy="512" r="330" fill="none" stroke="#18e4ff" stroke-opacity="0.22" stroke-width="120"/>
-  <circle cx="512" cy="512" r="330" fill="none" stroke="#18e4ff" stroke-width="56"/>
-  <!-- 両端を固定した波形（マゼンタ） -->
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M182 512 H330 L392 600 L456 330 L536 712 L604 420 L660 552 L700 512 H842" stroke="#ff2bd6" stroke-opacity="0.25" stroke-width="128"/>
-    <path d="M182 512 H330 L392 600 L456 330 L536 712 L604 420 L660 552 L700 512 H842" stroke="#ff2bd6" stroke-width="60"/>
+  <clipPath id="tile"><rect x="0" y="0" width="1024" height="1024" rx="200"/></clipPath>
+  <g clip-path="url(#tile)">
+    <g transform="translate(0 0) scale(1)">
+<!-- sonar_spectra アイコンのマスター（v2）
+       レイヤー：最上位の<g>を奥から 00_bg → 03_peak の順に置く。00_bg は地だけを持つ
+       余白ルール：00_bg は1024四方いっぱいの角のない正方形。前景は中央の800四方（四辺112）に収める
+       角丸・発光・透明度は持たない（OSごとの展開時、またはIcon Composerで付ける）
+       色は sonar_spectra_tokens.css のダーク値（bg / neon-b / neon-a / neon-c） -->
+  <g id="00_bg">
+    <rect x="0" y="0" width="1024" height="1024" fill="#07060f"/>
   </g>
-  <!-- ピーク（アンバー） -->
-  <circle cx="456" cy="330" r="46" fill="#ffb547"/>
+  <g id="01_ring">
+    <circle cx="512" cy="512" r="330" fill="none" stroke="#18e4ff" stroke-width="56"/>
+  </g>
+  <g id="02_wave">
+    <path d="M182 512 H330 L392 600 L456 330 L536 712 L604 420 L660 552 L700 512 H842" fill="none" stroke="#ff2bd6" stroke-width="60" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g id="03_peak">
+    <circle cx="456" cy="330" r="46" fill="#ffb547"/>
+  </g>
+    </g>
+  </g>
 </svg>
