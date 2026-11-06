@@ -81,9 +81,13 @@
     - 起動：`bun run tauri dev`で、Rust側のビルドを経てウィンドウが起動した。WebView2のリモートデバッグ経由で、`<html lang="ja" data-theme="dark">`・タイトル`sonar_spectra`・Vueのマウントを確かめた。`Ctrl+Shift+P`で部品ギャラリー（見出し「部品の状態」・47個のボタン）が開いた。メーター画面は、Phase 2以降の実装まで空である（想定どおり）。確認後、アプリと開発サーバーを止めた
     - 手順に書かれていない前提は、必要なかった（Bun・Rust・C++ Build Tools・WebView2は、この環境に入っている）。この環境にない状態からのセットアップ（Bun・Rustの導入など）は検証していない
     - 気づいた点（検証は通過）：①`tsconfig.node.tsbuildinfo`がGitで追跡されている（ビルドの副産物）。`.gitignore`に加えて追跡から外す価値がある。②`cargo test`の最後に、リンカーの出力の警告（`linker_messages`）が1件出る。clippyの`-D warnings`の対象外で、検査は通る
-- [ ] W1-11 【エージェント】`docs/brand/`の2ファイルが`specs/`のv2と一致する。マスターSVGのレイヤー構成がSPEC 6節の規則どおりで（最上位の`<g>`が`00_bg`・`01_ring`・`02_wave`・`03_peak`の順、`filter`・`mask`・`opacity`系の属性がない）、`00_bg`を隠した画像でも、16px・32pxで前景の形が読める
+- [x] W1-11 【エージェント】`docs/brand/`の2ファイルが`specs/`のv2と一致する。マスターSVGのレイヤー構成がSPEC 6節の規則どおりで（最上位の`<g>`が`00_bg`・`01_ring`・`02_wave`・`03_peak`の順、`filter`・`mask`・`opacity`系の属性がない）、`00_bg`を隠した画像でも、16px・32pxで前景の形が読める
   - 推奨: Sonnet・medium以上
   - 依存: T1-10
+  - 実施メモ（261106）：通過した。修正は不要だった
+    - 写しの一致：`docs/brand/brand.md`・`docs/brand/icon_master.svg`は、`specs/`のv2と`cmp`で差分がなかった
+    - レイヤー構成：最上位の`<g>`が、奥から`00_bg`・`01_ring`・`02_wave`・`03_peak`の順に4つ（前景は3つ）。`filter`・`mask`・`opacity`（`stroke-opacity`・`fill-opacity`を含む）・`<defs>`・`<use>`・`<image>`は使われていない。色は4色（`#07060f`・`#18e4ff`・`#ff2bd6`・`#ffb547`）だけで、v2の`tokens.css`のダークの値（`bg`・`neon-b`・`neon-a`・`neon-c`）と一致した
+    - 縮小での見え方：Edge（ヘッドレス）でマスターSVGを16px・32pxに縮め、画素を拡大して見た。`00_bg`を`display="none"`で隠した画像でも、輪（シアン）・波形（マゼンタ）・ピーク（アンバー）が読めた。32pxは波形の形も判別できた。16pxは波形の細部がぼやけるが、輪とマゼンタの線は判別できた（SPEC 9節の判断のとおり）。背景ありの画像も同様だった
 - [ ] W1-12 【エージェント】生成したアイコンがv2のマスターSVGから作られ、形式ごとの余白ルールが守られている。Windows向け（`.ico`・PNG・ファビコン）は余白を足さず角丸半径200で、図形の余白が四辺112/1024以上。`.icns`の中の各画像は、タイルが824/1024四方で中央にあり（四辺100/1024）、角丸半径185.4/1024。どちらも角が透明（1画素までのずれは許す）。`tauri.conf.json`の参照先がすべて存在し、ビルドした`sonar_spectra.exe`のアイコンが新しいものになっている
   - 推奨: Sonnet・high以上
   - 依存: T1-11
