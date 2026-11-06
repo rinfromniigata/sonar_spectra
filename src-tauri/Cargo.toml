@@ -31,3 +31,9 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+[target."cfg(windows)".dependencies]
+wasapi = "0.26"
+
+[target."cfg(windows)".dev-dependencies]
+windows-core = "0.62"

@@ -62,6 +62,12 @@ bun run check
 - `bun run check:unit`：単体テスト（vitest）
 - `bun run check:rust`：`cargo clippy`（警告もエラー扱い）と`cargo test`
 
+実機の出力デバイスを使うテスト（WASAPIのループバックの取得）は、CIのランナーに出力デバイスがないことがあるため、既定では実行しません。音声まわりを変えたときは、Windowsの手元で次のコマンドを実行してください。
+
+```sh
+cargo test --manifest-path src-tauri/Cargo.toml -- --ignored
+```
+
 ### 文言の決まり
 
 - UIの文字列は、すべて`src/i18n/locales/ja.ts`（原文の辞書）に置き、コンポーネントからは`src/i18n/use_t.ts`の`useT()`で引きます。`vue-i18n`の`useI18n`や`$t`は直接使いません（キーとプレースホルダを型で検査するため）

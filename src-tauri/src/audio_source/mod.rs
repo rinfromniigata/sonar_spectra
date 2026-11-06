@@ -4,7 +4,14 @@
 //! 取得方式（初版は WASAPI のループバック）の違いは `AudioSource` の実装に閉じ込める。
 //! Mac の取得方式や入力デバイスは、`AudioSource` の実装を足すだけで済むようにする。
 
+// 変換と状態の判定は取得方式によらないが、使うのは今のところ WASAPI の実装だけ
+#[cfg_attr(not(windows), allow(dead_code))]
+mod convert;
 mod ring_buffer;
+#[cfg_attr(not(windows), allow(dead_code))]
+mod state;
+#[cfg(windows)]
+mod wasapi_loopback;
 
 use std::fmt;
 use std::sync::Arc;
@@ -12,6 +19,8 @@ use std::sync::Arc;
 use serde::Serialize;
 
 pub use ring_buffer::{DEFAULT_RING_FRAMES, FrameReader, FrameSink, WindowInfo, frame_ring};
+#[cfg(windows)]
+pub use wasapi_loopback::WasapiLoopback;
 
 /// 出力デバイスの情報（出力系統のチップと、デバイスの選択肢に使う）
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
