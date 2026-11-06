@@ -1,5 +1,6 @@
 pub mod analysis;
 pub mod audio_source;
+pub mod frame_transport;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
