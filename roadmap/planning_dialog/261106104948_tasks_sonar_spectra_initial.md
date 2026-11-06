@@ -359,10 +359,16 @@ Phaseの推奨: Opus・high以上
       - 辞書の文言（`modules.loudness_unit`・`modules.loudness_peak`）は、Canvasに描くので、`RenderContext`に省略可能な`translate`を足し、`ModuleFrame`が自分の`t`を渡す形にした（描画のたびに引くので、言語の切り替えにも追従する）。渡されなければ「LOUD」と値だけを描く
     - `test_canvas.ts`の文字の記録に、色（`style`）とフォント（`font`）を足した。i18nの使用予定の一覧から`modules.loudness`・`modules.loudness_unit`・`modules.loudness_peak`を外した。`MeterScreen.test.ts`は、LOUDが加わったことに合わせて直した（枠の種類と並び、解析の一覧にラウドネスのIDが入ること）
     - 単体テストを、計算に17件、描画と定義に15件加えた（書式と「−∞」、バーの点灯と強調色の範囲、更新の間引き、文字の配置、ダーク／ライトの文字色、辞書を通す文言、辞書がないとき、無音・フレームなし）。実際の見た目（モックとの見比べ、文字の収まり、ライトでの読みやすさ）は、W3-3（コントラストの計算値）・W3-4（疑似ロケール）・W3-5（ユーザー）で確かめる。`bun run check`は終了コード0で通った
-- [ ] T3-6 【エージェント】走査線と周辺減光のオーバーレイを作る（`display.scanline`の既定値オンで表示。切り替えUIはPhase 4）
+- [x] T3-6 【エージェント】走査線と周辺減光のオーバーレイを作る（`display.scanline`の既定値オンで表示。切り替えUIはPhase 4）
   - 推奨: Sonnet・high以上
   - 依存: T2-14
   - 画面: S01
+  - 実施: Sonnet
+  - 実施メモ（261106）：`src/components/CrtOverlay.vue`を作り、`MeterScreen.vue`の最後（タイトル帯・格子・状態の表示の上）に重ねた。見た目はCSSだけで、描画ループには関わらない
+    - 見た目：モックの`.crt`と同じ。画面全体（`inset: 0`）に、走査線（横に細い線を3つ間隔で並べる）と周辺減光（中心から55%までは透明、端に向けて暗く）を重ねる。色は`--color-scanline`・`--color-vignette`のテーマ別トークン（ライトでは薄くなる）、寸法（線の間隔・太さ・減光が始まる位置）は`component_metrics.css`に`--scanline-gap`・`--scanline-width`・`--vignette-clear`として加えた。操作をさえぎらず（`pointer-events: none`）、読み上げからは外す（`aria-hidden`）。`z-index`はモックの7で、タイトル帯（5）・状態の表示（4）・今後の設定パネル（6）より上
+    - 表示の切り替え：`CrtOverlay`は`enabled`（既定`true`）、`MeterScreen`は`scanline`（既定`true`）を受け取る。設定の`display.scanline`につなぐのはT4-4（設定パネルのスイッチはT4-3）
+    - テスト：`CrtOverlay.test.ts`（既定で表示・`enabled: false`で出さない・スタイルの定義：全面に重ね操作をさえぎらないこと、`z-index`が7、色をトークンから取り寸法を部品の寸法から取ること）と、`MeterScreen.test.ts`（画面の最後に1つだけ重なる・`scanline: false`で出ない）を加えた。スタイルの定義は、`?raw`で単一ファイルコンポーネントと`component_metrics.css`を文字として読んで確かめる。そのため`vitest.config.ts`に、`component_metrics.css`だけをテストで読む設定（`css.include`）を足した
+    - 実際の見た目（モックとの見比べ、ダーク・ライトでの濃さ、メーターの上での負荷）は、W3-5（ユーザー）で確かめる。`bun run check`は終了コード0で通った
 - [ ] T3-7 【エージェント】開発用のギャラリーに、各モジュールの表示方式（スペクトラムの4方式、波形の履歴の色、位相の表示方式と点描、周波数別の定位のモーションブラーのオン／オフ）を並べる
   - 推奨: Sonnet・medium以上
   - 依存: T1-6, T2-11, T3-2, T3-3

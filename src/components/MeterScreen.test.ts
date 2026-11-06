@@ -20,8 +20,8 @@ vi.mock("../theme/canvas_colors", async (importOriginal) => ({
 import { i18n } from "../i18n";
 import MeterScreen from "./MeterScreen.vue";
 
-async function render(): Promise<string> {
-  const app = createSSRApp({ render: () => h(MeterScreen) });
+async function render(props: { scanline?: boolean } = {}): Promise<string> {
+  const app = createSSRApp({ render: () => h(MeterScreen, props) });
   app.use(i18n);
   return renderToString(app);
 }
@@ -45,6 +45,16 @@ describe("MeterScreen", () => {
     // 状態がまだ届いていないので、起動中として表示する
     expect(html).toContain("is-opening");
     expect(html).toContain("入力源を開いています");
+  });
+
+  it("走査線と周辺減光は、画面全体の最後（いちばん上）に重ねる。scanline が false なら出さない", async () => {
+    const html = await render();
+    const overlay = html.indexOf("status-overlay");
+    const crt = html.indexOf("crt-overlay");
+    expect(crt).toBeGreaterThan(overlay);
+    expect(html.indexOf("crt-overlay", crt + 1)).toBe(-1);
+
+    expect(await render({ scanline: false })).not.toContain("crt-overlay");
   });
 
   it("登録されたモジュール（レベル・波形・スペクトラム・位相2つ・スペクトログラム・LOUD）の既定のインスタンスを、格子の位置に置く", async () => {

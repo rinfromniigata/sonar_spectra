@@ -3,6 +3,8 @@
 // - 起動の順序：source-status を listen し、準備ができてから start_stream を呼ぶ（起動直後の Opening を取りこぼさない）
 // - 描画ループを provide し、格子の中の ModuleFrame が自分を登録する
 // - インスタンスは、レジストリに登録されたモジュールから既定の構成を作る（構成の保存と復元はストアを作る T4-2 で置き換える）
+// - 走査線と周辺減光（CrtOverlay）は画面全体に重ねる。表示するかは scanline（設定の display.scanline。既定でオン）で、
+//   設定につなぐのは T4-4
 // - タイトル帯のボタンと「設定」は、まだつながない（設定・全画面は Phase 4、レイアウト編集は Phase 5）
 import { onMounted, shallowRef } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
@@ -13,9 +15,12 @@ import { FrameClient, startFrameStream } from "../frame_client";
 import { moduleRegistry } from "../modules";
 import { provideRenderLoop } from "../render/use_render_loop";
 import { useSourceStatus } from "../source";
+import CrtOverlay from "./CrtOverlay.vue";
 import MeterGrid from "./MeterGrid.vue";
 import StatusOverlay from "./StatusOverlay.vue";
 import TitleBar from "./TitleBar.vue";
+
+withDefaults(defineProps<{ scanline?: boolean }>(), { scanline: true });
 
 const client = new FrameClient();
 const instances = shallowRef<Instance[]>(createDefaultInstances(moduleRegistry));
@@ -45,6 +50,7 @@ defineExpose({ client, channel: () => channel });
     <TitleBar :version="version" :source="source.event.value" />
     <MeterGrid class="grid" :instances="instances" mode="auto" :registry="moduleRegistry" />
     <StatusOverlay :source="source.event.value" />
+    <CrtOverlay :enabled="scanline" />
   </div>
 </template>
 

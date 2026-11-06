@@ -48,6 +48,11 @@
   --overlay-body-min: 11px;
   --overlay-opening-delay: 250ms; /* 切り替えが一瞬で終わるとき、スピナーがちらつかないように */
 
+  /* 走査線と周辺減光（モックの .crt）：線と線の間隔・線の太さ、周辺減光が始まる位置（中心から端までの割合） */
+  --scanline-gap: 2px;
+  --scanline-width: 1px;
+  --vignette-clear: 55%;
+
   /* モジュールの枠の見出し（枠の幅に合わせて縮み、この大きさより小さくしない） */
   --module-tag-min-size: 7px;
   --module-tag-fluid-size: 7cqi;
