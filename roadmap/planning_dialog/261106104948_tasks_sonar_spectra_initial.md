@@ -1,10 +1,12 @@
 # sonar_spectra 実装タスク（tasks）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v1.md`、`261105131844_imple_sonar_spectra_architecture.md`
-- 対になる検証：`261105131844_walk_sonar_spectra_initial.md`
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v2.md`、`261106104948_imple_sonar_spectra_architecture.md`
+- 対になる検証：`261106104948_walk_sonar_spectra_initial.md`
 - 進め方：Phase nの実装（Tn-\*）→ 検証（Wn-\*）→ 修正と再検証。Wnがすべて通過してからPhase n+1へ進む
 
 ## Phase 1: 基盤（雛形・トークン・i18n・検査・部品・アイコン）
+
+Phaseの推奨: Sonnet・high以上
 
 - [x] T1-1 【エージェント】create-tauri-app（Vue＋TypeScript、Bun）で雛形を作り、識別子`com.rinontech.sonar-spectra`・製品名・バージョン`0.1.0`・ウィンドウの最小幅960pxを設定する
   - 既存の`LICENSE`・`roadmap/`・`.gitignore`を残す。`.gitignore`には雛形の除外（`node_modules/`、`dist/`、`src-tauri/target/`）を追記する
@@ -88,6 +90,18 @@
   - 依存: T1-2, T1-5, T1-7
   - 実施メモ：追記した節は「開発版での確認」（部品ギャラリーの開き方、`bun run dev:pseudo`）、「確認と検査」（`bun run check`と各段、CIとの関係、文言の決まり、値の決まり）、「アイコンの生成」（`bun run icons`と、`docs/brand/`の写しを先に更新すること）、「リポジトリ構成」（`roadmap/`の各フォルダと`timeline.md`・`docs/brand/`の役割）。開発環境のBunに、版を`packageManager`で固定していることを書き足した
   - 実施メモ：記載したスクリプト名とファイルのパスが、すべて実在することを確かめた
+- [ ] T1-10 【エージェント】プランアセット v2の`brand.md`とマスターSVGを、`docs/brand/brand.md`・`docs/brand/icon_master.svg`へコピーし直す
+  - 推奨: Sonnet・medium以上
+  - 依存: T1-3
+  - change: `development/261106052155_change_icon_layer_structure.md`（以下T1-12まで同じ）
+- [ ] T1-11 【エージェント】`scripts/generate_icons.ts`を、形式ごとに角丸と余白を足す展開（imple 7節。Windows向けは1024四方のまま角丸半径200、macOSの`.icns`は824四方に縮めて角丸半径185.4）に改め、`bun run icons`でv2のマスターSVGからアイコン一式とファビコンを作り直す
+  - 推奨: Sonnet・high以上
+  - 依存: T1-7, T1-10
+  - `tauri icon`の入力とオプションは、インストール済みのバージョンのヘルプで確かめ直す
+  - レイヤーごとのSVGの書き出しと`AppIcon.icon`は、macOS対応まで作らない（SPEC 8節）
+- [ ] T1-12 【エージェント】`CONTRIBUTING.md`の「アイコンの生成」節を、形式ごとの展開に合わせて直す
+  - 推奨: Sonnet・medium以上
+  - 依存: T1-9, T1-11
 
 ## Phase 2: 音の取得から最初の表示まで（レベル・波形・状態表示）
 

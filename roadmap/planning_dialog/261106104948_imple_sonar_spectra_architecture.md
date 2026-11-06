@@ -1,8 +1,8 @@
 # sonar_spectra 実装設計（imple）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v1.md` と同版のデザインアセット
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v2.md` と同版のデザインアセット
 - 種別：Agentic Coding
-- 対になるドキュメント：`261105131844_tasks_sonar_spectra_initial.md`、`261105131844_walk_sonar_spectra_initial.md`
+- 対になるドキュメント：`261106104948_tasks_sonar_spectra_initial.md`、`261106104948_walk_sonar_spectra_initial.md`
 
 ## 1. 方針
 
@@ -44,9 +44,9 @@ sonar_spectra/
 │  │  ├─ frame_transport/       約60回/秒のまとめと、バイト列への符号化
 │  │  ├─ settings_store/        設定と構成のJSON
 │  │  └─ commands.rs            UI から呼ぶコマンド
-│  ├─ icons/                    マスターSVGから生成したアイコン一式（リポジトリに含める）
+│  ├─ icons/                    マスターSVGから形式ごとに展開したアイコン一式（リポジトリに含める。7節）
 │  └─ tauri.conf.json
-├─ scripts/                     i18n の自動検査、トークン直書きの検査
+├─ scripts/                     i18n の自動検査、トークン直書きの検査、アイコンの展開（generate_icons.ts）
 ├─ docs/
 │  ├─ brand/                    specs/ の brand.md とマスターSVGのコピー
 │  └─ images/                   README 用スクリーンショット
@@ -309,3 +309,16 @@ interface Palette { id: string; name: string; main: string; sub: string; accent:
 - tauri-actionでWindows x64のインストーラーだけをビルドする（SPEC 7節。macOSはスコープ外のため、`release.md`の「macOS Universal」はこのプロジェクトでは作らない）
 - 識別子：`com.rinontech.sonar-spectra`。バージョンは`package.json`・`tauri.conf.json`・`Cargo.toml`で同じ値（初回`0.1.0`）
 - コード署名なし。READMEにSmartScreenの警告と開き方を書く
+
+## 7. アイコンの展開
+
+プランアセット v2（`development/261106052155_change_icon_layer_structure.md`）で、マスターSVGはレイヤー構成（`00_bg`・`01_ring`・`02_wave`・`03_peak`）を持つ角のない正方形になった。角丸と余白はマスターに持たせず、展開するときに形式ごとに足す（SPEC 6節「アイコンの余白ルール」）。展開の方法は委任事項。
+
+- **入口**：`bun run icons`（`scripts/generate_icons.ts`）。`roadmap/specs/`の最新版のマスターSVGを入力にし、`docs/brand/icon_master.svg`がそれと一致しなければ止める（v1と同じ）
+- **中間のSVGを作ってから`tauri icon`に渡す**：マスターSVGを`<image>`や`<use>`で参照するのではなく、マスターの中身をそのまま入れ子にした一時的なSVGを、作業用のフォルダに形式ごとに作る。`tauri icon`は入力1つから全形式を作るため、形式ごとに別の出力先へ実行し、必要なファイルだけを`src-tauri/icons/`へ集める
+  - Windows用：1024四方のまま、角丸半径200の`clipPath`で切り抜く。余白は足さない。ここから`icon.ico`、Windows向けのPNG（`Square*Logo.png`・`StoreLogo.png`）、`bundle.icon`が参照するPNG（`32x32.png`・`128x128.png`・`128x128@2x.png`・`icon.png`・`64x64.png`）を取る
+  - macOSの従来形式用：マスターを824四方に縮めて中央に置き（四辺100）、角丸半径185.4で切り抜く。ここから`icon.icns`だけを取る。連続曲率の角丸への置き換えは、まず行わない（SPECで任意とされているため。必要になったら別の作業として扱う）
+  - `.icon`用（レイヤーごとのSVGの書き出し）：SPEC 8節のとおり、macOS対応まで作らない
+- **ファビコン**：`public/favicon.svg`はWindows用の中間SVG（角丸で切り抜いたもの）を置く。`public/favicon.ico`は`icon.ico`の写し
+- **切り抜きの書き方**：中間SVGでは`clipPath`だけを使う。マスターSVGの規則（`filter`・`mask`・`opacity`系を使わない）はマスターに対するもので、展開後のファイルには及ばないが、`clipPath`で足りるため使わない
+- **確かめ方**：展開した画像の画素から、角が透明であること、Windows向けは図形の外接矩形の余白が四辺112/1024以上、`.icns`の中の画像はタイルの外接矩形が四辺100/1024（1画素までのずれは許す）であることを測る
