@@ -90,10 +90,12 @@ Phaseの推奨: Sonnet・high以上
   - 依存: T1-2, T1-5, T1-7
   - 実施メモ：追記した節は「開発版での確認」（部品ギャラリーの開き方、`bun run dev:pseudo`）、「確認と検査」（`bun run check`と各段、CIとの関係、文言の決まり、値の決まり）、「アイコンの生成」（`bun run icons`と、`docs/brand/`の写しを先に更新すること）、「リポジトリ構成」（`roadmap/`の各フォルダと`timeline.md`・`docs/brand/`の役割）。開発環境のBunに、版を`packageManager`で固定していることを書き足した
   - 実施メモ：記載したスクリプト名とファイルのパスが、すべて実在することを確かめた
-- [ ] T1-10 【エージェント】プランアセット v2の`brand.md`とマスターSVGを、`docs/brand/brand.md`・`docs/brand/icon_master.svg`へコピーし直す
+- [x] T1-10 【エージェント】プランアセット v2の`brand.md`とマスターSVGを、`docs/brand/brand.md`・`docs/brand/icon_master.svg`へコピーし直す
   - 推奨: Sonnet・medium以上
   - 依存: T1-3
   - change: `development/261106052155_change_icon_layer_structure.md`（以下T1-12まで同じ）
+  - 実施：Sonnet
+  - 実施メモ：`specs/`のv2の`brand.md`・`icon_master.svg`を、`docs/brand/`の同名の写しへコピーし、`cmp`で差分がないことを確かめた。`src/theme/tokens.css`はv2の`tokens.css`と一致していて更新は不要だった。`bun run icons`はT1-11で実行する
 - [ ] T1-11 【エージェント】`scripts/generate_icons.ts`を、形式ごとに角丸と余白を足す展開（imple 7節。Windows向けは1024四方のまま角丸半径200、macOSの`.icns`は824四方に縮めて角丸半径185.4）に改め、`bun run icons`でv2のマスターSVGからアイコン一式とファビコンを作り直す
   - 推奨: Sonnet・high以上
   - 依存: T1-7, T1-10
