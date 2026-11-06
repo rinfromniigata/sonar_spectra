@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chipView, type DeviceInfo, type SourceStatus, type SourceStatusEvent } from "./source_status";
+import { chipView, overlayMode, type DeviceInfo, type SourceStatus, type SourceStatusEvent } from "./source_status";
 
 const DEVICE: DeviceInfo = { id: "id-1", name: "スピーカー (Realtek)", isDefault: true };
 const event = (status: SourceStatus, device: DeviceInfo | null = DEVICE): SourceStatusEvent => ({ status, device });
@@ -42,6 +42,19 @@ describe("chipView", () => {
 
   it("取得中なのにデバイスが分からないときは、デバイス名の欠けた文言を出さず「開いています」にする", () => {
     expect(chipView(event({ state: "live" }, null))).toEqual({ status: "live", messageKey: "status.opening", device: null });
+  });
+});
+
+describe("overlayMode", () => {
+  it("取得中は何も重ねず、無音・起動中・使えないを、それぞれの表示にする", () => {
+    expect(overlayMode(event({ state: "live" }))).toBe("none");
+    expect(overlayMode(event({ state: "silent" }))).toBe("silent");
+    expect(overlayMode(event({ state: "opening" }))).toBe("opening");
+    expect(overlayMode(event({ state: "unavailable", reason: "inUse" }, null))).toBe("unavailable");
+  });
+
+  it("まだ状態が届いていない起動直後は、起動中として扱う", () => {
+    expect(overlayMode(null)).toBe("opening");
   });
 });
 

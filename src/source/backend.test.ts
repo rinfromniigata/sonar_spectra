@@ -1,0 +1,24 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const invoke = vi.fn<(command: string, args?: unknown) => Promise<unknown>>();
+vi.mock("@tauri-apps/api/core", () => ({ invoke: (command: string, args?: unknown) => invoke(command, args) }));
+
+import { retrySource } from "./backend";
+
+describe("retrySource", () => {
+  // 何も返さない（beforeEach が関数を返すと、テスト後の後始末として呼ばれてしまう）
+  beforeEach(() => {
+    invoke.mockReset();
+  });
+
+  it("Rust の retry_source コマンドを、引数なしで呼ぶ", async () => {
+    invoke.mockResolvedValue(undefined);
+    await retrySource();
+    expect(invoke).toHaveBeenCalledWith("retry_source", undefined);
+  });
+
+  it("コマンドが失敗したら、その失敗を呼び出し元に返す", async () => {
+    invoke.mockRejectedValue(new Error("boom"));
+    await expect(retrySource()).rejects.toThrow("boom");
+  });
+});

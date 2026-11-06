@@ -259,11 +259,19 @@ Phaseの推奨: Opus・high以上
     - `useSourceStatus`は`ready`（listenの準備ができたら解決）を返す。T2-14では、これを待ってから`start_stream`を呼ぶ（T2-5の取り決め）
     - i18nの使用予定の一覧から、使い始めた10キー（`app.version`・`title_bar.*`の5つ・`source.chip_*`の3つ・`status.opening`）を外した。`status.opening`はT2-13の状態の表示でも使う
     - 単体テスト11件（`chipView`6・RustのJSONの形1・`TitleBar`のサーバー側レンダリング4。ロゴとバージョン、チップの文言と色、ボタンの読み上げ用の名前、押された状態、全画面中の名前の切り替え）を加えた。実際の見た目（高さの連動、モックとの見比べ）は、T2-14で組み立ててからW2-8で確かめる。`bun run check`は終了コード0で通った
-- [ ] T2-13 【エージェント】状態の表示（S01b 無音、S01c 入力源が使えない＋再試行、S01d 起動中・切り替え中）を作る
+- [x] T2-13 【エージェント】状態の表示（S01b 無音、S01c 入力源が使えない＋再試行、S01d 起動中・切り替え中）を作る
   - 推奨: Sonnet・high以上
   - 依存: T2-5, T2-12
   - 画面: S01b, S01c, S01d
   - S01cの「設定」ボタンは、設定パネルを作るPhase 4でつなぐ
+  - 実施: Sonnet
+  - 実施メモ（261106）：`src/components/StatusOverlay.vue`（状態の表示）、`src/source/backend.ts`（`retrySource`＝Rustの`retry_source`を呼ぶ）を作り、`src/source/source_status.ts`に`overlayMode`（状態から重ねる表示を決める）を足した
+    - `StatusOverlay`：入力源の状態（`source-status`）を受け、取得中は何も重ねない。無音（S01b）は、メーターを隠さず操作もさえぎらない細い表示（脈動する点と「音を待っています」）。起動中・切り替え中（S01d）は、スピナーと「入力源を開いています」。入力源が使えない（S01c）は、タイトル・説明と、「再試行」「設定」のボタン。状態がまだ届いていない起動直後は、起動中として表示する。タイトル帯の下から始まる（`--title-h`）。無音・起動中は`role="status"`、使えないときは`role="alert"`
+    - 「再試行」はコンポーネントの中で`retrySource()`を呼ぶ（結果は`source-status`で届き、`Opening`→`Live`または`Unavailable`と表示が移る）。「設定」は`openSettings`イベントで知らせるだけで、設定パネルをつなぐのはPhase 4。使えない理由（見つからない・切断・占有・その他）は、辞書の文言が1つのため、表示を分けない
+    - 委任の範囲で決めたもの：起動中・切り替え中の表示は、切り替えが一瞬で終わるとスピナーがちらつくため、CSSのアニメーションで250ms待ってから出す（`--overlay-opening-delay`）。動きを減らす設定のときは、待ちも脈動・回転もなくす。脈動の点・スピナーの大きさ、文字の下限は`component_metrics.css`に加えた
+    - i18nの使用予定の一覧から、使い始めた5キー（`common.retry`・`status.silent`・`status.unavailable_title`・`status.unavailable_body`・`status.open_settings`）を外した
+    - 単体テスト8件（`overlayMode`2・`retrySource`2・`StatusOverlay`のサーバー側レンダリング4）を加えた。表示の確認は、取得中は重ねないこと、無音・起動中・使えないそれぞれの文言・役割・ボタン（使えないときは4つの理由すべて）、状態がまだ届いていないとき。実際の見た目と、再生の停止・デバイスの無効化での遷移は、T2-14で組み立ててからW2-6（ユーザー）・W2-7で確かめる。`bun run check`は終了コード0で通った
+    - 気づいた点：テストで、`beforeEach`が関数（モック）を返すと、vitestがそれをテスト後の後始末として呼んでしまい、拒否するモックの設定が後始末で失敗として現れた。`beforeEach`は何も返さない形にした
 - [ ] T2-14 【エージェント】メーター画面（タイトル帯、格子、状態の表示）を`App.vue`に組み立て、起動と同時に取得を始める
   - 推奨: Opus・high以上
   - 依存: T2-8, T2-9, T2-10, T2-11, T2-12, T2-13

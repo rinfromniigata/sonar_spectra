@@ -29,6 +29,23 @@ export interface SourceStatusEvent {
   device: DeviceInfo | null;
 }
 
+/** 画面に重ねる状態の表示（S01b〜S01d）。none は何も重ねない */
+export type OverlayMode = "none" | "silent" | "opening" | "unavailable";
+
+/** 状態から、重ねる表示を決める。まだ状態が届いていない起動直後は、起動中（S01d）として扱う */
+export function overlayMode(event: SourceStatusEvent | null): OverlayMode {
+  switch (event?.status.state ?? "opening") {
+    case "live":
+      return "none";
+    case "silent":
+      return "silent";
+    case "opening":
+      return "opening";
+    case "unavailable":
+      return "unavailable";
+  }
+}
+
 /** チップの表示：点の色（`status`）と、文言の辞書キー（デバイス名が要るときは `device` も） */
 export interface ChipView {
   status: ChipStatus;

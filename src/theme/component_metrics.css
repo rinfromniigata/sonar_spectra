@@ -40,6 +40,14 @@
      メーターの格子や重ねる画面（ドロワー・状態の表示）も、この高さの下から始める */
   --title-h: clamp(20px, 3.4cqi, 44px);
 
+  /* 状態の表示（S01b〜S01d）：脈動の点・スピナーの大きさ、文字の下限、「開いています」を出すまでの待ち */
+  --pulse-size: 10px;
+  --spinner-size: 28px;
+  --spinner-border: 2px;
+  --overlay-title-min: 13px;
+  --overlay-body-min: 11px;
+  --overlay-opening-delay: 250ms; /* 切り替えが一瞬で終わるとき、スピナーがちらつかないように */
+
   /* モジュールの枠の見出し（枠の幅に合わせて縮み、この大きさより小さくしない） */
   --module-tag-min-size: 7px;
   --module-tag-fluid-size: 7cqi;

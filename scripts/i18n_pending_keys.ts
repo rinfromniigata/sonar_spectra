@@ -5,11 +5,6 @@
 export const PENDING_KEYS: readonly string[] = [
   // Phase 2：タイトル帯・状態の表示・最初のモジュール（T2-10〜T2-14）
   "app.window_title",
-  "common.retry",
-  "status.silent",
-  "status.unavailable_title",
-  "status.unavailable_body",
-  "status.open_settings",
 
   // Phase 3：既定のモジュール一式（T3-2〜T3-5）
   "modules.spectrum",
