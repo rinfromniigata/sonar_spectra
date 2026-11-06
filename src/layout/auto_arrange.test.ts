@@ -156,3 +156,82 @@ describe("autoArrange", () => {
     expect(autoArrange(list, ASPECTS.wide, shapeOf).rects.size).toBe(0);
   });
 });
+
+describe("autoArrange（広い条件）", () => {
+  const MANY_ASPECTS = [0.3, 9 / 16, 1.0, 1.0999, 1.1, 4 / 3, 1.4999, 1.5, 16 / 9, 2.3999, 2.4, 4];
+  const KINDS: ModuleKind[] = ["level", "wave", "spec", "stereo", "gram", "loud", "vu", "chroma", "centroid"];
+
+  /**
+   * W2-3 の観点（有効なものは全部・無効なものは置かない、12×8の中に重ならず1マス以上、同じ種類は隣、
+   * 縦長でレベルは右向き）に反するところを `failures` に集める。数が多いので、最後に1度だけ確かめる
+   */
+  function collectProblems(list: Instance[], aspect: number, failures: string[]): void {
+    const layout = autoArrange(list, aspect, shapeOf);
+    const label = () => `aspect=${aspect} [${list.map((i) => `${i.kind}${i.slot ? "(pan)" : ""}${i.enabled ? "" : "-off"}`).join(",")}]`;
+    for (const i of list) if (layout.rects.has(i.id) !== i.enabled) failures.push(`${label()} ${i.kind} placement`);
+    const placed = list.filter((i) => i.enabled && layout.rects.has(i.id)).map((i) => [i, layout.rects.get(i.id)!] as const);
+    const paint = new Uint8Array(GRID_COLUMNS * GRID_ROWS);
+    for (const [i, r] of placed) {
+      if (!r || !insideGrid(r)) {
+        failures.push(`${label()} ${i.kind} outside ${JSON.stringify(r)}`);
+        continue;
+      }
+      for (let y = r.r; y < r.r + r.rs; y++) for (let x = r.c; x < r.c + r.cs; x++) paint[(y - 1) * GRID_COLUMNS + (x - 1)]++;
+    }
+    if (paint.some((v) => v > 1)) failures.push(`${label()} overlap`);
+    for (const [i, r] of placed) {
+      const siblings = placed.filter(([o]) => o !== i && o.kind === i.kind && o.slot === i.slot);
+      if (siblings.length > 0 && !siblings.some(([, s]) => adjacent(r, s))) failures.push(`${label()} ${i.kind} not adjacent`);
+    }
+    for (const [i] of placed.filter(([x]) => x.kind === "level")) {
+      if (layout.directions.get(i.id) !== (layout.band === "tall" ? "right" : undefined)) failures.push(`${label()} level direction`);
+    }
+  }
+
+  function expectArranged(list: Instance[], aspect: number): void {
+    const failures: string[] = [];
+    collectProblems(list, aspect, failures);
+    expect(failures).toEqual([]);
+  }
+
+  it("種類（と2つ目の位相）の有効・無効の全組み合わせで、観点を満たす", () => {
+    const failures: string[] = [];
+    for (let mask = 0; mask < 1 << 10; mask++) {
+      const list = KINDS.map((kind, i) => inst(kind, { enabled: (mask & (1 << i)) !== 0 }));
+      list.push(inst("stereo", { slot: "pan", enabled: (mask & (1 << 9)) !== 0 }));
+      for (const aspect of MANY_ASPECTS) collectProblems(list, aspect, failures);
+    }
+    expect(failures.slice(0, 10)).toEqual([]);
+  });
+
+  it("同じ種類を0〜3個ずつ置いた多数の組み合わせ（領域よりモジュールが多いときを含む）で、観点を満たす", () => {
+    const failures: string[] = [];
+    let seed = 20261106;
+    const random = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    for (let t = 0; t < 300; t++) {
+      const list: Instance[] = [];
+      for (const kind of KINDS) {
+        const count = Math.floor(random() * 4);
+        for (let c = 0; c < count; c++) list.push(inst(kind, { enabled: random() < 0.85 }));
+      }
+      if (random() < 0.7) list.push(inst("stereo", { slot: "pan" }));
+      for (const aspect of MANY_ASPECTS) collectProblems(list, aspect, failures);
+    }
+    expect(failures.slice(0, 10)).toEqual([]);
+  });
+
+  it("標準の帯で、ラウドネスの領域（2×3マス）に6つが相乗りしても、未定義の位置を出さずに全部置く（W2-3 で見つけた不具合）", () => {
+    const list = [
+      inst("wave"),
+      inst("gram"), inst("gram"), inst("gram"),
+      inst("loud"),
+      inst("vu"), inst("vu"),
+      inst("chroma"), inst("chroma"), inst("chroma"),
+      inst("centroid"), inst("centroid"),
+      inst("stereo", { slot: "pan" }),
+    ];
+    const layout = autoArrange(list, 1.1, shapeOf);
+    expect([...layout.rects.values()].every((r) => r !== undefined)).toBe(true);
+    expectArranged(list, 1.1);
+  });
+});

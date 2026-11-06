@@ -69,7 +69,8 @@ function stripes(rect: GridRect, parts: number, horizontal: boolean): GridRect[]
 
 /**
  * 長方形を `parts` 個に分ける。見た目の長辺（`cellAspect` は1マスの幅÷高さ）に沿って並べて切り、
- * 足りなければ短辺に沿って、それでも足りなければ縦横に分ける。マスが足りなければ null
+ * 足りなければ短辺に沿って、それでも足りなければ縦横に分ける。
+ * マスが足りていれば（`parts` ≦ マス数）必ず `parts` 個を、重ならず全体を覆う形で返す。足りなければ null
  */
 export function splitRect(rect: GridRect, parts: number, cellAspect: number): GridRect[] | null {
   if (parts <= 1) return [rect];
@@ -79,21 +80,28 @@ export function splitRect(rect: GridRect, parts: number, cellAspect: number): Gr
   for (const horizontal of [first, second]) {
     if ((horizontal ? rect.cs : rect.rs) >= parts) return stripes(rect, parts, horizontal);
   }
-  // どちらの辺もマスが足りない：長辺で2つに分け、それぞれをさらに分ける
-  const horizontal = wide ? rect.cs >= 2 : rect.rs < 2;
-  const length = horizontal ? rect.cs : rect.rs;
-  const firstParts = Math.ceil(parts / 2);
-  const cut = Math.min(length - 1, Math.max(1, Math.round((length * firstParts) / parts)));
-  const [a, b] = horizontal
-    ? [
-        { c: rect.c, r: rect.r, cs: cut, rs: rect.rs },
-        { c: rect.c + cut, r: rect.r, cs: rect.cs - cut, rs: rect.rs },
-      ]
-    : [
-        { c: rect.c, r: rect.r, cs: rect.cs, rs: cut },
-        { c: rect.c, r: rect.r + cut, cs: rect.cs, rs: rect.rs - cut },
-      ];
-  const left = splitRect(a, firstParts, cellAspect);
-  const right = splitRect(b, parts - firstParts, cellAspect);
-  return left && right ? [...left, ...right] : null;
+  // どちらの辺もマスが足りない：長辺に沿って bands 本の帯に分け、それぞれの帯を短辺に沿ってさらに分ける。
+  // 帯1本に置けるのは短辺のマス数までなので、bands = ⌈parts ÷ 短辺のマス数⌉ 本あれば足りる。
+  // マスが足りていれば bands は長辺のマス数以下で、帯ごとの数も短辺のマス数以下になる
+  // 並びは蛇行の順（帯ごとに向きを折り返す）にして、続く2つが必ず辺を接するようにする
+  // （同じ種類をまとめて渡せば、同じ種類どうしが隣り合う）
+  const shortLength = wide ? rect.rs : rect.cs;
+  const bands = Math.ceil(parts / shortLength);
+  const counts = evenSizes(parts, bands);
+  return stripes(rect, bands, wide).flatMap((band, i) => {
+    const pieces = stripes(band, counts[i], !wide);
+    return i % 2 === 0 ? pieces : pieces.reverse();
+  });
+}
+
+/** 長方形を2つに分ける切り方（2マス以上ある向きごと）。`horizontal` は横に並べて切るか */
+export function halvings(rect: GridRect): { horizontal: boolean; parts: [GridRect, GridRect] }[] {
+  const result: { horizontal: boolean; parts: [GridRect, GridRect] }[] = [];
+  for (const horizontal of [true, false]) {
+    if ((horizontal ? rect.cs : rect.rs) >= 2) {
+      const [a, b] = stripes(rect, 2, horizontal);
+      result.push({ horizontal, parts: [a, b] });
+    }
+  }
+  return result;
 }

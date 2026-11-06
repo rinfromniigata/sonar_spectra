@@ -54,3 +54,34 @@ describe("splitRect", () => {
     expect(splitRect({ c: 1, r: 1, cs: 1, rs: 1 }, 1, 1)).toEqual([{ c: 1, r: 1, cs: 1, rs: 1 }]);
   });
 });
+
+describe("splitRect（全通り）", () => {
+  it("12×8に収まるすべての大きさを、マス数以下のすべての数に分けられ、重ならず全体を覆い、続く2つは隣り合う", () => {
+    // 数が多いので、食い違いを集めて最後に1度だけ確かめる。重なりと覆い方は、マスを塗って数える
+    const failures: string[] = [];
+    for (let cs = 1; cs <= 12; cs++) {
+      for (let rs = 1; rs <= 8; rs++) {
+        const rect = { c: 1, r: 1, cs, rs };
+        for (const cellAspect of [0.5, 1, 2]) {
+          if (splitRect(rect, cs * rs + 1, cellAspect) !== null) failures.push(`${cs}x${rs}: too many parts accepted`);
+          for (let parts = 1; parts <= cs * rs; parts++) {
+            const result = splitRect(rect, parts, cellAspect);
+            const label = `${cs}x${rs} parts=${parts} aspect=${cellAspect}`;
+            if (!result || result.length !== parts) {
+              failures.push(`${label}: got ${result?.length ?? "null"}`);
+              continue;
+            }
+            const paint = new Uint8Array(cs * rs);
+            result.forEach((p, i) => {
+              if (p.cs < 1 || p.rs < 1 || p.c < 1 || p.r < 1 || p.c + p.cs - 1 > cs || p.r + p.rs - 1 > rs) failures.push(`${label}: #${i} outside`);
+              for (let y = p.r; y < p.r + p.rs; y++) for (let x = p.c; x < p.c + p.cs; x++) paint[(y - 1) * cs + (x - 1)]++;
+              if (i > 0 && !adjacent(result[i - 1], p)) failures.push(`${label}: #${i - 1} and #${i} not adjacent`);
+            });
+            if (paint.some((v) => v !== 1)) failures.push(`${label}: overlap or gap`);
+          }
+        }
+      }
+    }
+    expect(failures.slice(0, 10)).toEqual([]);
+  });
+});

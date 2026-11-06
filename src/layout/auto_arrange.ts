@@ -10,7 +10,7 @@
 import type { GridRect, Instance } from "../config/types";
 import type { Direction, ModuleKind, Shape } from "../modules/options";
 import { moduleRegistry } from "../modules/registry";
-import { FULL_GRID, GRID_COLUMNS, GRID_ROWS, cellCount, splitRect, unionIfRect } from "./grid";
+import { FULL_GRID, GRID_COLUMNS, GRID_ROWS, adjacent, cellCount, halvings, splitRect, unionIfRect } from "./grid";
 import { AREA_KEYS, TEMPLATES, bandFor, type AreaKey, type Band } from "./templates";
 
 export interface AutoLayout {
@@ -51,6 +51,91 @@ function mergeEmptyPair(empty: GridRect[]): boolean {
     }
   }
   return false;
+}
+
+/** 同じ種類として隣に並べる組か（種類と、専用の位置の有無が同じ） */
+function sameGroup(a: Instance, b: Instance): boolean {
+  return a.kind === b.kind && a.slot === b.slot;
+}
+
+/** 相乗りの並びを、同じ種類どうしが続くようにまとめる（種類の順は、最初に出てきた順） */
+function clusterBySameGroup(members: Instance[]): Instance[] {
+  const clusters: Instance[][] = [];
+  for (const member of members) {
+    const cluster = clusters.find((c) => sameGroup(c[0], member));
+    if (cluster) cluster.push(member);
+    else clusters.push([member]);
+  }
+  return clusters.flat();
+}
+
+/** スコアを先頭から比べる（辞書式）。a が良ければ正、同じなら 0 */
+function compareScores(a: number[], b: number[]): number {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i] - b[i];
+  }
+  return 0;
+}
+
+/** 組の全員が、組のほかのだれかと辺を接しているか（1つだけなら真） */
+function groupConnected(ids: string[], rects: Map<string, GridRect>): boolean {
+  if (ids.length < 2) return true;
+  return ids.every((id) => ids.some((other) => other !== id && adjacent(rects.get(id)!, rects.get(other)!)));
+}
+
+/**
+ * 領域に入りきらなかったインスタンスを置く。置き場所の候補は、どのモジュールにも吸収されずに残った空き領域（`free`。
+ * そのまま使う）と、置いてある位置（2マス以上）を半分に分けたもの。全通りから、次の順で良いものを選ぶ：
+ * 新しいインスタンスが同じ種類に接する → 分けた側の種類の「隣り合い」を壊さない → 空き領域を使う →
+ * 見た目の長辺で切る → 大きい位置。置き場所がなければ false
+ */
+function placeOverflow(
+  instance: Instance,
+  rects: Map<string, GridRect>,
+  free: GridRect[],
+  byId: Map<string, Instance>,
+  cellAspect: number,
+): boolean {
+  const placed = [...rects.entries()];
+  const groupOf = (member: Instance) => placed.filter(([id]) => sameGroup(byId.get(id)!, member)).map(([id]) => id);
+  const siblingIds = groupOf(instance);
+  const touchesSibling = (given: GridRect, trial: Map<string, GridRect>) =>
+    siblingIds.length === 0 || siblingIds.some((id) => adjacent(given, trial.get(id)!));
+  let best: { score: number[]; targetId: string | null; freeIndex: number; kept: GridRect | null; given: GridRect } | null = null;
+
+  free.forEach((area, freeIndex) => {
+    const score = [touchesSibling(area, rects) ? 1 : 0, 1, 1, 1, cellCount(area)];
+    if (!best || compareScores(score, best.score) > 0) best = { score, targetId: null, freeIndex, kept: null, given: area };
+  });
+
+  for (const [targetId, target] of placed) {
+    if (cellCount(target) < 2) continue;
+    const targetMember = byId.get(targetId)!;
+    const targetGroup = sameGroup(targetMember, instance) ? [...groupOf(targetMember), instance.id] : groupOf(targetMember);
+    const wasConnected = groupConnected(groupOf(targetMember), rects);
+    const longIsHorizontal = target.cs * cellAspect >= target.rs;
+    for (const { horizontal, parts } of halvings(target)) {
+      for (const give of [0, 1] as const) {
+        const given = parts[give];
+        const kept = parts[1 - give];
+        const trial = new Map(rects).set(targetId, kept).set(instance.id, given);
+        const score = [
+          touchesSibling(given, trial) ? 1 : 0,
+          !wasConnected || groupConnected(targetGroup, trial) ? 1 : 0,
+          0,
+          horizontal === longIsHorizontal ? 1 : 0,
+          cellCount(target),
+        ];
+        if (!best || compareScores(score, best.score) > 0) best = { score, targetId, freeIndex: -1, kept, given };
+      }
+    }
+  }
+  const chosen = best as { targetId: string | null; freeIndex: number; kept: GridRect | null; given: GridRect } | null;
+  if (!chosen) return false;
+  if (chosen.targetId !== null && chosen.kept) rects.set(chosen.targetId, chosen.kept);
+  else free.splice(chosen.freeIndex, 1);
+  rects.set(instance.id, chosen.given);
+  return true;
 }
 
 /** 縦長の帯でのレベルの向き：縦の流れを横に倒す */
@@ -113,26 +198,20 @@ export function autoArrange(
     else groups.push({ key: null, rect: FULL_GRID, members: [instance] });
   }
 
-  // 領域を、相乗りする数に分ける。マスが足りない分は、あとで最も大きい位置を半分にして置く
+  // 領域を、相乗りする数に分ける。マスが足りない分は、あとでほかの位置を半分にして置く
   const rects = new Map<string, GridRect>();
   const overflow: Instance[] = [];
   for (const group of groups) {
-    const parts = splitRect(group.rect, group.members.length, cellAspect);
-    if (parts) {
-      group.members.forEach((member, i) => rects.set(member.id, parts[i]));
-    } else {
-      const fit = Math.max(1, Math.min(group.members.length, cellCount(group.rect)));
-      const partial = splitRect(group.rect, fit, cellAspect) ?? [group.rect];
-      group.members.slice(0, fit).forEach((member, i) => rects.set(member.id, partial[i]));
-      overflow.push(...group.members.slice(fit));
-    }
+    // 同じ種類どうしを続けて並べる（splitRect は続く2つを必ず隣り合わせる）
+    group.members = clusterBySameGroup(group.members);
+    // マス数までは必ず分けられる（splitRect）。返った数だけ置き、残りはあふれた分にする
+    const parts = splitRect(group.rect, Math.min(group.members.length, cellCount(group.rect)), cellAspect) ?? [group.rect];
+    group.members.slice(0, parts.length).forEach((member, i) => rects.set(member.id, parts[i]));
+    overflow.push(...group.members.slice(parts.length));
   }
+  const byId = new Map(enabled.map((i) => [i.id, i]));
   for (const instance of overflow) {
-    const largest = [...rects.entries()].sort((a, b) => cellCount(b[1]) - cellCount(a[1]))[0];
-    if (!largest || cellCount(largest[1]) < 2) break; // 96マスより多いときだけ。置けない分は置かない
-    const [kept, given] = splitRect(largest[1], 2, cellAspect)!;
-    rects.set(largest[0], kept);
-    rects.set(instance.id, given);
+    if (!placeOverflow(instance, rects, empty, byId, cellAspect)) break; // 96マスより多いときだけ。置けない分は置かない
   }
 
   // 5. 縦長の帯ではレベルを横向きにする
