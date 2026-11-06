@@ -176,9 +176,16 @@ Phaseの推奨: Opus・high以上
     - `select_output_device`は選んだデバイスで、`retry_source`は今の選択で、入力源を開き直す。結果は`source-status`で届く。一時停止と有効なセクションは、送出を始め直しても引き継ぐ。選んだデバイスの保存は、`settings_store`を作るときに扱う（今はメモリ上だけ）
     - Windows以外でもアプリを組み立てられるよう、常に「使えない」を返す`UnsupportedSource`を足し、OSごとの既定の入力源を`audio_source::default_source`で選ぶようにした
     - 単体テスト8件（エンジン7・`UnsupportedSource`1）を加えた。実機の出力デバイスでエンジン越しにフレームが届き、`Opening`→`Live`が通知され、デバイスを選べることを確かめるテスト1件を`#[ignore]`で加え、手元で`-- --ignored`を付けて実行して通った（既存の3件も通った）。`bun run check`は終了コード0で通った
-- [ ] T2-6 【エージェント】受信（`frame_client`）を作る。バイト列を解析結果の型に戻し、最新の値と、波形・スペクトログラム用の履歴を保持する
+- [x] T2-6 【エージェント】受信（`frame_client`）を作る。バイト列を解析結果の型に戻し、最新の値と、波形・スペクトログラム用の履歴を保持する
   - 推奨: Opus・high以上
   - 依存: T2-4
+  - 実施: Opus
+  - 実施メモ（261106）：`src/frame_client/`に、`format.ts`（形式の定数と`decodeFrame`）・`sections.ts`（セクションIDとペイロードの読み方、`readLevel`・`readWaveform`）・`history.ts`（`RowHistory`）・`client.ts`（`FrameClient`）・`stream.ts`（`startFrameStream`）・`index.ts`を作った。`Channel`のAPIは、インストールした`@tauri-apps/api` 2.12.4の型定義で確かめた
+    - 復元：ペイロードが4バイト境界にそろっていて環境がリトルエンディアンなら、受け取ったバッファの`Float32Array`のビューにし（コピーしない）、そろっていなければ`DataView`で読んでコピーする（T2-4の実施メモの方針）。版の食い違い・短すぎ・magicの違い・長さが4の倍数でないものは受け付けない。知らないsection_idもそのまま入れ、使う側が無視する
+    - `FrameClient`：最後に使えたフレームを`latest`に持ち、`FLAG_STALE`でないフレームの波形の要約（5値）を`histories.wave`に積む（4096行、約68秒分）。受信の状況（使えた数、受け付けなかった数、seqの飛びから数えた取りこぼし、食い違った版）を`stats`に持つ。seqが大きく戻ったときは、送出の始め直しとみなして取りこぼしに数えない
+    - `RowHistory`は幅を決めて作る汎用の行の履歴で、スペクトログラムの履歴にもそのまま使える。ただし、スペクトラムのセクションはまだない（T3-1で足す）ため、`histories`へのスペクトログラムの履歴（`gram`）の追加と積み込みは、T3-4で行う（T3-4に注記した）
+    - `startFrameStream`は、受け口を設定した`Channel`を作って`start_stream`に渡す薄い関数。呼ぶのはT2-14（起動と同時に取得を始める）
+    - 単体テスト17件（復元7・履歴4・受信6）を加えた。復元のテストには、Rust側の符号化のテストと同じバイト列を使った。`bun run check`は終了コード0で通った
 - [ ] T2-7 【エージェント】モジュールの共通部分を作る。`ModuleDefinition`・`ModuleRenderer`、レジストリ、既定のインスタンスをレジストリから作る仕組み、`ModuleFrame`（見出し、流れる方向に合わせて座標系と文字を枠ごと回す）、標準の配色（マゼンタ主・シアン主・アンバー主）とトークンから読む`canvas_colors`
   - 推奨: Opus・high以上
   - 依存: T1-3, T1-4, T2-6
@@ -230,6 +237,7 @@ Phaseの推奨: Opus・high以上
   - 推奨: Sonnet・high以上
   - 依存: T2-7, T3-1
   - 画面: S01
+  - 受信側で、スペクトラムのセクションを`FrameClient`の`histories`のスペクトログラムの履歴（`RowHistory`）に積む部分も、この項目で足す（T2-6の実施メモ）
 - [ ] T3-5 【エージェント】ラウドネス（表示名LOUD）のモジュールを作る。ライトテーマでは数値の文字を`--color-text`にする（SPEC 9節）
   - 推奨: Sonnet・high以上
   - 依存: T2-7, T3-1
