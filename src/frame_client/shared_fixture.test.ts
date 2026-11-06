@@ -5,7 +5,37 @@ import { describe, expect, it } from "vitest";
 import fixture from "../../src-tauri/src/frame_transport/fixtures/frame_format_v1.json";
 import { FrameClient } from "./client";
 import { FLAG_STALE, FORMAT_VERSION, decodeFrame, type AnalysisFrame } from "./format";
-import { LEVEL_LEN, SectionId, WAVE_LEN, WAVE_SUMMARY_LEN, readLevel, readWaveform } from "./sections";
+import {
+  LEVEL_LEN,
+  LOUDNESS_LEN,
+  PAN_BANDS,
+  PAN_MAX_HZ,
+  PAN_MIN_HZ,
+  SPECTRUM_BANDS,
+  SPECTRUM_LEN,
+  SPECTRUM_MAX_HZ,
+  SPECTRUM_MIN_HZ,
+  STEREO_LEN,
+  SectionId,
+  WAVE_LEN,
+  WAVE_SUMMARY_LEN,
+  readLevel,
+  readLoudness,
+  readSpectrum,
+  readStereo,
+  readWaveform,
+} from "./sections";
+
+/** 対数の帯域のうち、周波数 hz を含むもの */
+function bandOf(hz: number, count: number, minHz: number, maxHz: number): number {
+  return Math.floor((Math.log(hz / minHz) / Math.log(maxHz / minHz)) * count);
+}
+
+function loudest(values: Float32Array): number {
+  let best = 0;
+  for (let i = 1; i < values.length; i++) if (values[i] > values[best]) best = i;
+  return best;
+}
 
 function fromHex(hex: string): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(hex.length / 2);
@@ -49,9 +79,61 @@ describe("共有のテスト用データ（受信側）", () => {
   it("両側の対応表がそろっている（セクションIDとペイロードの長さ）", () => {
     expect(sectionValues(SectionId.Level)).toHaveLength(LEVEL_LEN);
     expect(sectionValues(SectionId.Waveform)).toHaveLength(WAVE_LEN);
+    expect(sectionValues(SectionId.Spectrum)).toHaveLength(SPECTRUM_LEN);
+    expect(sectionValues(SectionId.Stereo)).toHaveLength(STEREO_LEN);
+    expect(sectionValues(SectionId.Loudness)).toHaveLength(LOUDNESS_LEN);
     const decoded = decodeOk(fromHex(analysisFrame.bytes_hex));
     expect(readLevel(decoded)).not.toBeNull();
     expect(readWaveform(decoded)).not.toBeNull();
+    expect(readSpectrum(decoded)).not.toBeNull();
+    expect(readStereo(decoded)).not.toBeNull();
+    expect(readLoudness(decoded)).not.toBeNull();
+  });
+
+  // テスト用データの信号：L に 1 kHz・振幅 0.5、R に 3 kHz・振幅 0.25 の正弦波
+  it("スペクトラム：山が 1 kHz の帯域に来る", () => {
+    const spectrum = readSpectrum(decodeOk(fromHex(analysisFrame.bytes_hex)))!;
+    expect(spectrum.bands).toHaveLength(SPECTRUM_BANDS);
+    expect(loudest(spectrum.bands)).toBe(bandOf(1_000, SPECTRUM_BANDS, SPECTRUM_MIN_HZ, SPECTRUM_MAX_HZ));
+  });
+
+  it("位相：並びどおりに読め、1 kHz は左、3 kHz は右に定位する", () => {
+    const stereo = readStereo(decodeOk(fromHex(analysisFrame.bytes_hex)))!;
+    const values = sectionValues(SectionId.Stereo).map(Math.fround);
+    expect(stereo.correlation).toBe(values[0]);
+    expect(Array.from(stereo.x)).toEqual(values.slice(1, 257));
+    expect(Array.from(stereo.y)).toEqual(values.slice(257, 513));
+    expect(stereo.pan).toHaveLength(PAN_BANDS);
+    expect(stereo.panLevel).toHaveLength(PAN_BANDS);
+
+    const band = (hz: number) => bandOf(hz, PAN_BANDS, PAN_MIN_HZ, PAN_MAX_HZ);
+    const nearest = (hz: number) => [band(hz) - 1, band(hz), band(hz) + 1].reduce((a, b) => (stereo.panLevel[b] > stereo.panLevel[a] ? b : a));
+    expect(stereo.pan[nearest(1_000)]).toBeCloseTo(-1, 3);
+    expect(stereo.pan[nearest(3_000)]).toBeCloseTo(1, 3);
+  });
+
+  it("長さが対応表と合わないセクションは読まない", () => {
+    const frame: AnalysisFrame = {
+      seq: 0,
+      sampleRate: 48_000,
+      flags: 0,
+      stale: false,
+      sections: new Map([
+        [SectionId.Spectrum, new Float32Array(SPECTRUM_LEN - 1)],
+        [SectionId.Stereo, new Float32Array(STEREO_LEN + 1)],
+        [SectionId.Loudness, new Float32Array(LOUDNESS_LEN - 1)],
+      ]),
+    };
+    expect(readSpectrum(frame)).toBeNull();
+    expect(readStereo(frame)).toBeNull();
+    expect(readLoudness(frame)).toBeNull();
+  });
+
+  it("ラウドネス：値は dB で、ピークは L の振幅 0.5（約 −6 dBFS）", () => {
+    const loudness = readLoudness(decodeOk(fromHex(analysisFrame.bytes_hex)))!;
+    const values = sectionValues(SectionId.Loudness).map(Math.fround);
+    expect([loudness.momentary, loudness.shortTerm, loudness.peak]).toEqual(values);
+    expect(loudness.peak).toBeCloseTo(20 * Math.log10(0.5), 2);
   });
 
   it("4バイト境界にそろったセクション（レベル）はビュー、そろっていないセクション（波形）はコピーで読み、どちらも同じ値になる", () => {

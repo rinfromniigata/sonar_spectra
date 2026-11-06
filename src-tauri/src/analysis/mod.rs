@@ -8,15 +8,31 @@
 //! 1. 有効な解析のどれかが FFT を使うなら、`AnalysisContext` で FFT を1度だけ計算する
 //! 2. 有効な解析を登録順に回し、それぞれ自分のセクションを `SectionWriter` に書き出す
 
+mod bands;
 mod context;
 mod level;
+mod loudness;
 mod section;
+mod spectrum;
+mod stereo;
 mod waveform;
 mod window;
 
+pub use bands::LogBands;
 pub use context::{AnalysisContext, fft_size_for};
 pub use level::{LEVEL_LEN, LevelAnalyzer};
+pub use loudness::{
+    LOUDNESS_FLOOR_DB, LOUDNESS_LEN, LoudnessAnalyzer, MOMENTARY_SECONDS, SHORT_TERM_SECONDS,
+};
 pub use section::{SectionId, SectionWriter};
+pub use spectrum::{
+    SPECTRUM_BANDS, SPECTRUM_LEN, SPECTRUM_MAX_HZ, SPECTRUM_MIN_HZ, SpectrumAnalyzer,
+};
+pub use stereo::{
+    CORRELATION_SECONDS, LISSAJOUS_POINTS, LISSAJOUS_SECONDS, PAN_BANDS, PAN_MAX_HZ, PAN_MIN_HZ,
+    STEREO_CORRELATION, STEREO_LEN, STEREO_LISSAJOUS_X, STEREO_LISSAJOUS_Y, STEREO_PAN,
+    STEREO_PAN_LEVEL, StereoAnalyzer,
+};
 pub use waveform::{
     BAND_HIGH_MAX_HZ, BAND_LOW_MAX_HZ, BAND_MID_MAX_HZ, WAVE_LEN, WAVE_NOW_POINTS,
     WAVE_NOW_SECONDS, WAVE_SUMMARY_LEN, WaveformAnalyzer,
@@ -38,6 +54,10 @@ pub trait Analyzer: Send {
         0
     }
 
+    /// 状態を捨てる。止めていた解析を有効にし直したときに呼ばれる（止めていた間のサンプルは数えていないため）。
+    /// 状態を持たない解析は何もしない
+    fn reset(&mut self) {}
+
     /// 最新のサンプル窓を受けて、自分のセクションを書き出す
     fn process(&mut self, window: &StereoWindow, ctx: &AnalysisContext, out: &mut SectionWriter);
 }
@@ -47,6 +67,9 @@ pub fn default_analyzers() -> Vec<Box<dyn Analyzer>> {
     vec![
         Box::new(LevelAnalyzer::new()),
         Box::new(WaveformAnalyzer::new()),
+        Box::new(SpectrumAnalyzer::new()),
+        Box::new(StereoAnalyzer::new()),
+        Box::new(LoudnessAnalyzer::new()),
     ]
 }
 
@@ -75,11 +98,15 @@ impl Pipeline {
     }
 
     /// 有効にするセクションを、UI から届いた値の一覧で指定する（`set_active_sections`）。
-    /// 一覧にない解析は止める。知らない値は無視する
+    /// 一覧にない解析は止める。知らない値は無視する。止めていた解析を有効にし直すときは、その状態を捨てる
     pub fn set_active_sections(&mut self, ids: &[u8]) {
         let wanted: Vec<SectionId> = ids.iter().filter_map(|v| SectionId::from_u8(*v)).collect();
-        for (analyzer, active) in self.analyzers.iter().zip(self.active.iter_mut()) {
-            *active = wanted.contains(&analyzer.id());
+        for (analyzer, active) in self.analyzers.iter_mut().zip(self.active.iter_mut()) {
+            let next = wanted.contains(&analyzer.id());
+            if next && !*active {
+                analyzer.reset();
+            }
+            *active = next;
         }
     }
 
@@ -208,9 +235,48 @@ mod tests {
         pipeline.process(&window_for(&pipeline), &mut out);
 
         let ids: Vec<_> = out.sections().map(|(id, _)| id).collect();
-        assert_eq!(ids, [SectionId::Level, SectionId::Waveform]);
+        assert_eq!(ids, SectionId::ALL);
         assert_eq!(out.section(SectionId::Level).unwrap().len(), LEVEL_LEN);
         assert_eq!(out.section(SectionId::Waveform).unwrap().len(), WAVE_LEN);
+        assert_eq!(
+            out.section(SectionId::Spectrum).unwrap().len(),
+            SPECTRUM_LEN
+        );
+        assert_eq!(out.section(SectionId::Stereo).unwrap().len(), STEREO_LEN);
+        assert_eq!(
+            out.section(SectionId::Loudness).unwrap().len(),
+            LOUDNESS_LEN
+        );
+    }
+
+    /// `reset` が呼ばれた回数を数える解析
+    struct CountResets(std::sync::Arc<std::sync::atomic::AtomicUsize>);
+
+    impl Analyzer for CountResets {
+        fn id(&self) -> SectionId {
+            SectionId::Loudness
+        }
+        fn reset(&mut self) {
+            self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        }
+        fn process(&mut self, _: &StereoWindow, _: &AnalysisContext, _: &mut SectionWriter) {}
+    }
+
+    #[test]
+    fn reactivated_analyzers_are_reset_once() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let resets = std::sync::Arc::new(AtomicUsize::new(0));
+        let mut pipeline = Pipeline::new(vec![Box::new(CountResets(resets.clone()))]);
+        let id = SectionId::Loudness.as_u8();
+
+        // 有効のまま指定し直しても呼ばれない
+        pipeline.set_active_sections(&[id]);
+        assert_eq!(resets.load(Ordering::SeqCst), 0);
+        // 止めてから有効にし直すと1度だけ呼ばれる
+        pipeline.set_active_sections(&[]);
+        pipeline.set_active_sections(&[id]);
+        pipeline.set_active_sections(&[id]);
+        assert_eq!(resets.load(Ordering::SeqCst), 1);
     }
 
     #[test]
@@ -223,7 +289,7 @@ mod tests {
         pipeline.process(&window_for(&pipeline), &mut out);
         let ids: Vec<_> = out.sections().map(|(id, _)| id).collect();
         assert_eq!(ids, [SectionId::Level]);
-        // FFT を使う解析がないので、FFT は計算しない
+        // FFT を使う解析がないので、FFT は計算しない（ラウドネスも FFT を使わない）
         assert!(!pipeline.ctx.is_ready());
 
         pipeline.set_active_sections(&[]);
@@ -234,10 +300,13 @@ mod tests {
     #[test]
     fn window_frames_cover_the_fft_only_when_needed() {
         let mut pipeline = Pipeline::default();
-        assert_eq!(pipeline.window_frames(RATE), 4_800); // レベルの約0.1秒 > FFT の 2048
+        assert_eq!(pipeline.window_frames(RATE), 4_800); // レベル・相関・ラウドネスの約0.1秒 > FFT の 2048
         assert_eq!(pipeline.window_frames(192_000), 19_200);
 
         pipeline.set_active_sections(&[SectionId::Waveform.as_u8()]);
+        assert_eq!(pipeline.window_frames(RATE), 2_048);
+
+        pipeline.set_active_sections(&[SectionId::Spectrum.as_u8()]);
         assert_eq!(pipeline.window_frames(RATE), 2_048);
 
         pipeline.set_active_sections(&[]);

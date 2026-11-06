@@ -214,7 +214,7 @@ fn run(shared: &Shared, mut ticker: Ticker, mut output: impl FnMut(Vec<u8>)) {
 mod tests {
     use super::format::{DecodedFrame, decode};
     use super::*;
-    use crate::analysis::{LEVEL_LEN, SectionId, WAVE_LEN};
+    use crate::analysis::{LEVEL_LEN, LOUDNESS_LEN, SPECTRUM_LEN, STEREO_LEN, SectionId, WAVE_LEN};
     use crate::audio_source::{FrameSink, frame_ring};
     use std::sync::mpsc;
 
@@ -256,9 +256,13 @@ mod tests {
         assert_eq!(first.header.flags, 0);
         assert_eq!(first.header.sample_rate, RATE);
         let ids: Vec<u8> = first.sections.iter().map(|(id, _)| *id).collect();
-        assert_eq!(ids, [SectionId::Level.as_u8(), SectionId::Waveform.as_u8()]);
-        assert_eq!(first.sections[0].1.len(), LEVEL_LEN);
-        assert_eq!(first.sections[1].1.len(), WAVE_LEN);
+        let all: Vec<u8> = SectionId::ALL.iter().map(|id| id.as_u8()).collect();
+        assert_eq!(ids, all);
+        let lens: Vec<usize> = first.sections.iter().map(|(_, v)| v.len()).collect();
+        assert_eq!(
+            lens,
+            [LEVEL_LEN, WAVE_LEN, SPECTRUM_LEN, STEREO_LEN, LOUDNESS_LEN]
+        );
         assert!((first.sections[0].1[0] - 0.5).abs() < 0.01);
 
         // 新しいフレームが届いていなければ STALE

@@ -127,7 +127,7 @@ fn build_fixture() -> Fixture {
     });
     let mut frames = vec![
         FixtureFrame {
-            name: "analysis: level and waveform from sines, plus an unknown section".into(),
+            name: "analysis: all sections from sines, plus an unknown section".into(),
             flags: 0,
             seq: 0x0102_0304,
             sample_rate: 48_000,

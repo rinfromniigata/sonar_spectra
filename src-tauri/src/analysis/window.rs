@@ -41,6 +41,13 @@ impl StereoWindow {
         self.sample_rate
     }
 
+    /// 前回の解析から新しく届いたフレーム数（窓の長さを超えることがある）。0 なら「届いていない」
+    ///
+    /// 状態を持つ解析（ラウドネスのフィルタなど）が、同じサンプルを2度数えないために使う。
+    pub fn new_frames(&self) -> usize {
+        self.new_frames
+    }
+
     pub fn len(&self) -> usize {
         self.left.len()
     }

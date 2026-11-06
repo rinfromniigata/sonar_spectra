@@ -40,6 +40,9 @@ pub struct AnalysisContext {
     /// 0 からナイキストまで（size / 2 + 1 本）
     left: Vec<Complex<f32>>,
     right: Vec<Complex<f32>>,
+    /// 1本ごとの強さ（振幅の二乗に換算したもの）。`power_left` を参照
+    power_left: Vec<f32>,
+    power_right: Vec<f32>,
     ready: bool,
 }
 
@@ -62,6 +65,8 @@ impl AnalysisContext {
             scratch: Vec::new(),
             left: Vec::new(),
             right: Vec::new(),
+            power_left: Vec::new(),
+            power_right: Vec::new(),
             ready: false,
         }
     }
@@ -92,6 +97,8 @@ impl AnalysisContext {
         self.buffer = vec![Complex::default(); size];
         self.left = vec![Complex::default(); size / 2 + 1];
         self.right = vec![Complex::default(); size / 2 + 1];
+        self.power_left = vec![0.0; size / 2 + 1];
+        self.power_right = vec![0.0; size / 2 + 1];
     }
 
     /// 窓の末尾 `fft_size` フレームで、L・R の FFT を計算する
@@ -116,12 +123,16 @@ impl AnalysisContext {
         fft.process_with_scratch(&mut self.buffer, &mut self.scratch);
 
         // Z = FFT(l + i r) から、L_k = (Z_k + conj(Z_{N-k})) / 2、R_k = (Z_k - conj(Z_{N-k})) / 2i
+        // 1本ごとの強さ：4|X|² / (N·Σw²)。帯域の中の本数を足すと、その帯域の振幅の二乗になる
+        let scale = 4.0 / (size as f32 * self.window_power);
         for k in 0..=size / 2 {
             let z = self.buffer[k];
             let z_mirror = self.buffer[(size - k) % size].conj();
             self.left[k] = (z + z_mirror) * 0.5;
             let diff = z - z_mirror;
             self.right[k] = Complex::new(diff.im * 0.5, -diff.re * 0.5);
+            self.power_left[k] = self.left[k].norm_sqr() * scale;
+            self.power_right[k] = self.right[k].norm_sqr() * scale;
         }
         self.ready = true;
     }
@@ -154,6 +165,19 @@ impl AnalysisContext {
         &self.right
     }
 
+    /// L の1本ごとの強さ（0 からナイキストまで）
+    ///
+    /// 振幅の二乗に換算してある：振幅 A の正弦波の山を含む本数をすべて足すと、およそ A² になる
+    /// （ハン窓では、山の1本だけなら A² の 2/3）。
+    pub fn power_left(&self) -> &[f32] {
+        &self.power_left
+    }
+
+    /// R の1本ごとの強さ（`power_left` と同じ換算）
+    pub fn power_right(&self) -> &[f32] {
+        &self.power_right
+    }
+
     /// `low_hz` 以上 `high_hz` 未満の成分の振幅。L・R それぞれのエネルギーを平均して求める
     ///
     /// L と R に同じ振幅 A の正弦波が1つだけあれば、およそ A を返す（窓の二乗和で換算する）。
@@ -170,9 +194,9 @@ impl AnalysisContext {
             return 0.0;
         }
         let energy: f32 = (first..last)
-            .map(|k| (self.left[k].norm_sqr() + self.right[k].norm_sqr()) * 0.5)
+            .map(|k| (self.power_left[k] + self.power_right[k]) * 0.5)
             .sum();
-        (4.0 * energy / (self.size as f32 * self.window_power)).sqrt()
+        energy.sqrt()
     }
 }
 

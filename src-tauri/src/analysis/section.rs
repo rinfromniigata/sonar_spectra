@@ -11,11 +11,23 @@ pub enum SectionId {
     Level = 1,
     /// 波形：履歴用の要約と今の波形（`waveform.rs`）
     Waveform = 2,
+    /// スペクトラム：対数の帯域ごとの振幅（`spectrum.rs`）。スペクトログラムも使う
+    Spectrum = 3,
+    /// 位相：リサージュの点列・相関・周波数別の定位（`stereo.rs`）
+    Stereo = 4,
+    /// ラウドネス（LOUD）の近似とピーク（`loudness.rs`）
+    Loudness = 5,
 }
 
 impl SectionId {
     /// 定義済みのすべてのセクション
-    pub const ALL: [SectionId; 2] = [SectionId::Level, SectionId::Waveform];
+    pub const ALL: [SectionId; 5] = [
+        SectionId::Level,
+        SectionId::Waveform,
+        SectionId::Spectrum,
+        SectionId::Stereo,
+        SectionId::Loudness,
+    ];
 
     pub fn as_u8(self) -> u8 {
         self as u8

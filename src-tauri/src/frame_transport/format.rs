@@ -21,8 +21,11 @@
 //! セクションIDとペイロードの対応表（IDの定義は `analysis::SectionId`、並びの詳細は各解析のファイル）：
 //!
 //! ```text
-//!   1  Level     f32 × LEVEL_LEN(4)              analysis/level.rs
-//!   2  Waveform  f32 × WAVE_LEN(5 + 512 × 2)     analysis/waveform.rs
+//!   1  Level     f32 × LEVEL_LEN(4)                       analysis/level.rs
+//!   2  Waveform  f32 × WAVE_LEN(5 + 512 × 2)              analysis/waveform.rs
+//!   3  Spectrum  f32 × SPECTRUM_LEN(96)                   analysis/spectrum.rs
+//!   4  Stereo    f32 × STEREO_LEN(1 + 256 × 2 + 120 × 2)  analysis/stereo.rs
+//!   5  Loudness  f32 × LOUDNESS_LEN(3)                    analysis/loudness.rs
 //! ```
 //!
 //! 受信側は、知らない section_id のセクションを length で読み飛ばす。
