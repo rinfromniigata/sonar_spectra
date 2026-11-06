@@ -203,9 +203,16 @@ Phaseの推奨: Opus・high以上
     - 見出しの文字の大きさ（モックの`clamp(7px, 7cqi, …)`）の値は、`component_metrics.css`に`--module-tag-min-size`・`--module-tag-fluid-size`として足した
     - i18nの使用予定の一覧から、`palette.preset_magenta`・`palette.preset_cyan`・`palette.preset_amber`（`palettes.ts`で使用）と`modules.level`（テスト用の定義`test_definitions.ts`で使用。T2-10で画面でも使う）を外した
   - 実施メモ（261106）：単体テスト20件（回転6・レジストリ3・既定のインスタンス4・配色4・トークン3。うち回転は「既定が上向きのモジュールを回すと選んだ方向へ流れる」「四隅が枠の四隅に写る」を含む）を加えた。`ModuleFrame`の見た目は、モジュールが1つもまだないため確かめていない（T2-10・T2-11でモジュールを作ってから、T2-14の組み立てとW2-8で確かめる）。`bun run check`は終了コード0で通った
-- [ ] T2-8 【エージェント】描画ループを作る（`requestAnimationFrame`を1本、最小化時の停止と`set_render_paused`、有効なモジュールに応じた`set_active_sections`）
+- [x] T2-8 【エージェント】描画ループを作る（`requestAnimationFrame`を1本、最小化時の停止と`set_render_paused`、有効なモジュールに応じた`set_active_sections`）
   - 推奨: Opus・high以上
   - 依存: T2-5, T2-7
+  - 実施: Opus
+  - 実施メモ（261106）：`src/render/`に、`render_loop.ts`（`RenderLoop`）・`active_sections.ts`（必要な解析の一覧）・`pause_tracker.ts`（止めるかの判定）・`window_state.ts`（最小化の見張り）・`backend.ts`（`set_render_paused`・`set_active_sections`の呼び出し）・`use_render_loop.ts`（`provideRenderLoop`）・`index.ts`を作った。`ModuleFrame`は、provideされたループにマウント時に自分を登録し、外すときに抜けるようにした
+    - `RenderLoop`：予約は常に1本で、毎回その時点の`FrameClient.latest`・共有の履歴・トークンの色・経過時間（上限0.1秒。始めた・再開した最初の回は0）を、登録された枠に渡す。1つの枠の描画が失敗しても、ほかの枠は描き続ける（同じ失敗の記録は1度だけ）。スケジューラを差し替えられるようにし、単体テストで確かめた
+    - 最小化：Tauriのウィンドウの`onResized`のたびに`isMinimized()`で確かめ、あわせてWebViewの`visibilitychange`も見る。どちらかで止め、両方が解けたら再開する。変わったときだけ、ループを止める・再開し、`set_render_paused`を送る。使うAPIの権限は既存の`core:default`（`core:window:default`の`allow-is-minimized`、`core:event:default`）に含まれることを、Tauri 2.12.5の権限の定義で確かめた（設定の変更なし）
+    - 必要な解析：有効なインスタンスの定義の`sections`の和を求め、中身が変わったときだけ`set_active_sections`を送る（起動時にも1回送る）
+    - `provideRenderLoop`はメーター画面（T2-14）のsetupで1度呼ぶ。テーマの変化で色を読み直す処理もここで始める
+    - 単体テスト10件（ループ6・必要な解析3・止めるかの判定1）を加えた。実機で最小化したときに止まること（`onResized`と`isMinimized()`が期待どおり届くか）は、T2-14で組み立ててからW2-5で確かめる。`bun run check`は終了コード0で通った
 - [ ] T2-9 【エージェント】自動整列（`autoArrange`）と`MeterGrid`を作る。画面比の帯（2.4／1.5／1.1）ごとのテンプレート、推奨の形、2つ目の位相の専用の位置、同じ種類の2つ目以降を隣に並べる規則、縦長でのレベルの向き
   - 推奨: Opus・high以上
   - 依存: T2-7

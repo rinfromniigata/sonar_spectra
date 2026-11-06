@@ -2,20 +2,24 @@
 // モジュールの枠：見出しと Canvas を持ち、流れる方向に合わせて Canvas の座標系を回す。
 // 描画側（ModuleRenderer）は常に既定の向きで描けばよく、目盛りや文字も座標系と一緒に回る。
 // 見出しは枠の左上に置いたまま回さない（モックと同じ）。
-// 描画ループ（T2-8）は、公開している draw() を毎フレーム呼ぶ。
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+// 描画ループ（src/render）が provide されていれば、マウント時に自分を登録し、ループが毎フレーム draw() を呼ぶ。
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { resolvePaletteColors } from "../config/palettes";
 import type { Instance } from "../config/types";
 import { useT } from "../i18n/use_t";
 import { directionTransform, logicalSize, quarterTurns } from "../modules/direction";
 import type { ModuleKind, ModuleOptions } from "../modules/options";
 import type { AnyModuleDefinition, FrameDrawInput, Geometry, ModuleRenderer, PaletteColors } from "../modules/types";
+import { RENDER_LOOP_KEY } from "../render/use_render_loop";
 import type { CanvasColors } from "../theme/canvas_colors";
 
 const props = defineProps<{ instance: Instance; definition: AnyModuleDefinition }>();
 
 const { t } = useT();
 const label = computed(() => t(props.definition.labelKey));
+
+const loop = inject(RENDER_LOOP_KEY, null);
+let unregister: (() => void) | null = null;
 
 const root = ref<HTMLElement | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
@@ -90,11 +94,13 @@ onMounted(() => {
   updateGeometry();
   observer = new ResizeObserver(updateGeometry);
   if (root.value) observer.observe(root.value);
+  unregister = loop?.register({ draw }) ?? null;
 });
 
 watch(() => props.instance.direction, updateGeometry);
 
 onBeforeUnmount(() => {
+  unregister?.();
   observer?.disconnect();
   renderer?.dispose();
   renderer = null;
