@@ -186,9 +186,23 @@ Phaseの推奨: Opus・high以上
     - `RowHistory`は幅を決めて作る汎用の行の履歴で、スペクトログラムの履歴にもそのまま使える。ただし、スペクトラムのセクションはまだない（T3-1で足す）ため、`histories`へのスペクトログラムの履歴（`gram`）の追加と積み込みは、T3-4で行う（T3-4に注記した）
     - `startFrameStream`は、受け口を設定した`Channel`を作って`start_stream`に渡す薄い関数。呼ぶのはT2-14（起動と同時に取得を始める）
     - 単体テスト17件（復元7・履歴4・受信6）を加えた。復元のテストには、Rust側の符号化のテストと同じバイト列を使った。`bun run check`は終了コード0で通った
-- [ ] T2-7 【エージェント】モジュールの共通部分を作る。`ModuleDefinition`・`ModuleRenderer`、レジストリ、既定のインスタンスをレジストリから作る仕組み、`ModuleFrame`（見出し、流れる方向に合わせて座標系と文字を枠ごと回す）、標準の配色（マゼンタ主・シアン主・アンバー主）とトークンから読む`canvas_colors`
+- [x] T2-7 【エージェント】モジュールの共通部分を作る。`ModuleDefinition`・`ModuleRenderer`、レジストリ、既定のインスタンスをレジストリから作る仕組み、`ModuleFrame`（見出し、流れる方向に合わせて座標系と文字を枠ごと回す）、標準の配色（マゼンタ主・シアン主・アンバー主）とトークンから読む`canvas_colors`
   - 推奨: Opus・high以上
   - 依存: T1-3, T1-4, T2-6
+  - 実施: Opus
+  - 実施メモ（261106）：作ったもの
+    - `src/modules/`：`options.ts`（種類・形・方向と、種類ごとの設定の型。imple 5.1）、`types.ts`（`ModuleDefinition`・`ModuleRenderer`・`Geometry`・`PaletteColors`・`InspectorField`・`FrameDrawInput`）、`direction.ts`（回転の計算）、`registry.ts`（`ModuleRegistry`とアプリの`moduleRegistry`）、`index.ts`（入口。モジュールの登録はT2-10以降でここに足す）
+    - `src/config/`：`types.ts`（`Instance`・`GridRect`・`Palette`。構成全体と保存の型はT4-2で足す）、`palettes.ts`（標準の配色）、`default_instances.ts`（既定のインスタンス）
+    - `src/theme/canvas_colors.ts`（トークンの読み出しとテーマの変化の監視）、`src/components/ModuleFrame.vue`
+  - 実施メモ（261106）：委任の範囲で決めたもの
+    - `ModuleDefinition`はimpleの`<O>`ではなく種類`K`で型を付け、設定の型を`ModuleOptions[K]`で引く（種類と設定の食い違いを型で防ぐため）。既定の構成に置くインスタンスを、定義の`defaultInstances`に持たせた（例：位相は1つ目が通常、2つ目が`slot: "pan"`・`mode: "pan"`）。`createDefaultInstances`は、各定義の1つ目を種類の並び順（モックのORDER）に置き、2つ目以降をその後ろに置く。方向は定義の既定、配色は`preset.a`、`rect`は`null`
+    - 回転：モックの`withDirection`と同じく、既定の向きから時計回りに何回90°回すかを求め、`setTransform`の行列（DPR込み）で座標系を回す。描画側は既定の向きの`width`・`height`で描き、Canvasに描く目盛りや文字も一緒に回る。見出し（DOM）は、モックと同じく枠の左上に置いたまま回さない。向きが変わったらキャンバスを消して`resize`を呼ぶ
+    - `ModuleFrame`は`draw(input)`を公開し、描画ループ（T2-8）が毎フレーム呼ぶ。配色は枠がインスタンスごとに当てる（配色IDと色の組が変わったときだけ計算し直す）
+    - 標準の配色：`preset.a`＝主neon-a・副neon-b、`preset.b`＝主neon-b・副neon-a、`preset.c`＝主neon-c・副neon-a。強調色は3つともneon-c（モックの配色の見本とインスタンスの配色の差し替えのとおり。アンバー主では強調色が主色と同じになる）。知らない配色IDは`preset.a`にする。自分で作った配色の解決はPhase 7で足す
+    - `canvas_colors`：地・格子・線・文字・発光色3つ・危険色と数字の書体（`--font-numeric`）を読み、テーマはトークンが設定する`color-scheme`から判定する。`data-theme`の変化とOSのライト／ダークの切り替えで読み直す
+    - 見出しの文字の大きさ（モックの`clamp(7px, 7cqi, …)`）の値は、`component_metrics.css`に`--module-tag-min-size`・`--module-tag-fluid-size`として足した
+    - i18nの使用予定の一覧から、`palette.preset_magenta`・`palette.preset_cyan`・`palette.preset_amber`（`palettes.ts`で使用）と`modules.level`（テスト用の定義`test_definitions.ts`で使用。T2-10で画面でも使う）を外した
+  - 実施メモ（261106）：単体テスト20件（回転6・レジストリ3・既定のインスタンス4・配色4・トークン3。うち回転は「既定が上向きのモジュールを回すと選んだ方向へ流れる」「四隅が枠の四隅に写る」を含む）を加えた。`ModuleFrame`の見た目は、モジュールが1つもまだないため確かめていない（T2-10・T2-11でモジュールを作ってから、T2-14の組み立てとW2-8で確かめる）。`bun run check`は終了コード0で通った
 - [ ] T2-8 【エージェント】描画ループを作る（`requestAnimationFrame`を1本、最小化時の停止と`set_render_paused`、有効なモジュールに応じた`set_active_sections`）
   - 推奨: Opus・high以上
   - 依存: T2-5, T2-7

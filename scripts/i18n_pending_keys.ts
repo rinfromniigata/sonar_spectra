@@ -19,7 +19,6 @@ export const PENDING_KEYS: readonly string[] = [
   "status.unavailable_title",
   "status.unavailable_body",
   "status.open_settings",
-  "modules.level",
   "modules.waveform",
 
   // Phase 3：既定のモジュール一式（T3-2〜T3-5）
@@ -124,9 +123,6 @@ export const PENDING_KEYS: readonly string[] = [
   "instance.phase.dots_bright",
   "instance.phase.dots_both",
   "instance.phase.motion_blur",
-  "palette.preset_magenta",
-  "palette.preset_cyan",
-  "palette.preset_amber",
 
   // Phase 7：配色と構成（T7-2〜T7-5）
   "common.back",
