@@ -1,3 +1,4 @@
+pub mod analysis;
 pub mod audio_source;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

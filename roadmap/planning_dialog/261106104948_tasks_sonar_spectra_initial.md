@@ -143,9 +143,17 @@ Phaseの推奨: Opus・high以上
     - 最初のオープンに失敗したときは、`Unavailable`を通知してエラーを返し、スレッドを終える（再試行はS01cの「再試行」（T2-5の`retry_source`）から）
     - 単体テスト14件（変換7・無音と通知5・ほか2）を加えた。実機の出力デバイスが要るテスト3件（一覧、既定デバイスからの取得と停止、存在しないID）は`#[ignore]`とし、手元で`-- --ignored`を付けて実行して通った。実行のしかたを`CONTRIBUTING.md`の「確認と検査」に書いた。`bun run check`は終了コード0で通った
     - 実際に音を鳴らしての取得（値が振れること・遅れ）はW2-4で、切断・再試行の見え方はW2-6で確かめる
-- [ ] T2-3 【エージェント】解析の枠組み（`Analyzer`トレイト、FFTを共有する`AnalysisContext`）と、レベル・波形（今の波形のサンプル、履歴用の要約と帯域別の強さ）の解析を作る
+- [x] T2-3 【エージェント】解析の枠組み（`Analyzer`トレイト、FFTを共有する`AnalysisContext`）と、レベル・波形（今の波形のサンプル、履歴用の要約と帯域別の強さ）の解析を作る
   - 推奨: Opus・high以上
   - 依存: T2-1
+  - 実施: Opus
+  - 実施メモ（261106）：`src-tauri/src/analysis/`に、`mod.rs`（`Analyzer`トレイト、登録の`default_analyzers`、`Pipeline`）・`section.rs`（`SectionId`と`SectionWriter`）・`window.rs`（`StereoWindow`）・`context.rs`（`AnalysisContext`）・`level.rs`・`waveform.rs`を作った。`rustfft` 6.4.1を依存に加え、APIはインストールしたクレートのソースで確かめた
+    - impleの3.2にない、委任の範囲で決めたもの：`Analyzer`に`uses_fft`（FFTを使うか）と`window_frames`（窓に要るフレーム数）を足した。`Pipeline`が、有効な解析に要る窓の長さを`window_frames`で返し、FFTを使う解析が有効なときだけFFTを1度計算し、有効な解析を登録順に回す。`set_active_sections`の中身（知らない値は無視）も`Pipeline`に置いた
+    - `SectionId`の定義は`analysis/section.rs`に置いた（`Analyzer::id`が使い、T2-4より前に要るため）。値はLevel＝1、Waveform＝2。impleの「対応表は`frame_transport/format.rs`に置く」は、T2-4でこの定義を参照して表を作る
+    - FFT：L・Rを実部・虚部に詰めて1回で計算し、分け直す。長さはサンプルレートに合わせて約43ms（44.1／48 kHzで2048、96 kHzで4096、192 kHzで8192）。窓はハン窓
+    - レベルのペイロード（4値）：前回の解析から新しく届いたフレームのピークとRMS（L・R）。線形の振幅で、dBへの換算とピークの保持・減衰はUI側
+    - 波形のペイロード（5＋512×2値）：履歴用の要約（L・Rの包絡＝新しく届いたフレームのピーク、低域〜250 Hz・中域〜4 kHz・高域〜20 kHzの振幅）と、今の波形（直近20msを512点にまとめたL・R）。帯域の振幅は、その帯域に振幅Aの正弦波が1つだけあればAになるよう、窓の二乗和で換算する。帯域の境目は、モックの帯域別の色（低＝主色、中＝強調色、高＝副色）に合わせて決めた
+    - 単体テスト24件を加えた。W2-1の観点（無音で0、Lだけの正弦波でLだけが振れる、既知の振幅の正弦波でピーク・RMSが合う、低域・中域・高域の正弦波で帯域が分かれる）を含む。`bun run check`は終了コード0で通った
 - [ ] T2-4 【エージェント】送出（約60回/秒のスレッド、バイト列の形式、`Channel`での送信、一時停止）を作る
   - 推奨: Opus・high以上
   - 依存: T2-3
