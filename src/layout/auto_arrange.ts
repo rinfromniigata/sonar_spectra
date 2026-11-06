@@ -53,6 +53,52 @@ function mergeEmptyPair(empty: GridRect[]): boolean {
   return false;
 }
 
+/**
+ * 空いた領域 `area` のうち、`rect` の辺に合わせた部分（`rect` と合わせると長方形になる部分）と、残りの部分。
+ * `rect` が `area` と辺を接し、接する向きの幅が `area` の中に収まるときだけ切り分けられる
+ */
+function alignedPiece(rect: GridRect, area: GridRect): { piece: GridRect; rest: GridRect[] } | null {
+  const touchesSide = rect.c + rect.cs === area.c || area.c + area.cs === rect.c;
+  if (touchesSide && rect.r >= area.r && rect.r + rect.rs <= area.r + area.rs) {
+    const rest: GridRect[] = [];
+    if (rect.r > area.r) rest.push({ c: area.c, r: area.r, cs: area.cs, rs: rect.r - area.r });
+    const end = rect.r + rect.rs;
+    if (end < area.r + area.rs) rest.push({ c: area.c, r: end, cs: area.cs, rs: area.r + area.rs - end });
+    return { piece: { c: area.c, r: rect.r, cs: area.cs, rs: rect.rs }, rest };
+  }
+  const touchesEnd = rect.r + rect.rs === area.r || area.r + area.rs === rect.r;
+  if (touchesEnd && rect.c >= area.c && rect.c + rect.cs <= area.c + area.cs) {
+    const rest: GridRect[] = [];
+    if (rect.c > area.c) rest.push({ c: area.c, r: area.r, cs: rect.c - area.c, rs: area.rs });
+    const end = rect.c + rect.cs;
+    if (end < area.c + area.cs) rest.push({ c: end, r: area.r, cs: area.c + area.cs - end, rs: area.rs });
+    return { piece: { c: rect.c, r: area.r, cs: rect.cs, rs: area.rs }, rest };
+  }
+  return null;
+}
+
+/**
+ * 空いた領域を1つ、隣の領域の辺に合わせて切り分け、合う部分をその領域に吸収させる（残りは空いた領域に戻す）。
+ * 候補が複数あれば、スペクトログラム（S04「残りをスペクトログラムで埋める」）→ 吸収する部分が大きいもの の順に選ぶ。
+ * 吸収できれば true（空いたマスは必ず減る）
+ */
+function absorbPartially(groups: Group[], empty: GridRect[]): boolean {
+  let best: { score: number[]; index: number; group: Group; piece: GridRect; rest: GridRect[] } | null = null;
+  empty.forEach((area, index) => {
+    for (const group of groups) {
+      const split = alignedPiece(group.rect, area);
+      if (!split) continue;
+      const score = [group.key === "gram" ? 1 : 0, cellCount(split.piece)];
+      if (!best || compareScores(score, best.score) > 0) best = { score, index, group, ...split };
+    }
+  });
+  const chosen = best as { index: number; group: Group; piece: GridRect; rest: GridRect[] } | null;
+  if (!chosen) return false;
+  chosen.group.rect = unionIfRect(chosen.group.rect, chosen.piece)!;
+  empty.splice(chosen.index, 1, ...chosen.rest);
+  return true;
+}
+
 /** 同じ種類として隣に並べる組か（種類と、専用の位置の有無が同じ） */
 function sameGroup(a: Instance, b: Instance): boolean {
   return a.kind === b.kind && a.slot === b.slot;
@@ -171,8 +217,12 @@ export function autoArrange(
 
   // 3. 空いた領域を、隣と合わせて長方形になる領域に吸収させる
   let empty = AREA_KEYS.filter((key) => !owner.has(key)).map((key) => template[key]);
+  // 先に、空いた領域どうしを合わせられるだけ合わせる（片方だけが先に吸収され、残りが半端な形で取り残されないように）
+  while (mergeEmptyPair(empty));
   for (let changed = groups.length > 0; changed && empty.length > 0; ) {
     changed = false;
+    // 小さい空き領域から吸収する（合わせ先の選択肢が少ないので、大きい領域の吸収で塞がれないように）
+    empty.sort((a, b) => cellCount(a) - cellCount(b));
     empty = empty.filter((area) => {
       const candidates = groups
         .map((group) => ({ group, union: unionIfRect(group.rect, area) }))
@@ -185,6 +235,8 @@ export function autoArrange(
     });
     // どれも吸収できなければ、空いた領域どうしを合わせてから試し直す（縦長の最下段が両方空いたときなど）
     if (!changed) changed = mergeEmptyPair(empty);
+    // それでもだめなら、空いた領域を隣の辺に合わせて切り分け、合う部分だけを隣に吸収させる
+    if (!changed) changed = absorbPartially(groups, empty);
   }
 
   // 4. 2つ目以降と、テンプレートにない種類を、相乗りする領域に加える

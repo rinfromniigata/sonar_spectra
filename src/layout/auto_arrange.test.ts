@@ -163,7 +163,8 @@ describe("autoArrange（広い条件）", () => {
 
   /**
    * W2-3 の観点（有効なものは全部・無効なものは置かない、12×8の中に重ならず1マス以上、同じ種類は隣、
-   * 縦長でレベルは右向き）に反するところを `failures` に集める。数が多いので、最後に1度だけ確かめる
+   * 縦長でレベルは右向き）と、格子に穴が残らないこと（有効なものが1つ以上あれば96マスすべてが埋まる）に
+   * 反するところを `failures` に集める。数が多いので、最後に1度だけ確かめる
    */
   function collectProblems(list: Instance[], aspect: number, failures: string[]): void {
     const layout = autoArrange(list, aspect, shapeOf);
@@ -179,6 +180,7 @@ describe("autoArrange（広い条件）", () => {
       for (let y = r.r; y < r.r + r.rs; y++) for (let x = r.c; x < r.c + r.cs; x++) paint[(y - 1) * GRID_COLUMNS + (x - 1)]++;
     }
     if (paint.some((v) => v > 1)) failures.push(`${label()} overlap`);
+    if (placed.length > 0 && paint.some((v) => v === 0)) failures.push(`${label()} hole (${paint.filter((v) => v === 0).length} cells)`);
     for (const [i, r] of placed) {
       const siblings = placed.filter(([o]) => o !== i && o.kind === i.kind && o.slot === i.slot);
       if (siblings.length > 0 && !siblings.some(([, s]) => adjacent(r, s))) failures.push(`${label()} ${i.kind} not adjacent`);
@@ -193,6 +195,16 @@ describe("autoArrange（広い条件）", () => {
     collectProblems(list, aspect, failures);
     expect(failures).toEqual([]);
   }
+
+  it("既定の7つから1つを無効にしても（よくある操作）、どの帯でも格子に穴が残らない", () => {
+    const failures: string[] = [];
+    for (let off = 0; off < 7; off++) {
+      const list = defaults().filter((i) => i.enabled);
+      list[off] = { ...list[off], enabled: false };
+      for (const aspect of MANY_ASPECTS) collectProblems(list, aspect, failures);
+    }
+    expect(failures).toEqual([]);
+  });
 
   it("種類（と2つ目の位相）の有効・無効の全組み合わせで、観点を満たす", () => {
     const failures: string[] = [];
