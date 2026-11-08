@@ -69,7 +69,7 @@ const ja = {
     done: "完了",
     mode_auto: "自動配置",
     mode_manual: "手動配置",
-    selected: "選択中",
+    selected: "選択中：{name}",
     splitter: "境界線（ドラッグか矢印キーで移動）",
     open_instance_settings: "このモジュールの設定",
     instances: "置いたモジュール",

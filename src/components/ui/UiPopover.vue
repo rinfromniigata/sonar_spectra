@@ -7,13 +7,18 @@ import { type Box, placePopover } from "./popover_position";
 import { useDismiss } from "./use_dismiss";
 
 // 元（モジュールなど）の横に浮かべて開くパネル（インスタンスの設定）。×で閉じる。
-// 使う側は v-if で出し入れする。位置は、自分の offsetParent を領域として計算する
+// 使う側は v-if で出し入れする。位置は、自分の offsetParent を領域として計算する。
+// 開いたまま元や中身が変わったとき（別のモジュールに移る・配置が変わる）は、置き直す（anchor・revision の変化）
 const props = defineProps<{
   /** 読み上げ用の名前 */
   label: string;
   anchor: HTMLElement | null;
   /** これより右には出さない（offsetParent の左端からの距離）。編集パネルの左端など */
   limitRight?: number;
+  /** これより右には出さない要素（その左端まで）。置くたびに測るので、大きさの変わるパネルに使う。limitRight より優先 */
+  boundary?: HTMLElement | null;
+  /** 変わったら置き直す値（元の位置や中身の高さが変わったことを知らせる） */
+  revision?: unknown;
 }>();
 const emit = defineEmits<{ close: [] }>();
 
@@ -36,7 +41,7 @@ function place(): void {
     anchor: relativeBox(props.anchor, container),
     containerWidth: container.clientWidth,
     containerHeight: container.clientHeight,
-    limitRight: props.limitRight,
+    limitRight: props.boundary ? relativeBox(props.boundary, container).left : props.limitRight,
     popoverHeight: el.offsetHeight,
     maxWidth: readCssLength(el, "--popover-max-width"),
     gap: readCssLength(el, "--space-2"),
@@ -50,7 +55,7 @@ onMounted(async () => {
 });
 onBeforeUnmount(() => window.removeEventListener("resize", place));
 watch(
-  () => [props.anchor, props.limitRight],
+  () => [props.anchor, props.limitRight, props.boundary, props.revision],
   () => void nextTick(place),
 );
 </script>

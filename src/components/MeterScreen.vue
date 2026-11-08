@@ -20,28 +20,39 @@
 //   「自動整列」で自動配置に戻し、「完了」で編集を終える。選んでいるインスタンスは実行中の状態のストアに持つ。
 //   パネルには置いたモジュールの一覧（InstanceList）を入れ、追加・複製・削除・有効／無効は layout_edit_actions で構成に書く。
 //   編集中は状態の表示（StatusOverlay）を出さない（入力源が開けないときの幕で、格子を編集できなくならないように）
-import { computed, onMounted } from "vue";
+// - インスタンスの設定（S03）：実行中の状態のストアで開いていれば、選んでいるインスタンスの設定（InstanceSettings）を
+//   ポップオーバー（UiPopover）でそのモジュールの横に開く（右は編集パネルの左端まで）。開いたまま別のモジュールを選ぶと、
+//   作り直さずにそちらへ移る（フォーカスを奪わない）。×・Esc で閉じる。選んだものが置かれていなければ（無効・削除）出さない。
+//   配色・流れる速さを変えたら、そのインスタンスだけを構成に書く（config/instance_settings）。開くボタン（見出しの歯車）は T6-4
+import { computed, nextTick, onMounted, ref, shallowRef, watch } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
 import { useRuntimeStore } from "../app/runtime_store";
 import { useAppVersion } from "../app/use_app_version";
 import { useConfigStore } from "../config/config_store";
+import { setPaletteId, setSpeed } from "../config/instance_settings";
 import type { Instance } from "../config/types";
 import { FrameClient, startFrameStream } from "../frame_client";
+import { useT } from "../i18n/use_t";
+import { instanceNumbers } from "../layout/instance_numbers";
 import { returnToAuto, setDirection } from "../layout/manual";
 import type { Direction } from "../modules/options";
 import { moduleRegistry } from "../modules";
+import type { AnyModuleDefinition } from "../modules/types";
 import { provideRenderLoop } from "../render/use_render_loop";
 import { useWindowController } from "../window";
 import { createDeviceSelection, useSourceStatus } from "../source";
 import CrtOverlay from "./CrtOverlay.vue";
 import InstanceList from "./InstanceList.vue";
+import InstanceSettings from "./InstanceSettings.vue";
 import LayoutEditPanel from "./LayoutEditPanel.vue";
 import { createLayoutEditActions } from "./layout_edit_actions";
 import MeterGrid from "./MeterGrid.vue";
 import SettingsDrawer from "./SettingsDrawer.vue";
 import StatusOverlay from "./StatusOverlay.vue";
 import TitleBar from "./TitleBar.vue";
+import UiPopover from "./ui/UiPopover.vue";
 
+const { t } = useT();
 const client = new FrameClient();
 const config = useConfigStore();
 const runtime = useRuntimeStore();
@@ -125,6 +136,53 @@ function arrangeAutomatically(): void {
   });
 }
 
+// --- インスタンスの設定（S03） ---
+
+const gridRef = ref<InstanceType<typeof MeterGrid> | null>(null);
+const panelRef = ref<InstanceType<typeof LayoutEditPanel> | null>(null);
+
+/** 設定を出すインスタンス：開いていて、編集中で、選んだものが格子に置かれているとき */
+const settingsTarget = computed<{ instance: Instance; definition: AnyModuleDefinition; name: string } | null>(() => {
+  const id = runtime.selectedInstanceId.value;
+  if (!editing.value || !runtime.instanceSettingsOpen.value || id === null) return null;
+  const instance = layout.value.instances.find((item) => item.id === id);
+  const definition = instance ? (moduleRegistry.get(instance.kind) as AnyModuleDefinition | undefined) : undefined;
+  if (!instance || !instance.enabled || !definition) return null;
+  const number = instanceNumbers(layout.value.instances).get(id) ?? 1;
+  return { instance, definition, name: `${t(definition.labelKey)} ${number}` };
+});
+
+/** ポップオーバーを横に開く元（モジュールの枠）と、右の限り（編集パネル）。描いたあとに探す */
+const settingsAnchor = shallowRef<HTMLElement | null>(null);
+const settingsBoundary = shallowRef<HTMLElement | null>(null);
+watch(
+  [() => settingsTarget.value?.instance.id, () => layout.value.instances, editing],
+  async ([id]) => {
+    await nextTick();
+    settingsAnchor.value = id ? (gridRef.value?.frameElement(id) ?? null) : null;
+    settingsBoundary.value = (panelRef.value?.$el as HTMLElement | undefined) ?? null;
+  },
+  { immediate: true },
+);
+
+/** 配色：そのインスタンスだけを変える */
+function changePalette(id: string, paletteId: string): void {
+  if (!setPaletteId(layout.value.instances, id, paletteId)) return;
+  config.updateCurrent((draft) => {
+    const next = setPaletteId(draft.layout.instances, id, paletteId);
+    if (next) draft.layout.instances = next;
+  });
+}
+
+/** 流れる速さ：そのインスタンスだけを変える（範囲に収めて丸める） */
+function changeSpeed(id: string, speed: number): void {
+  if (!setSpeed(layout.value.instances, id, speed)) return;
+  config.updateCurrent((draft) => {
+    const next = setSpeed(draft.layout.instances, id, speed);
+    if (next) draft.layout.instances = next;
+  });
+}
+
 defineExpose({ client, channel: () => channel });
 </script>
 
@@ -141,6 +199,7 @@ defineExpose({ client, channel: () => channel });
       @layout-edit="toggleLayoutEdit"
     />
     <MeterGrid
+      ref="gridRef"
       class="grid"
       :class="{ 'is-editing': editing }"
       :instances="layout.instances"
@@ -154,7 +213,7 @@ defineExpose({ client, channel: () => channel });
     />
     <!-- 編集中は出さない（S01c・S01d の幕が格子をふさがないように。入力源の状態はタイトル帯のチップで分かる） -->
     <StatusOverlay v-if="!editing" :source="source.event.value" @open-settings="openSettings" />
-    <LayoutEditPanel v-if="editing" :mode="layout.mode" @auto-arrange="arrangeAutomatically" @done="finishLayoutEdit">
+    <LayoutEditPanel v-if="editing" ref="panelRef" :mode="layout.mode" @auto-arrange="arrangeAutomatically" @done="finishLayoutEdit">
       <InstanceList
         :instances="layout.instances"
         :registry="moduleRegistry"
@@ -167,6 +226,23 @@ defineExpose({ client, channel: () => channel });
         @add="listActions.add"
       />
     </LayoutEditPanel>
+    <UiPopover
+      v-if="settingsTarget"
+      class="instance-settings-popover"
+      :label="settingsTarget.name"
+      :anchor="settingsAnchor"
+      :boundary="settingsBoundary"
+      :revision="layout.instances"
+      @close="runtime.closeInstanceSettings"
+    >
+      <InstanceSettings
+        :instance="settingsTarget.instance"
+        :definition="settingsTarget.definition"
+        :name="settingsTarget.name"
+        @palette="changePalette(settingsTarget.instance.id, $event)"
+        @speed="changeSpeed(settingsTarget.instance.id, $event)"
+      />
+    </UiPopover>
     <SettingsDrawer v-if="drawer === 'settings'" @select-device="devices.choose" @edit-layout="startLayoutEdit" />
     <CrtOverlay :enabled="scanline" />
   </div>

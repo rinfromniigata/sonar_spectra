@@ -14,15 +14,23 @@ export interface RuntimeStore {
   readonly layoutEditing: Ref<boolean>;
   /** レイアウト編集で選んでいるインスタンスのID。なければ null（編集を終えると null に戻る） */
   readonly selectedInstanceId: Ref<string | null>;
+  /**
+   * インスタンスの設定（S03 のポップオーバー）を開いているか。開いている間は、選んでいるインスタンスの設定を出す
+   * （開いたまま別のモジュールを選ぶと、そちらに移る。モックと同じ）。×・Esc・編集を終えると閉じる
+   */
+  readonly instanceSettingsOpen: Ref<boolean>;
   /** 開いているドロワー。なければ null */
   readonly drawer: Ref<DrawerId | null>;
   /** ボーダレスフルスクリーン中か（実際のウィンドウの状態を映す。保存しない。起動時の全画面は設定の display.startFullscreen） */
   readonly fullscreen: Ref<boolean>;
   openDrawer(id: DrawerId): void;
   closeDrawer(): void;
-  /** レイアウト編集を始める・終える。終えると選択を外す */
+  /** レイアウト編集を始める・終える。終えると選択を外し、インスタンスの設定を閉じる */
   setLayoutEditing(editing: boolean): void;
   selectInstance(id: string | null): void;
+  /** そのインスタンスを選んで、インスタンスの設定を開く */
+  openInstanceSettings(id: string): void;
+  closeInstanceSettings(): void;
 }
 
 export function createRuntimeStore(): RuntimeStore {
@@ -30,10 +38,12 @@ export function createRuntimeStore(): RuntimeStore {
   const layoutEditing = ref(false);
   const fullscreen = ref(false);
   const selectedInstanceId = ref<string | null>(null);
+  const instanceSettingsOpen = ref(false);
   return {
     source: shallowRef<SourceStatusEvent | null>(null),
     layoutEditing,
     selectedInstanceId,
+    instanceSettingsOpen,
     drawer,
     fullscreen,
     openDrawer: (id) => {
@@ -44,10 +54,20 @@ export function createRuntimeStore(): RuntimeStore {
     },
     setLayoutEditing: (editing) => {
       layoutEditing.value = editing;
-      if (!editing) selectedInstanceId.value = null;
+      if (!editing) {
+        selectedInstanceId.value = null;
+        instanceSettingsOpen.value = false;
+      }
     },
     selectInstance: (id) => {
       selectedInstanceId.value = id;
+    },
+    openInstanceSettings: (id) => {
+      selectedInstanceId.value = id;
+      instanceSettingsOpen.value = true;
+    },
+    closeInstanceSettings: () => {
+      instanceSettingsOpen.value = false;
     },
   };
 }

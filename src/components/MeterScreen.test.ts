@@ -185,6 +185,49 @@ describe("MeterScreen", () => {
     expect(html.indexOf("crt-overlay")).toBeGreaterThan(html.indexOf("layout-edit-panel"));
   });
 
+  it("インスタンスの設定（S03）は、編集中に開いていて、選んだインスタンスが置かれているときだけ、そのインスタンスの設定をポップオーバーで出す", async () => {
+    /** 波形・スペクトラムに分かるIDを振る。disableWave で波形を無効にする */
+    const withIds =
+      (disableWave = false) =>
+      (config: Config) => {
+        for (const instance of config.layout.instances) {
+          if (instance.kind === "wave") {
+            instance.id = "w1";
+            instance.enabled = !disableWave;
+          }
+          if (instance.kind === "spec") instance.id = "s1";
+        }
+      };
+    const popover = (html: string): string | null => /<div class="ui-popover[^"]*"[^>]*role="dialog"[^>]*>[\s\S]*?<\/h3>/.exec(html)?.[0] ?? null;
+
+    const runtime = createRuntimeStore();
+    runtime.setLayoutEditing(true);
+    runtime.openInstanceSettings("w1");
+    const open = await render(withIds(), runtime);
+    const box = popover(open)!;
+    expect(box).toContain('aria-label="波形 1"');
+    expect(box).toContain("選択中：波形 1");
+    // 編集パネルより上、走査線より下に重ねる。流れる速さの欄がある（波形）
+    expect(open.indexOf("ui-popover")).toBeGreaterThan(open.indexOf("layout-edit-panel"));
+    expect(open.indexOf("crt-overlay")).toBeGreaterThan(open.indexOf("ui-popover"));
+    expect(open).toContain('type="range"');
+
+    // 開いたまま選び直すと、そちらの設定になる
+    runtime.selectInstance("s1");
+    expect(popover(await render(withIds(), runtime))).toContain("選択中：スペクトラム 1");
+
+    // 閉じている・選んでいない・選んだものが無効・編集中でないときは出さない
+    runtime.closeInstanceSettings();
+    expect(await render(withIds(), runtime)).not.toContain("ui-popover");
+    runtime.openInstanceSettings("w1");
+    expect(await render(withIds(true), runtime)).not.toContain("ui-popover");
+    runtime.selectInstance(null);
+    expect(await render(withIds(), runtime)).not.toContain("ui-popover");
+    runtime.openInstanceSettings("w1");
+    runtime.setLayoutEditing(false);
+    expect(await render(withIds(), runtime)).not.toContain("ui-popover");
+  });
+
   it("起動時に source-status の listen を始め、必要な解析（レベル・波形・スペクトラム・位相・ラウドネス。スペクトログラムはスペクトラムを使う）を Rust に伝える", async () => {
     await render();
     expect(listen).toHaveBeenCalledWith("source-status", expect.any(Function));

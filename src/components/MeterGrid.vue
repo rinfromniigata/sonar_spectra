@@ -130,6 +130,14 @@ const placed = computed<Placed[]>(() =>
 /** 同じ種類の中での番号（無効なものも数える） */
 const numbers = computed(() => instanceNumbers(props.instances));
 
+/** そのインスタンスの枠の要素（インスタンスの設定を横に開く元）。置かれていなければ null */
+function frameElement(id: string): HTMLElement | null {
+  const frames = root.value?.querySelectorAll<HTMLElement>("[data-instance-id]");
+  return frames ? (Array.from(frames).find((element) => element.dataset.instanceId === id) ?? null) : null;
+}
+
+defineExpose({ frameElement });
+
 /**
  * 枠の見た目の大きさ（適合判定に渡す）。測れていれば実寸、測れていなければ（最初の描画の前・DOMなし）、
  * 格子の画面比だけを使った大きさ（余白とすき間は無視）
@@ -315,6 +323,7 @@ function onModuleFocus(id: string): void {
       :definition="item.definition"
       :editing="editing"
       :selected="item.instance.id === selectedId"
+      :data-instance-id="item.instance.id"
       :class="{ 'is-dragging': item.instance.id === draggingId }"
       :style="{ gridArea: gridArea(item.rect) }"
       :tabindex="editing ? 0 : undefined"

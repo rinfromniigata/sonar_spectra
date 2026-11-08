@@ -543,10 +543,19 @@ Phaseの推奨: Opus・high以上
 
 Phaseの推奨: Opus・high以上
 
-- [ ] T6-1 【エージェント】インスタンスの設定（ポップオーバー）を作る。モジュールの横に開き×で閉じる。共通の項目（入力源は既定の1系統と注記、配色、流れるモジュールの速さ×0.25〜×3.00）
+- [x] T6-1 【エージェント】インスタンスの設定（ポップオーバー）を作る。モジュールの横に開き×で閉じる。共通の項目（入力源は既定の1系統と注記、配色、流れるモジュールの速さ×0.25〜×3.00）
   - 推奨: Opus・high以上
   - 依存: T1-6, T5-3
   - 画面: S03
+  - 実施: Opus
+  - 実施メモ（261108）：`src/components/InstanceSettings.vue`（設定の中身）と`src/config/instance_settings.ts`（書き込みの純粋関数）を作り、`MeterScreen`でT1-6の`UiPopover`に入れて開くようにした
+    - 中身（モックの`.inspector`）：見出し「選択中：波形 2」、入力源（既定の1系統だけのセレクトと注記。`sourceId`は変えない）、配色（標準の3つの見本。押された状態＝インスタンスの`paletteId`）、流れる速さ（定義の`flows`があるものだけ。×0.25〜×3.00・刻み0.05のスライダー、値は`common.speed_value`と`formatMultiplier`）。自分で作った配色と「＋ 配色を作る」はT7-2、種類ごとの項目はT6-2、「既定に戻す」はT6-3で加える
+    - 開閉の状態：実行中の状態のストアに`instanceSettingsOpen`・`openInstanceSettings(id)`（選んで開く）・`closeInstanceSettings`を足した。開いている間は選んでいるインスタンスの設定を出し、開いたまま別のモジュールを選ぶとそちらへ移る（モックと同じ）。ポップオーバーを作り直さないので、モジュールを選んだときのフォーカス（矢印キーでの移動）を奪わない。×・Escで閉じ、編集を終えると閉じる。選んだものが無効・削除で置かれていなければ出さない
+    - 開く操作（見出しの歯車）はT6-4でつなぐため、T6-1の時点では画面から開く手段はない。`openInstanceSettings`を呼ぶ側を作るだけでよい
+    - 位置：`MeterGrid`の枠に`data-instance-id`を付け、`frameElement(id)`で開く元を返すようにした。`UiPopover`に、右の限りを要素で渡す`boundary`（置くたびに編集パネルの左端を測る。パネルの幅は画面の幅で変わるため）と、置き直しの合図の`revision`（構成のインスタンスの並び。ドラッグで元が動いたときや、中身の高さが変わったとき）を足した。置き方の規則は`placePopover`（T1-6。モックと同じ）のまま
+    - 書き込み：`setPaletteId`・`setInstanceOption`（種類が持つ項目だけ。T6-2でも使う）・`setSpeed`（範囲に収めて0.05刻みに丸める）。`setDirection`と同じく、変わらないときはnullを返し、置く側は書かない（「保存後に変更あり」にしない）。そのインスタンスだけを変え、同じ種類のほかのインスタンスは変えない
+    - 辞書：見出しは、文字列の連結を避けるため`layout_edit.selected`を「選択中：{name}」に変えた（名前と番号の「波形 2」は、一覧・見出しと同じ組み立て）。使い始めた7キー（`layout_edit.selected`・`common.speed_value`・`instance.source`・`instance.source_default`・`instance.source_note`・`instance.palette`・`instance.speed`）を`scripts/i18n_pending_keys.ts`から外した
+    - 単体テスト13件（`instance_settings`7・`InstanceSettings`のSSR 4・実行中の状態のストア1・`MeterScreen`の組み立て1）を加えた。DOMのテスト環境がないため、ポップオーバーの置き場所とフォーカスの動きは、T6-4のあと実機（W6-3・W6-5）で確かめる。`bun run check`は通った（UI 542件・Rust 114件）
 - [ ] T6-2 【エージェント】種類ごとの項目をつなぐ。波形（チャンネル、今の波形を表示、履歴と今の波形の境目、履歴の色）、スペクトラム（表示方式、ピークの残像）、位相（表示方式、点描、モーションブラー）
   - 推奨: Sonnet・high以上
   - 依存: T2-11, T3-2, T3-3, T6-1

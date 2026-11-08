@@ -15,15 +15,8 @@ export const PENDING_KEYS: readonly string[] = [
   "layout_edit.reset",
 
   // Phase 6：インスタンスの設定（T6-1〜T6-4）
-  "layout_edit.selected",
   "common.reset_default",
-  "common.speed_value",
   "layout_edit.open_instance_settings",
-  "instance.source",
-  "instance.source_default",
-  "instance.source_note",
-  "instance.palette",
-  "instance.speed",
   "instance.waveform.channel",
   "instance.waveform.channel_stereo",
   "instance.waveform.channel_mono",
