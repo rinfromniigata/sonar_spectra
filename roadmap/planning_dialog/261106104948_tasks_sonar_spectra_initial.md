@@ -433,10 +433,17 @@ Phaseの推奨: Opus・high以上
     - 走査線：`MeterScreen`の`scanline`プロップをやめ、設定の`display.scanline`（構成のストア）から`CrtOverlay`の`enabled`を決めるようにした。スイッチを切ると走査線と周辺減光が消える
     - 開発用ギャラリーのテーマ切り替え（`use_gallery_theme.ts`）は、設定とは別に、ギャラリーの中だけで見比べるためのものとして残し、コメントを直した
     - 単体テスト3件（`apply_theme`3）を加え、`MeterScreen`の走査線のテストを設定の値で切り替える形に直した。`bun run check`は終了コード0で通った。アプリを起動しての確認（スイッチ操作で見た目が変わること、OS設定への追従、再起動での引き継ぎ）は、パネルを開けるようになるT4-5のあと、W4-2・W4-3で行う
-- [ ] T4-5 【エージェント】入力源のデバイスの切り替えを設定につなぎ（`select_output_device`、`source.deviceId`の保存、切り替え中のS01d）、タイトル帯の設定ボタン・出力系統のチップと、S01cの「設定」ボタンから設定パネルを開けるようにする
+- [x] T4-5 【エージェント】入力源のデバイスの切り替えを設定につなぎ（`select_output_device`、`source.deviceId`の保存、切り替え中のS01d）、タイトル帯の設定ボタン・出力系統のチップと、S01cの「設定」ボタンから設定パネルを開けるようにする
   - 推奨: Opus・high以上
   - 依存: T2-13, T4-3
   - 画面: S01, S01c, S01d, S02
+  - 実施: Opus
+  - 実施メモ（261108）：`src/source/device_selection.ts`（`createDeviceSelection`の`restore`・`choose`）と`selectOutputDevice`（`select_output_device`の呼び出し）を足し、`MeterScreen`で、タイトル帯・状態の表示・設定パネルのイベントをつないだ
+    - デバイスの切り替え：設定パネルで選ぶと、構成のストアの`source.deviceId`を保存してから`select_output_device`を呼ぶ（「保存後に変更あり」にはしない。imple 5.2の14）。今と同じデバイスなら何もしない（入力源を開き直さない）。切り替え中はRustが`Opening`を通知するので、既存の状態の表示がS01d（スピナー）、チップがデバイス名つきの消灯になり、新しい表示は作らなかった。開けなければ`Unavailable`でS01cになる
+    - 起動時：保存されたデバイスがあれば、`source-status`の準備のあと・`start_stream`の前に`select_output_device`で選んでおく（Rustの入力源は`start_stream`で開くが、`select_output_device`がすでに開いていれば、`start_stream`は最後の状態を送り直すだけになる）。選べなくても`start_stream`に進む。保存したデバイスが外されているときは、S01cになり、設定パネルのセレクトでは「見つからないデバイス」として表示される
+    - 設定パネルを開く：タイトル帯の設定ボタン（開いていればもう1度押すと閉じる）、出力系統のチップ、S01cの「設定」。閉じたときのフォーカスは、`UiDrawer`（`useDismiss`）が開いたときの要素へ戻す
+    - `StatusOverlay`・`TitleBar`・`SettingsDrawer`のコメントを、つないだ内容に直した
+    - 単体テスト10件（`createDeviceSelection`5・`selectOutputDevice`1・`MeterScreen`のイベントのつながり4）を加えた。イベントのつながりは、子のコンポーネントを組み立て時にイベントを出すだけの代役に替え、DOMなしで確かめた（設定ボタンで開閉、チップ・S01cの「設定」で開く、選んだデバイスの保存と切り替え）。`bun run check`は終了コード0で通った。実機での切り替えと再起動での引き継ぎはW4-2、キーボードでの操作とフォーカスの戻りはW4-4、長いデバイス名はW4-5で確かめる
 - [ ] T4-6 【エージェント】ウィンドウを扱う。ボーダレスフルスクリーンの切り替えとボタンのアイコンの変更、`tauri-plugin-window-state`（全画面の状態は記憶しない）、常に最前面、起動時にボーダレスフルスクリーン
   - 推奨: Sonnet・high以上
   - 依存: T2-12, T4-3

@@ -12,3 +12,11 @@ export function retrySource(): Promise<void> {
 export function listOutputDevices(): Promise<DeviceInfo[]> {
   return invoke<DeviceInfo[]>("list_output_devices");
 }
+
+/**
+ * 入力源のデバイスを切り替える。null なら既定の出力デバイスに追従する。
+ * 結果はイベント `source-status` で届く（Opening → Live、または Unavailable。切り替え中は S01d）
+ */
+export function selectOutputDevice(deviceId: string | null): Promise<void> {
+  return invoke("select_output_device", { deviceId });
+}

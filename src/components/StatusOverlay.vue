@@ -3,7 +3,7 @@
 // - 無音（S01b）：メーターを隠さない細い表示。脈動する点と「音を待っています」
 // - 入力源が使えない（S01c）：説明と、「再試行」「設定」のボタン
 // - 起動中・切り替え中（S01d）：スピナーと「入力源を開いています」。切り替えが一瞬で終わるときにちらつかないよう、少し待ってから出す
-// タイトル帯の下から始まる（--title-h）。「再試行」は入力源を開き直す。「設定」は設定パネルを作る Phase 4 でつなぐ
+// タイトル帯の下から始まる（--title-h）。「再試行」は入力源を開き直す。「設定」は openSettings で知らせ、MeterScreen が設定パネルを開く
 import { computed } from "vue";
 import { useT } from "../i18n/use_t";
 import { overlayMode, retrySource, type SourceStatusEvent } from "../source";
