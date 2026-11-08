@@ -385,9 +385,18 @@ Phaseの推奨: Opus・high以上
 
 Phaseの推奨: Opus・high以上
 
-- [ ] T4-1 【エージェント】`settings_store`を作る。`state.json`の読み書き（一時ファイルからの置き換え）、`schema`の確認と移行、読めないときの退避と既定の状態での起動、`load_state`・`save_state`
+- [x] T4-1 【エージェント】`settings_store`を作る。`state.json`の読み書き（一時ファイルからの置き換え）、`schema`の確認と移行、読めないときの退避と既定の状態での起動、`load_state`・`save_state`
   - 推奨: Opus・high以上
   - 依存: T2-5
+  - 実施: Opus
+  - 実施メモ（261108）：`src-tauri/src/settings_store/`に、`mod.rs`（`SettingsStore`の`load`・`save`、退避）・`model.rs`（imple 5.1の`PersistedState`ほかの型と`validate`）・`migrate.rs`（`schema`の確認と移行）を作った。`commands.rs`に`load_state`・`save_state`を足し、`lib.rs`の`setup`で`app.path().app_data_dir()`（`%APPDATA%\com.rinontech.sonar-spectra`）を保存先にしたストアを管理状態に入れた。`app_data_dir`はインストールしたTauri 2.12.5のソースで、`std::fs::rename`が既存のファイルを置き換えることはRust 1.98の標準ライブラリのドキュメントで確かめた
+    - 委任の範囲で決めたもの：`load_state`の戻り値を`PersistedState | null`にした（impleの3.5は`-> PersistedState`）。ファイルがないときと、読めずに退避したときに`null`を返し、既定の状態はUIが作って保存する。既定の構成の名前「既定」は辞書が、インスタンスの既定値はモジュールのレジストリが正本で、Rustに複写しないため（T4-2でUIストアが`null`を受けて既定の状態を作る）
+    - 書き込み：同じフォルダの`state.json.tmp`に書いて`sync_all`してから`state.json`へ名前を変える。`save_state`も決まりの確認を通し、合わない状態は書かずにエラーを返す（次の起動で退避されるのを防ぐ）
+    - 読み込み：JSONの解釈 → `schema`の確認と移行 → 型 → 決まりの確認の順。どこかで失敗したら元のファイルを`state.broken-{UTCの日時}.json`（例：`state.broken-20261108T071548Z.json`。同じ秒に重なったら`-2`以降を付ける）に名前を変え、`null`を返す。UTF-8でない中身も同じ扱い。権限などで読めないときだけエラーを返す
+    - `schema`：版がない・0・数でないもの、今のアプリより新しい版は読めないものとして退避する。移行は`migrate.rs`の`STEPS`に版ごとの書き換えを足す方式で、schema 1が最初の形式なので今は手順がない
+    - 型：キーはキャメルケースでUIの型とそろえた。`kind`・`mode`・`theme`・`direction`・`slot`は列挙で確かめ、`options`はオブジェクトであることだけを確かめる（中身はモジュールのレジストリが正本）。知らないキーは読み飛ばす
+    - 決まりの確認（`validate`）：`schema`が今の版、保存済みの構成が1件以上でIDが重ならず使用中の構成がその中にある、各構成のインスタンスのIDが重ならず`rect`が12×8の格子の中で1マス以上。重なりや推奨の形との適合、配色の参照先はUI側で扱う
+    - 単体テスト17件（移行5・保存12）を加えた。W4-1の観点（書いて読むと同じ値、壊れたファイルの退避と既定での起動、古い`schema`の移行〔架空の手順を差し替えて確認〕、書き込みの途中で止めても前の状態が残る）を含む。`bun run check`は終了コード0で通った
 - [ ] T4-2 【エージェント】UIのストア（`useConfigStore`・`useRuntimeStore`）を作る。初回の既定の状態（保存済みの構成「既定」）、変更の自動保存（間を置いて保存）、起動時の復元
   - 推奨: Opus・high以上
   - 依存: T2-9, T4-1

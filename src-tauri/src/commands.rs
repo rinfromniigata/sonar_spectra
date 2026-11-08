@@ -5,6 +5,7 @@
 //!
 //! JavaScript からの引数名はキャメルケース（`onFrame`、`deviceId`、`paused`、`ids`）。
 //! 入力源の状態はイベント `source-status`（`audio_engine::SOURCE_STATUS_EVENT`）で届く。
+//! 保存（`load_state`・`save_state`）は `SettingsStore` に渡すだけにする。
 
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
@@ -14,6 +15,7 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 use crate::audio_engine::AudioEngine;
 use crate::audio_source::DeviceInfo;
 use crate::frame_transport::channel_output;
+use crate::settings_store::{LoadOutcome, PersistedState, SettingsStore};
 
 /// アプリが管理するエンジン
 pub type EngineState = Mutex<AudioEngine>;
@@ -71,4 +73,33 @@ pub fn set_render_paused(engine: State<'_, EngineState>, paused: bool) -> Result
 pub fn set_active_sections(engine: State<'_, EngineState>, ids: Vec<u8>) -> Result<(), String> {
     lock(&engine).set_active_sections(ids);
     Ok(())
+}
+
+/// アプリが管理する `state.json` の読み書き。保存が重ならないよう `Mutex` に入れる
+pub type StoreState = Mutex<SettingsStore>;
+
+fn lock_store<'a>(store: &'a State<'_, StoreState>) -> MutexGuard<'a, SettingsStore> {
+    store.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// 保存された状態を読む。`null` なら、UI が既定の状態を作って保存する
+///
+/// ファイルがない（初めての起動）ときと、読めずに `state.broken-{日時}.json` へ退避したときに `null` になる。
+/// 古い `schema` は移行してから返す。
+#[tauri::command(async)]
+pub fn load_state(store: State<'_, StoreState>) -> Result<Option<PersistedState>, String> {
+    let outcome = lock_store(&store).load().map_err(|e| e.to_string())?;
+    if let LoadOutcome::Recovered { backup, reason } = &outcome {
+        eprintln!(
+            "state.json could not be read ({reason}); moved to {}",
+            backup.display()
+        );
+    }
+    Ok(outcome.into_state())
+}
+
+/// 状態を保存する（一時ファイルに書いてから置き換える）。決まりに合わない状態は書かずに `Err` を返す
+#[tauri::command(async)]
+pub fn save_state(store: State<'_, StoreState>, state: PersistedState) -> Result<(), String> {
+    lock_store(&store).save(&state).map_err(|e| e.to_string())
 }
