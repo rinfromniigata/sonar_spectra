@@ -40,6 +40,15 @@ export function cellAt(box: GridBox, x: number, y: number): GridPosition {
   };
 }
 
+/**
+ * 位置 `rect` の枠の見た目の大きさ（画面上の px）。CSS の格子と同じ計算で、n マスにまたがる枠は
+ * n × 間隔 − すき間（間隔は cellPitch）。形の適合判定（shapeFit）に渡す
+ */
+export function frameSize(box: GridBox, rect: GridRect): { width: number; height: number } {
+  const pitch = cellPitch(box);
+  return { width: rect.cs * pitch.x - box.gap, height: rect.rs * pitch.y - box.gap };
+}
+
 /** ポインタが動いた距離を、いちばん近いマス数に直す（格子に吸着させる） */
 export function cellDelta(box: GridBox, dx: number, dy: number): { dc: number; dr: number } {
   const pitch = cellPitch(box);

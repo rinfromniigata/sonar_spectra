@@ -17,6 +17,7 @@ import {
   resizeBy,
   resizeTo,
   returnToAuto,
+  setDirection,
   setInstanceEnabled,
   splitterStep,
   swapRects,
@@ -397,5 +398,22 @@ describe("操作を続けても崩れない", () => {
         expectValid(layout.instances);
       }
     }
+  });
+});
+
+describe("流れる方向", () => {
+  const instances = [inst("a", R(1, 1, 3, 2)), inst("b", R(7, 1, 3, 2), { direction: null })];
+
+  it("そのインスタンスの方向だけを変え、配置は変えない", () => {
+    const next = setDirection(instances, "a", "right")!;
+    expect(next[0]).toMatchObject({ direction: "right", rect: R(1, 1, 3, 2) });
+    expect(next[1]).toBe(instances[1]);
+    expect(instances[0].direction).toBe("up");
+  });
+
+  it("変わらないとき・方向のないもの・ないものは null", () => {
+    expect(setDirection(instances, "a", "up")).toBeNull();
+    expect(setDirection(instances, "b", "left")).toBeNull();
+    expect(setDirection(instances, "none", "left")).toBeNull();
   });
 });

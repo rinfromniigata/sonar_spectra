@@ -68,3 +68,38 @@ describe("MeterGrid", () => {
     expect(count(html, /class="module-frame/g)).toBe(instances.filter((i, n) => n !== 1 && i.enabled).length);
   });
 });
+
+describe("MeterGrid の編集中の見出し", () => {
+  const frames = (html: string) => [...html.matchAll(/data-kind="(\w+)"/g)].map((m) => m[1]);
+
+  it("編集中は、置いたモジュールごとに見出しを出し、同じ種類は番号で見分ける（無効なものも数える）", async () => {
+    const instances = defaults();
+    const extra = { ...instances.find((i) => i.kind === "stereo" && i.slot === "pan")!, id: "extra" };
+    const html = await render({ instances: [...instances, extra] as Instance[], mode: "auto", editing: true });
+    expect(count(html, /class="edit-head"/g)).toBe(instances.filter((i) => i.enabled).length + 1);
+    const names = [...html.matchAll(/class="name"[^>]*>([^<]*)</g)].map((m) => m[1]);
+    // 位相は3つ（リサージュ1・周波数別の定位2・追加3）
+    expect(names.filter((n) => n.startsWith(ja.modules.phase))).toEqual([`${ja.modules.phase} 1`, `${ja.modules.phase} 2`, `${ja.modules.phase} 3`]);
+    expect(names).toContain(`${ja.modules.level} 1`);
+    expect(frames(html).length).toBeGreaterThan(0);
+  });
+
+  it("編集中でなければ見出しを出さない", async () => {
+    expect(await render({ instances: defaults(), mode: "auto" })).not.toContain("edit-head");
+  });
+
+  it("モジュールごとに、枠の形に合わせた適合判定のバッジを出す", async () => {
+    const html = await render({ instances: defaults(), mode: "auto", editing: true });
+    const results = [...html.matchAll(/data-fit="(\w+)"/g)].map((m) => m[1]);
+    expect(results).toHaveLength(defaults().filter((i) => i.enabled).length);
+    expect(results.every((r) => ["good", "warn_short", "warn_axis", "warn_long", "warn_tall"].includes(r))).toBe(true);
+  });
+
+  it("手動配置では、置いた位置の縦横比で判定する（スペクトラムを縦長に置くと、向きと枠が逆）", async () => {
+    const spec = { ...defaults().find((i) => i.kind === "spec")!, rect: { c: 1, r: 1, cs: 2, rs: 8 }, direction: "up" } as Instance;
+    const html = await render({ instances: [spec], mode: "manual", editing: true });
+    expect(html).toContain('data-fit="warn_axis"');
+    const wide = { ...spec, rect: { c: 1, r: 1, cs: 12, rs: 3 } } as Instance;
+    expect(await render({ instances: [wide], mode: "manual", editing: true })).toContain('data-fit="good"');
+  });
+});

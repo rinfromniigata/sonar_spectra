@@ -11,6 +11,8 @@ const plan = vi.hoisted(() => ({
   drawerEditLayout: false,
   gridSelect: null as string | null,
   gridUpdate: null as unknown[] | null,
+  /** kind の最初のインスタンスの方向を変えるイベントを出す（kind が null なら、ないIDで出す） */
+  gridDirection: null as { kind: string | null; direction: string } | null,
   panel: [] as ("autoArrange" | "done")[],
 }));
 
@@ -56,10 +58,15 @@ vi.mock("./MeterGrid.vue", async () => {
   return {
     default: vue.defineComponent({
       props: ["instances", "mode", "registry", "editing", "selectedId"],
-      emits: ["select", "update"],
-      setup(_, { emit }) {
+      emits: ["select", "update", "direction"],
+      setup(props, { emit }) {
         if (plan.gridSelect !== null) emit("select", plan.gridSelect);
         if (plan.gridUpdate !== null) emit("update", plan.gridUpdate);
+        if (plan.gridDirection !== null) {
+          const { kind, direction } = plan.gridDirection;
+          const target = (props.instances as { id: string; kind: string }[]).find((i) => i.kind === kind);
+          emit("direction", kind === null ? "none" : target!.id, direction);
+        }
         return () => vue.h("div", { class: "meter-grid" });
       },
     }),
@@ -133,6 +140,7 @@ describe("MeterScreen のイベントのつながり", () => {
     plan.drawerEditLayout = false;
     plan.gridSelect = null;
     plan.gridUpdate = null;
+    plan.gridDirection = null;
     plan.panel = [];
     toggles.count = 0;
     invoke.mockReset();
@@ -190,6 +198,7 @@ describe("MeterScreen のレイアウト編集のつながり", () => {
     plan.drawerEditLayout = false;
     plan.gridSelect = null;
     plan.gridUpdate = null;
+    plan.gridDirection = null;
     plan.panel = [];
     invoke.mockReset();
     invoke.mockResolvedValue(undefined);
@@ -252,6 +261,28 @@ describe("MeterScreen のレイアウト編集のつながり", () => {
     expect(config.current.value.layout.instances.every((i) => i.rect === null)).toBe(true);
     expect(runtime.layoutEditing.value).toBe(false);
     expect(runtime.selectedInstanceId.value).toBeNull();
+  });
+
+  it("方向の矢印は、そのインスタンスの方向だけを変える。配置の種類は変えず、「保存後に変更あり」になる", async () => {
+    plan.gridDirection = { kind: "spec", direction: "right" };
+    const runtime = createRuntimeStore();
+    runtime.setLayoutEditing(true);
+    const config = await render(runtime);
+    const instances = config.current.value.layout.instances;
+    // スペクトラムの向きは既定（上）から右に変わり、ほかのインスタンスの向きと、すべての位置は変わらない
+    // （既定の向きに「右」のものはないので、右になっているのはスペクトラムだけ）
+    expect(instances.filter((i) => i.direction === "right").map((i) => i.kind)).toEqual(["spec"]);
+    expect(instances.every((i) => i.rect === null)).toBe(true);
+    expect(config.current.value.layout.mode).toBe("auto");
+    expect(config.dirty.value).toBe(true);
+  });
+
+  it("方向が変わらないとき・ないインスタンスのときは何もしない", async () => {
+    plan.gridDirection = { kind: null, direction: "right" };
+    const runtime = createRuntimeStore();
+    runtime.setLayoutEditing(true);
+    const config = await render(runtime);
+    expect(config.dirty.value).toBe(false);
   });
 
   it("自動配置のときの「自動整列」は何も変えない（「保存後に変更あり」にしない）", async () => {

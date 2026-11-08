@@ -26,7 +26,8 @@ import { useAppVersion } from "../app/use_app_version";
 import { useConfigStore } from "../config/config_store";
 import type { Instance } from "../config/types";
 import { FrameClient, startFrameStream } from "../frame_client";
-import { returnToAuto } from "../layout/manual";
+import { returnToAuto, setDirection } from "../layout/manual";
+import type { Direction } from "../modules/options";
 import { moduleRegistry } from "../modules";
 import { provideRenderLoop } from "../render/use_render_loop";
 import { useWindowController } from "../window";
@@ -101,6 +102,16 @@ function applyLayout(instances: Instance[]): void {
   });
 }
 
+/** 流れる方向の矢印：そのインスタンスの方向だけを変える（配置の種類は変えない） */
+function changeDirection(id: string, direction: Direction): void {
+  // 変わらないときは書かない（「保存後に変更あり」にしない）
+  if (!setDirection(layout.value.instances, id, direction)) return;
+  config.updateCurrent((draft) => {
+    const next = setDirection(draft.layout.instances, id, direction);
+    if (next) draft.layout.instances = next;
+  });
+}
+
 /** 「自動整列」：自動配置に戻す */
 function arrangeAutomatically(): void {
   if (layout.value.mode === "auto") return;
@@ -134,6 +145,7 @@ defineExpose({ client, channel: () => channel });
       :selected-id="runtime.selectedInstanceId.value"
       @select="runtime.selectInstance"
       @update="applyLayout"
+      @direction="changeDirection"
     />
     <!-- 編集中は出さない（S01c・S01d の幕が格子をふさがないように。入力源の状態はタイトル帯のチップで分かる） -->
     <StatusOverlay v-if="!editing" :source="source.event.value" @open-settings="openSettings" />

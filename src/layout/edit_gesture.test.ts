@@ -5,6 +5,7 @@ import {
   cellDelta,
   cellPitch,
   finishGesture,
+  frameSize,
   instanceAt,
   lineAt,
   startGesture,
@@ -161,5 +162,18 @@ describe("ドラッグ：境界線", () => {
   it("元の線に戻すと、つかんだときの配置に戻る", () => {
     const state = startGesture(start, { kind: "splitter", splitter })!;
     expect(rectOf(run(state, [{ line: 9 }, { line: 7 }]).shown, "a")).toEqual(R(1, 1, 6, 8));
+  });
+});
+
+describe("枠の見た目の大きさ", () => {
+  it("nマスにまたがる枠は、n×間隔−すき間（CSSの格子と同じ）", () => {
+    expect(frameSize(box, R(1, 1, 1, 1))).toEqual({ width: 100, height: 50 });
+    expect(frameSize(box, R(3, 2, 4, 3))).toEqual({ width: 4 * 104 - 4, height: 3 * 54 - 4 });
+    expect(frameSize(box, R(1, 1, 12, 8))).toEqual({ width: 12 * 104 - 4, height: 8 * 54 - 4 });
+  });
+
+  it("余白とすき間がなければ、マスの数に比例する", () => {
+    const plain: GridBox = { left: 0, top: 0, width: 1200, height: 800, padding: 0, gap: 0 };
+    expect(frameSize(plain, R(5, 5, 2, 3))).toEqual({ width: 200, height: 300 });
   });
 });

@@ -499,10 +499,19 @@ Phaseの推奨: Opus・high以上
     - 未決定：モックのパネルの下の帯には「既定に戻す」（`layout_edit.reset`）もあるが、何を既定に戻すのか（配置だけか、インスタンスの組も既定の構成に戻すのか）が決まっておらず、tasksのどの項目にもないため、置いていない（ユーザーに確認する）
     - 使い始めた`layout_edit.title`・`hint`・`auto_arrange`・`done`・`mode_auto`・`mode_manual`・`splitter`を`scripts/i18n_pending_keys.ts`から外した。`layout_edit.selected`はインスタンスの設定の見出しで使うため残した
     - 単体テスト31件（`edit_gesture`16・`MeterGrid`4・`LayoutEditPanel`3・`MeterScreen`7〔イベントのつながり6・組み立て1〕・実行中の状態のストア1。ほかに既存のテストの代役を足した）を加えた。DOMのテスト環境がないため、画面はSSRで組み立てた結果（編集中の見た目のクラス、境界線の数と向き、フォーカスと選択、パネルの並びとバッジ、状態の表示を出さないこと）を確かめ、ドラッグの計算は純粋関数で確かめた。`bun run check`は通った（UI 478件・Rust 114件）。実機でのマウスとキーボードの操作、再起動での引き継ぎはW5-3で確かめる
-- [ ] T5-4 【エージェント】編集中のモジュールの見出しを作る。つまみ、名前と番号、適合判定のバッジ（ライトでは文字を`--color-text`）、流れる方向の矢印
+- [x] T5-4 【エージェント】編集中のモジュールの見出しを作る。つまみ、名前と番号、適合判定のバッジ（ライトでは文字を`--color-text`）、流れる方向の矢印
   - 推奨: Sonnet・high以上
   - 依存: T5-2, T5-3
   - 画面: S03
+  - 実施: Sonnet
+  - 実施メモ（261108）：`src/components/EditHead.vue`を作り、`MeterGrid`の編集中、各モジュールの枠の上端に重ねた（`ModuleFrame`のスロット）。並びはモックの`.edit-head`のとおり、つまみ → 名前と番号（「位相 2」）→ 適合判定のバッジ → 流れる方向の矢印。歯車ボタンはT6-4で加える
+    - 名前と番号：番号は同じ種類の中の並び順（`src/layout/instance_numbers.ts`の`instanceNumbers`）。無効なものも数えるので、有効・無効を切り替えても番号が変わらない（T5-5の一覧も同じ関数を使う）
+    - 適合判定のバッジ：T5-2の`shapeFit`に、枠の見た目の大きさと流れる方向を渡して出す。大きさは、測った格子の大きさとマスの数から`frameSize`（`edit_gesture.ts`。CSSの格子と同じ「n×間隔−すき間」）で求める。測れていない間（最初の描画の前・DOMなし）は、格子の画面比だけを使った大きさで代える。結果の文言は辞書の`shape_fit.*`。適は枠線・文字とも副色、それ以外は枠線が注意色。ライトでは、文字を`--color-label-b`・`--color-label-c`（T5-3の`theme_aliases.css`。ライトでは`--color-text`）にし、枠線だけ発光色を残した
+    - 流れる方向の矢印：↑→↓←の4つ（`aria-pressed`で今の向き、読み上げの名前は辞書の`instance.direction.*`）。方向のないモジュール（LOUDなど）には出さない。押してもモジュールのドラッグを始めないよう、`data-no-drag`の印を付けた。押すと`direction`で知らせ、`MeterScreen`がそのインスタンスの`direction`だけを変える（配置の種類は変えない。向きが変わらないときは何も書かず、「保存後に変更あり」にしない）。`setDirection`（`layout/manual.ts`）を足した
+    - 委任の範囲で決めたもの：自動配置の縦長の帯では、自動整列がレベルの向きを横に倒す（上・下を選んでも右・左に直される）ため、そこで上・下を選ぶと効かなくなる。この場合だけ、選んだ向きを効かせるために、固定した配置に選んだ向きを入れて手動配置にする（`MeterGrid`の`onDirection`）。それ以外の向きの変更は、自動配置のままにする
+    - 辞書キー：`shape_fit.*`・`instance.direction.*`を使い始めたので`scripts/i18n_pending_keys.ts`から外した。i18nの検査は動的なキー（テンプレート文字列）を使用として数えないため、キーは対応表（`FIT_KEYS`・`DIRECTIONS`）に文字列で書いた
+    - 寸法は`component_metrics.css`に足した（見出しの文字の範囲、すき間、余白、つまみ、方向のボタンの幅。値はモックの`.edit-head`・`.grip`・`.dirs`）
+    - 単体テスト19件（`EditHead`6・`MeterGrid`の見出し4・`instanceNumbers`3・`frameSize`2・`setDirection`2・`MeterScreen`の方向のつながり2。`MeterScreen`のテストの格子の代役には`direction`のイベントを足した）を加えた。W5-4の観点のうち、適合判定のバッジの文字が`--color-label-*`であること（ライトで`--color-text`になること）は、W5-4で実際の色のコントラストを測って確かめる。`bun run check`は通った（UI 497件・Rust 114件）。実機での見え方と矢印の操作はW5-3・W5-6で確かめる
 - [ ] T5-5 【エージェント】置いたモジュールの一覧を作る。追加（種類を選ぶ）・複製・削除・有効／無効のスイッチ
   - 推奨: Opus・high以上
   - 依存: T5-1, T5-3

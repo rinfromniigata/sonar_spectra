@@ -7,7 +7,7 @@
 // - 手で動かす前に beginManual で自動配置の結果を固定し、「自動整列」は returnToAuto で戻す
 
 import type { Config, GridRect, Instance } from "../config/types";
-import type { ModuleKind, Shape } from "../modules/options";
+import type { Direction, ModuleKind, Shape } from "../modules/options";
 import { autoArrange, type AutoLayout } from "./auto_arrange";
 import { GRID_COLUMNS, GRID_ROWS, insideGrid, overlaps } from "./grid";
 
@@ -338,6 +338,16 @@ export function moveSplitter(
     last = rects;
   }
   return last ? withRects(instances, last) : null;
+}
+
+// ---------------------------------------------------------------------------
+// 流れる方向
+
+/** 流れる方向を変える（配置は変えない）。変わらないとき・インスタンスがないとき・方向のないものは null */
+export function setDirection(instances: readonly Instance[], id: string, direction: Direction): Instance[] | null {
+  const target = instances.find((i) => i.id === id);
+  if (!target || target.direction === null || target.direction === direction) return null;
+  return instances.map((i) => (i.id === id ? ({ ...i, direction } as Instance) : i));
 }
 
 // ---------------------------------------------------------------------------

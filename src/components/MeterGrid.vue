@@ -6,11 +6,15 @@
 // - 格子の点を見せ、モジュールを破線で囲む。選んでいるもの（selectedId）を強調する
 // - モジュールのドラッグで移動、右下の角のドラッグで大きさ変更、境界線のドラッグで両側の大きさを同時に変える
 //   （格子に吸着。計算は layout/edit_gesture と layout/manual の純粋関数）
+// - 各モジュールに見出し（EditHead：つまみ・名前と番号・形の適合判定のバッジ・流れる方向の矢印）を重ねる。
+//   適合判定には、枠の見た目の大きさを格子の大きさとマスの数から求めて渡す（frameSize）。
+//   方向の矢印を押したら direction で知らせる（配置は変えない）。ただし自動配置の縦長の帯で、自動整列が方向を決める
+//   もの（レベル）に、それと違う向きを選んだときは、選んだ向きを効かせるため、固定した配置に選んだ向きを入れて update で知らせる
 // - キーボード：モジュールにフォーカスして矢印キーで1マス移動、Shift＋矢印キーで大きさを1マス変える。
 //   境界線にフォーカスして矢印キーで1マス動かす（縦の線は左右、横の線は上下）
 // - 配置を変えたら update で手動配置の並び（全インスタンス）を知らせる。自動配置のときは、その時点の自動整列の結果を
 //   固定したもの（pinAutoLayout）を基準に操作するので、最初の操作で手動配置に固定される。保存は置く側が行う
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import type { GridRect, Instance } from "../config/types";
 import { useT } from "../i18n/use_t";
 import { autoArrange } from "../layout/auto_arrange";
@@ -18,6 +22,7 @@ import {
   cellAt,
   cellDelta,
   finishGesture,
+  frameSize,
   instanceAt,
   lineAt,
   startGesture,
@@ -26,9 +31,22 @@ import {
   type GridBox,
 } from "../layout/edit_gesture";
 import { GRID_COLUMNS, GRID_ROWS } from "../layout/grid";
-import { arrowDelta, findSplitters, moveBy, moveSplitter, pinAutoLayout, resizeBy, splitterStep, type Splitter } from "../layout/manual";
+import { instanceNumbers } from "../layout/instance_numbers";
+import {
+  arrowDelta,
+  findSplitters,
+  moveBy,
+  moveSplitter,
+  pinAutoLayout,
+  resizeBy,
+  setDirection,
+  splitterStep,
+  type Splitter,
+} from "../layout/manual";
+import type { Direction } from "../modules/options";
 import { moduleRegistry, type ModuleRegistry } from "../modules/registry";
 import type { AnyModuleDefinition } from "../modules/types";
+import EditHead from "./EditHead.vue";
 import ModuleFrame from "./ModuleFrame.vue";
 
 const props = withDefaults(
@@ -48,6 +66,8 @@ const emit = defineEmits<{
   select: [id: string];
   /** 配置を変えた。手動配置にして、インスタンスの並びをこれに置き換える */
   update: [instances: Instance[]];
+  /** 流れる方向を変えた（配置は変えない） */
+  direction: [id: string, direction: Direction];
 }>();
 
 const { t } = useT();
@@ -56,9 +76,13 @@ const root = ref<HTMLElement | null>(null);
 const aspect = ref(16 / 9);
 let observer: ResizeObserver | null = null;
 
+/** 格子の見た目の大きさ（編集中だけ測る。測るまでは null） */
+const box = shallowRef<GridBox | null>(null);
+
 function measure(): void {
   const rect = root.value?.getBoundingClientRect();
   if (rect && rect.width > 0 && rect.height > 0) aspect.value = rect.width / rect.height;
+  box.value = props.editing ? gridBox() : null;
 }
 
 onMounted(() => {
@@ -67,6 +91,14 @@ onMounted(() => {
   if (root.value) observer.observe(root.value);
 });
 onBeforeUnmount(() => observer?.disconnect());
+// 編集を始めると余白とすき間が変わる（描き直したあとに測り直す）
+watch(
+  () => props.editing,
+  async () => {
+    await nextTick();
+    measure();
+  },
+);
 
 /**
  * 表示し、操作の基準にする配置（手動配置の形）。自動配置では、今の画面比での自動整列の結果を固定したもの
@@ -91,6 +123,17 @@ const placed = computed<Placed[]>(() =>
     return definition ? [{ instance, definition, rect: instance.rect }] : [];
   }),
 );
+
+/** 同じ種類の中での番号（無効なものも数える） */
+const numbers = computed(() => instanceNumbers(props.instances));
+
+/**
+ * 枠の見た目の大きさ（適合判定に渡す）。測れていれば実寸、測れていなければ（最初の描画の前・DOMなし）、
+ * 格子の画面比だけを使った大きさ（余白とすき間は無視）
+ */
+function sizeOf(rect: GridRect): { width: number; height: number } {
+  return frameSize(box.value ?? { left: 0, top: 0, width: aspect.value * 100, height: 100, padding: 0, gap: 0 }, rect);
+}
 
 const splitters = computed<Splitter[]>(() => (props.editing ? findSplitters(arranged.value) : []));
 
@@ -123,7 +166,7 @@ let drag: Drag | null = null;
 const draggingId = ref<string | null>(null);
 const draggingSplitter = shallowRef<Splitter | null>(null);
 
-/** 格子の今の見た目の大きさ（つかんだときに測る） */
+/** 格子の今の見た目の大きさ */
 function gridBox(): GridBox | null {
   const el = root.value;
   if (!el) return null;
@@ -229,6 +272,20 @@ async function onSplitterKeydown(event: KeyboardEvent, splitter: Splitter): Prom
   if (moved) root.value?.querySelector<HTMLElement>(`[data-splitter="${CSS.escape(splitterKey(moved))}"]`)?.focus();
 }
 
+/** 方向の矢印：選んだ向きを知らせる。自動整列が決める向きと違うときは、固定した配置に入れて手動配置にする */
+function onDirection(id: string, direction: Direction): void {
+  if (props.mode === "auto") {
+    const trial = props.instances.map((i) => (i.id === id ? ({ ...i, direction } as Instance) : i));
+    const forced = autoArrange(trial, aspect.value, (kind) => props.registry.get(kind)?.shape ?? "free").directions.get(id);
+    if (forced !== undefined && forced !== direction) {
+      const next = setDirection(arranged.value, id, direction);
+      if (next) emit("update", next);
+      return;
+    }
+  }
+  emit("direction", id, direction);
+}
+
 function onModuleFocus(id: string): void {
   if (props.editing && props.selectedId !== id) emit("select", id);
 }
@@ -260,7 +317,16 @@ function onModuleFocus(id: string): void {
       @keydown="onModuleKeydown($event, item.instance.id)"
       @focus="onModuleFocus(item.instance.id)"
     >
-      <span v-if="editing" class="resize-handle" data-resize aria-hidden="true" />
+      <template v-if="editing">
+        <EditHead
+          :instance="item.instance"
+          :definition="item.definition"
+          :number="numbers.get(item.instance.id) ?? 1"
+          :size="sizeOf(item.rect)"
+          @direction="onDirection(item.instance.id, $event)"
+        />
+        <span class="resize-handle" data-resize aria-hidden="true" />
+      </template>
     </ModuleFrame>
     <div
       v-for="splitter in splitters"

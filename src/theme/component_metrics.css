@@ -74,6 +74,19 @@
   --resize-handle-size: 12px;
   --resize-handle-inset: 2px;
 
+  /* 編集中のモジュールの見出し（モックの .edit-head・.grip・.dirs。文字は枠の幅に合わせて縮み、この範囲に収める） */
+  --edit-head-font-min: 8px;
+  --edit-head-font-fluid: 4cqi;
+  --edit-head-font-max: 11px;
+  --edit-head-gap: 4px;
+  --edit-head-padding-y: 4px;
+  --edit-head-padding-x: 6px;
+  --grip-size: 10px;
+  --grip-dot-pitch: 4px;
+  --grip-dot: 1px;
+  --grip-dot-fade: 1.3px;
+  --direction-button-width: 1.9em;
+
   /* スライダー */
   --slider-value-min-width: 3.2em; /* 値の欄（「100%」「×3.00」が収まる幅） */
   --backdrop-blur: 6px;

@@ -19,6 +19,7 @@ export {
   resizeBy,
   resizeTo,
   returnToAuto,
+  setDirection,
   setInstanceEnabled,
   splitterStep,
   swapRects,
@@ -28,6 +29,8 @@ export {
   type Splitter,
   type SplitterAxis,
 } from "./manual";
+export { frameSize, type GridBox } from "./edit_gesture";
+export { instanceNumbers } from "./instance_numbers";
 export {
   COMPACT_MAX_RATIO,
   LONG_MIN_RATIO,
