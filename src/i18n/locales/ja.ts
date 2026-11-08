@@ -74,6 +74,8 @@ const ja = {
     open_instance_settings: "このモジュールの設定",
     instances: "置いたモジュール",
     add_module: "＋ モジュールを追加",
+    add_choose: "追加するモジュール",
+    no_space: "格子に空きがないため、無効のままにしました。ほかのモジュールを縮めて空きを作ってから、スイッチで有効にしてください。",
   },
   instance: {
     source: "入力源",

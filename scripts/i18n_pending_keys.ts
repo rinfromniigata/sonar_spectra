@@ -11,17 +11,11 @@ export const PENDING_KEYS: readonly string[] = [
   // Phase 4：設定パネルとウィンドウ（T4-2〜T4-6）
 
   // Phase 5：レイアウト編集（T5-2〜T5-5）
-  "common.duplicate",
-  "common.delete",
-  "module_shape.long",
-  "module_shape.compact",
-  "module_shape.free",
+  // 「既定に戻す」（パネルの下の帯）は、何を戻すかが未決定のため、まだ置いていない（T5-3の実施メモ）
   "layout_edit.reset",
-  "layout_edit.selected",
-  "layout_edit.instances",
-  "layout_edit.add_module",
 
   // Phase 6：インスタンスの設定（T6-1〜T6-4）
+  "layout_edit.selected",
   "common.reset_default",
   "common.speed_value",
   "layout_edit.open_instance_settings",

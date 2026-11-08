@@ -411,6 +411,25 @@ export function duplicateInstance(layout: Layout, sourceId: string, newId: strin
 }
 
 /**
+ * 手動配置で、位置を持たないインスタンスを新しく置くときの大きさ（推奨の形ごと）。
+ * 細長いものは横長（今の細長い種類は、既定の向きで横長の枠が合う）、正方形に近いものは正方形、形を選ばないものはやや横長
+ */
+export const NEW_INSTANCE_SIZES: Record<Shape, GridSize> = {
+  long: { cs: 6, rs: 2 },
+  compact: { cs: 3, rs: 3 },
+  free: { cs: 4, rs: 3 },
+};
+
+/**
+ * インスタンスを消す（imple 5.4）。手動配置では空いたマスはそのまま残り、自動配置では残りで並べ直される。
+ * 種類の最後の1つも消せる。ないときは null
+ */
+export function removeInstance(layout: Layout, id: string): Layout | null {
+  if (!layout.instances.some((i) => i.id === id)) return null;
+  return { ...layout, instances: layout.instances.filter((i) => i.id !== id) };
+}
+
+/**
  * 新しいインスタンスを末尾に加える（「＋ モジュールを追加」）。自動配置では位置を持たない。
  * 手動配置で有効なものは、大きさ `size` で置き場所を探して置き、なければ無効にして加える
  */

@@ -3,6 +3,7 @@ import type { GridRect, Instance } from "../config/types";
 import type { ModuleKind, Shape } from "../modules/options";
 import { autoArrange } from "./auto_arrange";
 import { GRID_COLUMNS, GRID_ROWS, insideGrid, overlaps } from "./grid";
+import { shapeFit } from "./shape_fit";
 import {
   addInstance,
   arrowDelta,
@@ -12,8 +13,10 @@ import {
   moveBy,
   moveSplitter,
   moveTo,
+  NEW_INSTANCE_SIZES,
   pinAutoLayout,
   placeNewRect,
+  removeInstance,
   resizeBy,
   resizeTo,
   returnToAuto,
@@ -415,5 +418,26 @@ describe("流れる方向", () => {
     expect(setDirection(instances, "a", "up")).toBeNull();
     expect(setDirection(instances, "b", "left")).toBeNull();
     expect(setDirection(instances, "none", "left")).toBeNull();
+  });
+});
+
+describe("削除と、新しく置く大きさ", () => {
+  it("そのインスタンスだけを消し、ほかの位置は変えない（手動配置の空いたマスは残る）。ないものは null", () => {
+    const layout: Layout = { mode: "manual", instances: [inst("a", R(1, 1, 6, 8)), inst("b", R(7, 1, 6, 8))] };
+    const next = removeInstance(layout, "a")!;
+    expect(next.instances.map((i) => i.id)).toEqual(["b"]);
+    expect(next.instances[0]).toBe(layout.instances[1]);
+    expect(next.mode).toBe("manual");
+    expect(removeInstance(layout, "none")).toBeNull();
+  });
+
+  it("新しく置く大きさは、16:9 の画面で、既定の向きの適合判定が適になる", () => {
+    const cellAspect = ((16 / 9) * GRID_ROWS) / GRID_COLUMNS;
+    const box = (size: { cs: number; rs: number }) => ({ width: size.cs * cellAspect, height: size.rs });
+    const long = box(NEW_INSTANCE_SIZES.long);
+    expect(shapeFit({ shape: "long", longSide: "across" }, "up", long.width, long.height)).toBe("good");
+    expect(shapeFit({ shape: "long", longSide: "along" }, "left", long.width, long.height)).toBe("good");
+    const compact = box(NEW_INSTANCE_SIZES.compact);
+    expect(shapeFit({ shape: "compact" }, null, compact.width, compact.height)).toBe("good");
   });
 });

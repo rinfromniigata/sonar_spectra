@@ -86,6 +86,7 @@
   --grip-dot: 1px;
   --grip-dot-fade: 1.3px;
   --direction-button-width: 1.9em;
+  --row-off-opacity: 0.55; /* 置いたモジュールの一覧で、無効な行の濃さ（モックの .mod-row.is-off） */
 
   /* スライダー */
   --slider-value-min-width: 3.2em; /* 値の欄（「100%」「×3.00」が収まる幅） */

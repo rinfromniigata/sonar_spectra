@@ -152,6 +152,8 @@ describe("MeterScreen", () => {
     const html = await render(undefined, runtime);
     expect(html).toMatch(/class="[^"]*meter-grid[^"]*is-editing/);
     expect(html).toContain("layout-edit-panel");
+    // パネルの中に、置いたモジュールの一覧を入れる
+    expect(html.indexOf("instance-list")).toBeGreaterThan(html.indexOf("layout-edit-panel"));
     expect(html).not.toContain("status-overlay");
     expect(html).toMatch(/aria-label="レイアウト編集"[^>]*aria-pressed="true"|aria-pressed="true"[^>]*aria-label="レイアウト編集"/);
     expect(html.indexOf("crt-overlay")).toBeGreaterThan(html.indexOf("layout-edit-panel"));

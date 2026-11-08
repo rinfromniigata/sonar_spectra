@@ -18,6 +18,7 @@
 //   「レイアウトを編集」で始める（設定パネルは閉じる）。編集中は格子の右にパネル（LayoutEditPanel）を置き、格子はその分だけ狭くなる。
 //   格子で配置を変えたら手動配置として構成に書く（自動配置なら、その時点の自動整列の結果がそのまま固定される）。
 //   「自動整列」で自動配置に戻し、「完了」で編集を終える。選んでいるインスタンスは実行中の状態のストアに持つ。
+//   パネルには置いたモジュールの一覧（InstanceList）を入れ、追加・複製・削除・有効／無効は layout_edit_actions で構成に書く。
 //   編集中は状態の表示（StatusOverlay）を出さない（入力源が開けないときの幕で、格子を編集できなくならないように）
 import { computed, onMounted } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
@@ -33,7 +34,9 @@ import { provideRenderLoop } from "../render/use_render_loop";
 import { useWindowController } from "../window";
 import { createDeviceSelection, useSourceStatus } from "../source";
 import CrtOverlay from "./CrtOverlay.vue";
+import InstanceList from "./InstanceList.vue";
 import LayoutEditPanel from "./LayoutEditPanel.vue";
+import { createLayoutEditActions } from "./layout_edit_actions";
 import MeterGrid from "./MeterGrid.vue";
 import SettingsDrawer from "./SettingsDrawer.vue";
 import StatusOverlay from "./StatusOverlay.vue";
@@ -48,6 +51,7 @@ const scanline = computed(() => config.current.value.display.scanline);
 const version = useAppVersion();
 const source = useSourceStatus(runtime.source);
 const devices = createDeviceSelection(config);
+const listActions = createLayoutEditActions({ config, runtime, registry: moduleRegistry });
 const windowController = useWindowController();
 
 provideRenderLoop({ source: client, instances: () => layout.value.instances, registry: moduleRegistry });
@@ -88,6 +92,7 @@ function startLayoutEdit(): void {
 
 function finishLayoutEdit(): void {
   runtime.setLayoutEditing(false);
+  listActions.clearNotice();
 }
 
 function toggleLayoutEdit(): void {
@@ -149,7 +154,19 @@ defineExpose({ client, channel: () => channel });
     />
     <!-- 編集中は出さない（S01c・S01d の幕が格子をふさがないように。入力源の状態はタイトル帯のチップで分かる） -->
     <StatusOverlay v-if="!editing" :source="source.event.value" @open-settings="openSettings" />
-    <LayoutEditPanel v-if="editing" :mode="layout.mode" @auto-arrange="arrangeAutomatically" @done="finishLayoutEdit" />
+    <LayoutEditPanel v-if="editing" :mode="layout.mode" @auto-arrange="arrangeAutomatically" @done="finishLayoutEdit">
+      <InstanceList
+        :instances="layout.instances"
+        :registry="moduleRegistry"
+        :selected-id="runtime.selectedInstanceId.value"
+        :notice="listActions.notice.value"
+        @select="runtime.selectInstance"
+        @duplicate="listActions.duplicate"
+        @remove="listActions.remove"
+        @toggle="listActions.setEnabled"
+        @add="listActions.add"
+      />
+    </LayoutEditPanel>
     <SettingsDrawer v-if="drawer === 'settings'" @select-device="devices.choose" @edit-layout="startLayoutEdit" />
     <CrtOverlay :enabled="scanline" />
   </div>
