@@ -15,8 +15,10 @@ export interface SourceStatusHandle {
   error: Ref<string | null>;
 }
 
-export function useSourceStatus(): SourceStatusHandle {
-  const event = shallowRef<SourceStatusEvent | null>(null);
+/** `event` を渡すと、そこへ書き込む（実行中の状態のストアの source） */
+export function useSourceStatus(
+  event: ShallowRef<SourceStatusEvent | null> = shallowRef<SourceStatusEvent | null>(null),
+): SourceStatusHandle {
   const error = ref<string | null>(null);
   let unlisten: (() => void) | null = null;
   let disposed = false;

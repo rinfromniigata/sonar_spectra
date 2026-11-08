@@ -397,9 +397,19 @@ Phaseの推奨: Opus・high以上
     - 型：キーはキャメルケースでUIの型とそろえた。`kind`・`mode`・`theme`・`direction`・`slot`は列挙で確かめ、`options`はオブジェクトであることだけを確かめる（中身はモジュールのレジストリが正本）。知らないキーは読み飛ばす
     - 決まりの確認（`validate`）：`schema`が今の版、保存済みの構成が1件以上でIDが重ならず使用中の構成がその中にある、各構成のインスタンスのIDが重ならず`rect`が12×8の格子の中で1マス以上。重なりや推奨の形との適合、配色の参照先はUI側で扱う
     - 単体テスト17件（移行5・保存12）を加えた。W4-1の観点（書いて読むと同じ値、壊れたファイルの退避と既定での起動、古い`schema`の移行〔架空の手順を差し替えて確認〕、書き込みの途中で止めても前の状態が残る）を含む。`bun run check`は終了コード0で通った
-- [ ] T4-2 【エージェント】UIのストア（`useConfigStore`・`useRuntimeStore`）を作る。初回の既定の状態（保存済みの構成「既定」）、変更の自動保存（間を置いて保存）、起動時の復元
+- [x] T4-2 【エージェント】UIのストア（`useConfigStore`・`useRuntimeStore`）を作る。初回の既定の状態（保存済みの構成「既定」）、変更の自動保存（間を置いて保存）、起動時の復元
   - 推奨: Opus・high以上
   - 依存: T2-9, T4-1
+  - 実施: Opus
+  - 実施メモ（261108）：`src/config/`に`config_store.ts`（`createConfigStore`・`useConfigStore`）・`persisted_state.ts`（既定の状態と復元時の整え直し）・`backend.ts`（`loadState`・`saveState`）を作り、`types.ts`に`Config`・`SavedConfig`・`PersistedState`などimple 5.1の残りの型を足した。`src/app/`に`runtime_store.ts`（`createRuntimeStore`・`useRuntimeStore`）・`stores.ts`（`setupStores`）・`flush_on_close.ts`を作った。`main.ts`は、ロケールの確定 → ストアの作成と復元 → マウントの順にした（既定の状態を一瞬見せてから切り替わらないように）
+    - 委任の範囲で決めたもの：ストアは状態管理のライブラリ（Pinia）を足さず、Vueの`shallowRef`・`computed`と`provide`/`inject`で作った（依存に入っておらず、impleの技術にもないため）。状態は変わるたびに新しいオブジェクトに置き換える（描画ループが毎フレーム読むので、深いリアクティブのプロキシを通さない）。変更は`updateCurrent`（写しを書き換えて置き換え、`dirty = true`）と`setDeviceId`（`dirty`は変えない。imple 5.2の14）からだけ行う。構成の操作（名前を付けて保存・切り替えなど）はT7-3で足す
+    - 既定の状態：`createDefaultState`が、既定の構成（自動配置、ダーク、走査線オン、常に最前面・起動時の全画面オフ、自分で作った配色なし、インスタンスはレジストリの`createDefaultInstances`）を作り、その写しを保存済みの構成として1件置いて使用中にする。名前は辞書の`config.default_name`（「既定」）から引く。今のレジストリにはVU・クロマ・重心と変化量がまだないので、既定のインスタンスは7件（imple 5.2の1の10件のうち登録済みのもの）。Phase 8で登録したあと、すでに保存された構成にはそれらのインスタンスが入らない（「＋ モジュールを追加」で足す）
+    - 起動時の復元（`restore`）：`load_state`が状態を返せば、各インスタンスの`options`にモジュールの定義の既定値を補ってから使う（後から設定項目が増えても読めるように）。`null`（初回・退避のあと）なら既定の状態を作ってすぐ保存する。`load_state`が失敗したとき（権限など）は既定の状態で起動し、元のファイルを上書きしないよう、その回は保存しない
+    - 自動保存：変わるたびに300ms置いて保存する。保存は重ねず、書いている間の変更は書き終わってから最後の状態で書く。失敗はコンソールに記録し、次の変更でまた保存する。ウィンドウを閉じるときは`onCloseRequested`で保存を済ませてから閉じる（待つのは1秒まで）。そのため`capabilities/default.json`に`core:window:allow-destroy`を足した（`onCloseRequested`が閉じるときに`destroy`を呼ぶため。インストールした`@tauri-apps/api` 2.12.4のソースで確かめた）
+    - `useRuntimeStore`：入力源の状態（`source`）、レイアウト編集中か、開いているドロワー（`settings`・`palettes`・`configs`）。保存しない。`useSourceStatus`に書き込み先の`ShallowRef`を渡せるようにし、`MeterScreen`はストアの`source`に書き込む
+    - `MeterScreen`：インスタンスと配置の種類を構成のストアの今の構成から取るようにした（`createDefaultInstances`の直接の呼び出しをやめた）。走査線をストアにつなぐのはT4-4
+    - `config.default_name`を`scripts/i18n_pending_keys.ts`から外した
+    - 単体テスト20件（構成のストア9・既定の状態3・`backend`2・実行中の状態3・`setupStores`2・`MeterScreen`の1件を追加し、既存の3件をストアを渡す形に直した）を加えた。UIの既定の状態（手動配置の`rect`を含む）を一時的なテストでJSONに書き出し、Rustの`SettingsStore::load`が退避せずに読めることを確かめた（一時的なテストは消した）。`bun run check`は終了コード0で通った。アプリを起動しての確認（再起動で引き継がれること、初回で「既定」ができること）はW4-2で行う
 - [ ] T4-3 【エージェント】設定パネル（S02）を作る。構成の欄（使用中の構成の名前と「保存後に変更あり」）、入力源（出力音声・出力デバイスの選択、入力デバイスは「今後対応」で無効）、テーマ（ダーク／ライト／OS設定）、配色の欄、レイアウトの欄、表示（走査線、常に最前面、起動時にボーダレスフルスクリーン）
   - 推奨: Opus・high以上
   - 依存: T1-6, T4-2

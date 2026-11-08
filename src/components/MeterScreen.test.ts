@@ -17,13 +17,30 @@ vi.mock("../theme/canvas_colors", async (importOriginal) => ({
   watchCanvasColors: () => () => {},
 }));
 
+import { RUNTIME_STORE_KEY, createRuntimeStore } from "../app/runtime_store";
+import { CONFIG_STORE_KEY, createConfigStore } from "../config/config_store";
+import { createDefaultState } from "../config/persisted_state";
+import type { Config } from "../config/types";
 import { i18n } from "../i18n";
+import { moduleRegistry } from "../modules";
 import MeterScreen from "./MeterScreen.vue";
 
-async function render(props: { scanline?: boolean } = {}): Promise<string> {
+/** 既定の状態の構成のストア（recipe で今の構成を変えられる）を provide して組み立てる */
+async function render(props: { scanline?: boolean } = {}, recipe?: (config: Config) => void): Promise<string> {
+  const config = createConfigStore({
+    persistence: { load: () => Promise.resolve(null), save: () => Promise.resolve() },
+    createDefault: () => createDefaultState({ registry: moduleRegistry, defaultName: "既定" }),
+  });
+  if (recipe) config.updateCurrent(recipe);
   const app = createSSRApp({ render: () => h(MeterScreen, props) });
   app.use(i18n);
+  app.provide(CONFIG_STORE_KEY, config);
+  app.provide(RUNTIME_STORE_KEY, createRuntimeStore());
   return renderToString(app);
+}
+
+function placedKinds(html: string): string[] {
+  return [...html.matchAll(/<section[^>]*data-kind="(\w+)"/g)].map((m) => m[1]);
 }
 
 describe("MeterScreen", () => {
@@ -68,6 +85,19 @@ describe("MeterScreen", () => {
     // 2つの位相は別の位置に置く（2つ目は周波数別の定位の専用の位置）
     const stereoAreas = frames.filter(([kind]) => kind === "stereo").map(([, area]) => area);
     expect(new Set(stereoAreas).size).toBe(2);
+  });
+
+  it("構成のストアの今の構成を表示する。無効にしたインスタンスは置かず、手動配置では rect の位置に置く", async () => {
+    const html = await render({}, (config) => {
+      for (const instance of config.layout.instances) instance.enabled = instance.kind === "level" || instance.kind === "spec";
+      config.layout.mode = "manual";
+      const [level, , spec] = config.layout.instances;
+      level.rect = { c: 1, r: 1, cs: 2, rs: 8 };
+      spec.rect = { c: 3, r: 1, cs: 10, rs: 8 };
+    });
+    expect(placedKinds(html)).toEqual(["level", "spec"]);
+    expect(html).toMatch(/data-kind="level"[^>]*style="grid-area:1 \/ 1 \/ span 8 \/ span 2;/);
+    expect(html).toMatch(/data-kind="spec"[^>]*style="grid-area:1 \/ 3 \/ span 8 \/ span 10;/);
   });
 
   it("起動時に source-status の listen を始め、必要な解析（レベル・波形・スペクトラム・位相・ラウドネス。スペクトログラムはスペクトラムを使う）を Rust に伝える", async () => {

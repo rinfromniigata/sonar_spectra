@@ -2,15 +2,16 @@
 // メーター画面（S01）：タイトル帯・メーターの格子・状態の表示を組み立て、起動と同時に取得を始める。
 // - 起動の順序：source-status を listen し、準備ができてから start_stream を呼ぶ（起動直後の Opening を取りこぼさない）
 // - 描画ループを provide し、格子の中の ModuleFrame が自分を登録する
-// - インスタンスは、レジストリに登録されたモジュールから既定の構成を作る（構成の保存と復元はストアを作る T4-2 で置き換える）
+// - インスタンスと配置の種類は、構成のストア（useConfigStore）の今の構成から取る。入力源の状態は実行中の状態のストア
+//   （useRuntimeStore）の source に書き込む
 // - 走査線と周辺減光（CrtOverlay）は画面全体に重ねる。表示するかは scanline（設定の display.scanline。既定でオン）で、
 //   設定につなぐのは T4-4
 // - タイトル帯のボタンと「設定」は、まだつながない（設定・全画面は Phase 4、レイアウト編集は Phase 5）
-import { onMounted, shallowRef } from "vue";
+import { computed, onMounted } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
+import { useRuntimeStore } from "../app/runtime_store";
 import { useAppVersion } from "../app/use_app_version";
-import { createDefaultInstances } from "../config/default_instances";
-import type { Instance } from "../config/types";
+import { useConfigStore } from "../config/config_store";
 import { FrameClient, startFrameStream } from "../frame_client";
 import { moduleRegistry } from "../modules";
 import { provideRenderLoop } from "../render/use_render_loop";
@@ -23,11 +24,13 @@ import TitleBar from "./TitleBar.vue";
 withDefaults(defineProps<{ scanline?: boolean }>(), { scanline: true });
 
 const client = new FrameClient();
-const instances = shallowRef<Instance[]>(createDefaultInstances(moduleRegistry));
+const config = useConfigStore();
+const runtime = useRuntimeStore();
+const layout = computed(() => config.current.value.layout);
 const version = useAppVersion();
-const source = useSourceStatus();
+const source = useSourceStatus(runtime.source);
 
-provideRenderLoop({ source: client, instances: () => instances.value, registry: moduleRegistry });
+provideRenderLoop({ source: client, instances: () => layout.value.instances, registry: moduleRegistry });
 
 /** 受信を続ける間、Channel を持っておく */
 let channel: Channel<ArrayBuffer> | null = null;
@@ -48,7 +51,7 @@ defineExpose({ client, channel: () => channel });
 <template>
   <div class="meter-screen">
     <TitleBar :version="version" :source="source.event.value" />
-    <MeterGrid class="grid" :instances="instances" mode="auto" :registry="moduleRegistry" />
+    <MeterGrid class="grid" :instances="layout.instances" :mode="layout.mode" :registry="moduleRegistry" />
     <StatusOverlay :source="source.event.value" />
     <CrtOverlay :enabled="scanline" />
   </div>

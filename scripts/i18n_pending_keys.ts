@@ -10,7 +10,6 @@ export const PENDING_KEYS: readonly string[] = [
 
   // Phase 4：設定パネルとウィンドウ（T4-2〜T4-6）
   "config.section",
-  "config.default_name",
   "config.modified",
   "settings.title",
   "settings.theme",
