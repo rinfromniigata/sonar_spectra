@@ -13,7 +13,18 @@ import type { AnyModuleDefinition, FrameDrawInput, Geometry, ModuleRenderer, Pal
 import { RENDER_LOOP_KEY } from "../render/use_render_loop";
 import type { CanvasColors } from "../theme/canvas_colors";
 
-const props = defineProps<{ instance: Instance; definition: AnyModuleDefinition }>();
+const props = withDefaults(
+  defineProps<{
+    instance: Instance;
+    definition: AnyModuleDefinition;
+    /** レイアウト編集中（破線の枠で囲み、描画を薄くする） */
+    editing?: boolean;
+    /** レイアウト編集で選んでいる */
+    selected?: boolean;
+  }>(),
+  { editing: false, selected: false },
+);
+defineSlots<{ default?(): unknown }>();
 
 const { t } = useT();
 const label = computed(() => t(props.definition.labelKey));
@@ -109,9 +120,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section ref="root" class="module-frame" :data-kind="instance.kind" :aria-label="label">
+  <section
+    ref="root"
+    class="module-frame"
+    :class="{ 'is-editing': editing, 'is-selected': editing && selected }"
+    :data-kind="instance.kind"
+    :aria-label="label"
+  >
     <span class="tag" aria-hidden="true">{{ label }}</span>
     <canvas ref="canvas" aria-hidden="true" />
+    <!-- レイアウト編集の飾り（見出し・右下の角）。置く側が入れる -->
+    <slot />
   </section>
 </template>
 
@@ -145,5 +164,34 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
   white-space: nowrap;
   pointer-events: none;
+}
+
+/* レイアウト編集（モックの .stage[data-edit="on"] .mod） */
+.module-frame.is-editing {
+  outline: var(--border-width) dashed var(--color-neon-b);
+  outline-offset: calc(-1 * var(--border-width));
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.module-frame.is-editing canvas {
+  opacity: var(--edit-dim-opacity);
+}
+
+.module-frame.is-selected {
+  z-index: 1;
+  outline: var(--selected-outline-width) solid var(--color-neon-a);
+  outline-offset: calc(-1 * var(--selected-outline-width));
+  box-shadow: var(--glow-selected);
+}
+
+.module-frame.is-editing:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-neon-b);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.module-frame.is-editing.is-dragging {
+  cursor: grabbing;
 }
 </style>

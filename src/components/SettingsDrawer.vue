@@ -6,7 +6,7 @@
 // - 閉じる（「閉じる」・Esc）は、実行中の状態のストアのドロワーを閉じる
 // - 次の操作は、イベントで知らせるだけにする：出力デバイスの選択（selectDevice。MeterScreen が保存して切り替える）、
 //   構成の切り替え・名前を付けて保存・構成を管理（switchConfig・saveAs・manageConfigs。Phase 7）、
-//   配色を管理（managePalettes。Phase 7）、レイアウトを編集（editLayout。Phase 5）
+//   配色を管理（managePalettes。Phase 7）、レイアウトを編集（editLayout。MeterScreen がこのパネルを閉じて編集を始める）
 // - 入力源は、出力音声（ループバック）だけを選べる。入力デバイスは「今後対応」で無効にする
 import { computed, onMounted, shallowRef, useId } from "vue";
 import { useRuntimeStore } from "../app/runtime_store";

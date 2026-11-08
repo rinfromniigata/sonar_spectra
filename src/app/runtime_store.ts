@@ -1,4 +1,4 @@
-// 実行中だけの状態のストア（imple 4.4 の useRuntimeStore）：入力源の状態、レイアウト編集中かどうか、開いているドロワー、全画面かどうか。
+// 実行中だけの状態のストア（imple 4.4 の useRuntimeStore）：入力源の状態、レイアウト編集中かどうかと選んでいるインスタンス、開いているドロワー、全画面かどうか。
 // 保存しない。
 
 import { inject, ref, shallowRef, type InjectionKey, type Ref, type ShallowRef } from "vue";
@@ -12,22 +12,28 @@ export interface RuntimeStore {
   readonly source: ShallowRef<SourceStatusEvent | null>;
   /** レイアウト編集中か（S03） */
   readonly layoutEditing: Ref<boolean>;
+  /** レイアウト編集で選んでいるインスタンスのID。なければ null（編集を終えると null に戻る） */
+  readonly selectedInstanceId: Ref<string | null>;
   /** 開いているドロワー。なければ null */
   readonly drawer: Ref<DrawerId | null>;
   /** ボーダレスフルスクリーン中か（実際のウィンドウの状態を映す。保存しない。起動時の全画面は設定の display.startFullscreen） */
   readonly fullscreen: Ref<boolean>;
   openDrawer(id: DrawerId): void;
   closeDrawer(): void;
+  /** レイアウト編集を始める・終える。終えると選択を外す */
   setLayoutEditing(editing: boolean): void;
+  selectInstance(id: string | null): void;
 }
 
 export function createRuntimeStore(): RuntimeStore {
   const drawer = ref<DrawerId | null>(null);
   const layoutEditing = ref(false);
   const fullscreen = ref(false);
+  const selectedInstanceId = ref<string | null>(null);
   return {
     source: shallowRef<SourceStatusEvent | null>(null),
     layoutEditing,
+    selectedInstanceId,
     drawer,
     fullscreen,
     openDrawer: (id) => {
@@ -38,6 +44,10 @@ export function createRuntimeStore(): RuntimeStore {
     },
     setLayoutEditing: (editing) => {
       layoutEditing.value = editing;
+      if (!editing) selectedInstanceId.value = null;
+    },
+    selectInstance: (id) => {
+      selectedInstanceId.value = id;
     },
   };
 }

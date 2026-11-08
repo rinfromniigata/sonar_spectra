@@ -57,6 +57,23 @@
   --module-tag-min-size: 7px;
   --module-tag-fluid-size: 7cqi;
 
+  /* レイアウト編集（S03。モックの .edit-panel・.splitter・.resize と編集中の .grid・.mod） */
+  --edit-panel-width: 300px;
+  --edit-panel-max-ratio: 30%; /* 画面の幅に対する割合。格子はこの分だけ右を空ける */
+  --edit-grid-gap: 4px; /* 編集中の格子のすき間と外周の余白 */
+  --edit-grid-dot: 1px; /* 格子の点の半径（ここまで塗る） */
+  --edit-grid-dot-fade: 1.2px; /* 点の縁をぼかし終える半径 */
+  --edit-dim-opacity: 0.5; /* 編集中のメーターの描画の濃さ */
+  --selected-outline-width: 2px;
+  --glow-selected: 0 0 16px var(--color-glow-a);
+  --splitter-hit: 10px; /* 境界線をつかめる幅 */
+  --splitter-line: 2px;
+  --splitter-grip-length: 18px;
+  --splitter-grip-width: 4px;
+  --splitter-idle-opacity: 0.35;
+  --resize-handle-size: 12px;
+  --resize-handle-inset: 2px;
+
   /* スライダー */
   --slider-value-min-width: 3.2em; /* 値の欄（「100%」「×3.00」が収まる幅） */
   --backdrop-blur: 6px;

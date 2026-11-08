@@ -14,18 +14,25 @@
 //   切り替え中は Rust が Opening を通知するので、状態の表示が S01d（スピナー）、チップが消灯になる
 // - タイトル帯の全画面ボタンは、ウィンドウの扱い（useWindowController）の toggleFullscreen を呼ぶ。全画面中かどうかは
 //   実行中の状態のストアの fullscreen（実際のウィンドウの状態）で、ボタンのアイコンと読み上げの名前が変わる
-// - レイアウト編集のボタンは、まだつながない（Phase 5）
+// - レイアウト編集（S03）：タイトル帯のレイアウト編集ボタン（編集中ならもう1度押すと終える）と、設定パネルの
+//   「レイアウトを編集」で始める（設定パネルは閉じる）。編集中は格子の右にパネル（LayoutEditPanel）を置き、格子はその分だけ狭くなる。
+//   格子で配置を変えたら手動配置として構成に書く（自動配置なら、その時点の自動整列の結果がそのまま固定される）。
+//   「自動整列」で自動配置に戻し、「完了」で編集を終える。選んでいるインスタンスは実行中の状態のストアに持つ。
+//   編集中は状態の表示（StatusOverlay）を出さない（入力源が開けないときの幕で、格子を編集できなくならないように）
 import { computed, onMounted } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
 import { useRuntimeStore } from "../app/runtime_store";
 import { useAppVersion } from "../app/use_app_version";
 import { useConfigStore } from "../config/config_store";
+import type { Instance } from "../config/types";
 import { FrameClient, startFrameStream } from "../frame_client";
+import { returnToAuto } from "../layout/manual";
 import { moduleRegistry } from "../modules";
 import { provideRenderLoop } from "../render/use_render_loop";
 import { useWindowController } from "../window";
 import { createDeviceSelection, useSourceStatus } from "../source";
 import CrtOverlay from "./CrtOverlay.vue";
+import LayoutEditPanel from "./LayoutEditPanel.vue";
 import MeterGrid from "./MeterGrid.vue";
 import SettingsDrawer from "./SettingsDrawer.vue";
 import StatusOverlay from "./StatusOverlay.vue";
@@ -71,6 +78,36 @@ function toggleSettings(): void {
   else openSettings();
 }
 
+const editing = computed(() => runtime.layoutEditing.value);
+
+function startLayoutEdit(): void {
+  runtime.closeDrawer();
+  runtime.setLayoutEditing(true);
+}
+
+function finishLayoutEdit(): void {
+  runtime.setLayoutEditing(false);
+}
+
+function toggleLayoutEdit(): void {
+  if (editing.value) finishLayoutEdit();
+  else startLayoutEdit();
+}
+
+/** 格子で配置を変えた：手動配置にして、インスタンスの並びを置き換える */
+function applyLayout(instances: Instance[]): void {
+  config.updateCurrent((draft) => {
+    draft.layout = { mode: "manual", instances };
+  });
+}
+
+/** 「自動整列」：自動配置に戻す */
+function arrangeAutomatically(): void {
+  if (layout.value.mode === "auto") return;
+  config.updateCurrent((draft) => {
+    draft.layout = returnToAuto(draft.layout);
+  });
+}
 
 defineExpose({ client, channel: () => channel });
 </script>
@@ -81,13 +118,27 @@ defineExpose({ client, channel: () => channel });
       :version="version"
       :source="source.event.value"
       :fullscreen="runtime.fullscreen.value"
+      :layout-editing="editing"
       @settings="toggleSettings"
       @source="openSettings"
       @fullscreen="toggleFullscreen"
+      @layout-edit="toggleLayoutEdit"
     />
-    <MeterGrid class="grid" :instances="layout.instances" :mode="layout.mode" :registry="moduleRegistry" />
-    <StatusOverlay :source="source.event.value" @open-settings="openSettings" />
-    <SettingsDrawer v-if="drawer === 'settings'" @select-device="devices.choose" />
+    <MeterGrid
+      class="grid"
+      :class="{ 'is-editing': editing }"
+      :instances="layout.instances"
+      :mode="layout.mode"
+      :registry="moduleRegistry"
+      :editing="editing"
+      :selected-id="runtime.selectedInstanceId.value"
+      @select="runtime.selectInstance"
+      @update="applyLayout"
+    />
+    <!-- 編集中は出さない（S01c・S01d の幕が格子をふさがないように。入力源の状態はタイトル帯のチップで分かる） -->
+    <StatusOverlay v-if="!editing" :source="source.event.value" @open-settings="openSettings" />
+    <LayoutEditPanel v-if="editing" :mode="layout.mode" @auto-arrange="arrangeAutomatically" @done="finishLayoutEdit" />
+    <SettingsDrawer v-if="drawer === 'settings'" @select-device="devices.choose" @edit-layout="startLayoutEdit" />
     <CrtOverlay :enabled="scanline" />
   </div>
 </template>
@@ -112,5 +163,10 @@ defineExpose({ client, channel: () => channel });
 
 .grid {
   flex: 1 1 auto;
+}
+
+/* レイアウト編集中は、右のパネルの幅だけ空ける（パネルと同じ幅。% はこの画面の幅に対して決まる） */
+.grid.is-editing {
+  margin-right: min(var(--edit-panel-width), var(--edit-panel-max-ratio));
 }
 </style>

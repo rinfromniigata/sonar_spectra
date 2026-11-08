@@ -142,6 +142,21 @@ describe("MeterScreen", () => {
     expect(html).not.toContain('aria-label="ボーダレスフルスクリーン"');
   });
 
+  it("レイアウト編集中（S03）は、格子を編集の見た目にして右にパネルを置き、タイトル帯のボタンを押された状態にする。状態の表示は出さない", async () => {
+    const idle = await render();
+    expect(idle).not.toContain("layout-edit-panel");
+    expect(idle).toMatch(/aria-label="レイアウト編集"[^>]*aria-pressed="false"|aria-pressed="false"[^>]*aria-label="レイアウト編集"/);
+
+    const runtime = createRuntimeStore();
+    runtime.setLayoutEditing(true);
+    const html = await render(undefined, runtime);
+    expect(html).toMatch(/class="[^"]*meter-grid[^"]*is-editing/);
+    expect(html).toContain("layout-edit-panel");
+    expect(html).not.toContain("status-overlay");
+    expect(html).toMatch(/aria-label="レイアウト編集"[^>]*aria-pressed="true"|aria-pressed="true"[^>]*aria-label="レイアウト編集"/);
+    expect(html.indexOf("crt-overlay")).toBeGreaterThan(html.indexOf("layout-edit-panel"));
+  });
+
   it("起動時に source-status の listen を始め、必要な解析（レベル・波形・スペクトラム・位相・ラウドネス。スペクトログラムはスペクトラムを使う）を Rust に伝える", async () => {
     await render();
     expect(listen).toHaveBeenCalledWith("source-status", expect.any(Function));

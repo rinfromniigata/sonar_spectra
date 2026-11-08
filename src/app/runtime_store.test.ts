@@ -27,4 +27,16 @@ describe("createRuntimeStore", () => {
     store.setLayoutEditing(false);
     expect(store.layoutEditing.value).toBe(false);
   });
+
+  it("選んでいるインスタンスは初めはなく、編集を終えると外れる", () => {
+    const store = createRuntimeStore();
+    expect(store.selectedInstanceId.value).toBeNull();
+    store.setLayoutEditing(true);
+    store.selectInstance("a");
+    expect(store.selectedInstanceId.value).toBe("a");
+    store.setLayoutEditing(true);
+    expect(store.selectedInstanceId.value).toBe("a");
+    store.setLayoutEditing(false);
+    expect(store.selectedInstanceId.value).toBeNull();
+  });
 });

@@ -1,0 +1,19 @@
+/* テーマで使い分ける色の別名。値は持たず、tokens.css のトークンを指すだけ。
+   ライトの neon-b・neon-c は地の色に対して 4.5:1 に届かないため、小さな文字（形の判定のバッジ・手動配置のバッジなど）は
+   ライトでは --color-text にし、枠線だけ発光色を残す（SPEC「ライトテーマの小さな文字のコントラスト」） */
+:root {
+  --color-label-b: var(--color-neon-b);
+  --color-label-c: var(--color-neon-c);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --color-label-b: var(--color-text);
+    --color-label-c: var(--color-text);
+  }
+}
+
+:root[data-theme="light"] {
+  --color-label-b: var(--color-text);
+  --color-label-c: var(--color-text);
+}
