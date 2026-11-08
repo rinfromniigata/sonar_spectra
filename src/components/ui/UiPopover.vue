@@ -3,7 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useT } from "../../i18n/use_t";
 import UiIconButton from "./UiIconButton.vue";
 import { readCssLength } from "./css_length";
-import { type Box, placePopover } from "./popover_position";
+import { type Box, type PopoverPlacement, placePopover } from "./popover_position";
 import { useDismiss } from "./use_dismiss";
 
 // 元（モジュールなど）の横に浮かべて開くパネル（インスタンスの設定）。×で閉じる。
@@ -33,12 +33,10 @@ function relativeBox(element: Element, container: Element): Box {
   return { left: a.left - c.left, top: a.top - c.top, right: a.right - c.left, bottom: a.bottom - c.top };
 }
 
-function place(): void {
-  const el = root.value;
-  const container = el?.offsetParent;
-  if (!el || !container || !props.anchor) return;
-  position.value = placePopover({
-    anchor: relativeBox(props.anchor, container),
+/** 今の高さで置く場所を求める（元と領域は、呼ぶたびに測り直す） */
+function compute(el: HTMLElement, container: Element, anchor: HTMLElement): PopoverPlacement {
+  return placePopover({
+    anchor: relativeBox(anchor, container),
     containerWidth: container.clientWidth,
     containerHeight: container.clientHeight,
     limitRight: props.boundary ? relativeBox(props.boundary, container).left : props.limitRight,
@@ -48,12 +46,29 @@ function place(): void {
   });
 }
 
-onMounted(async () => {
+/**
+ * 2回に分けて置く。開いた直後は幅が 0 で、文が1文字ずつ折り返して高さが上限まで伸びているため、そのまま置くと
+ * 下のほうのモジュールでは、実際より高いものとして上へ押し上げてしまう。幅を決めてから、高さを測り直して置く
+ */
+async function place(): Promise<void> {
+  const el = root.value;
+  const container = el?.offsetParent;
+  const anchor = props.anchor;
+  if (!el || !container || !anchor) return;
+  position.value = compute(el, container, anchor);
   await nextTick();
-  place();
-  window.addEventListener("resize", place);
+  // 待つ間に閉じた・元や領域が変わったときは、置き直しに任せる
+  if (root.value !== el || el.offsetParent !== container || props.anchor !== anchor) return;
+  position.value = compute(el, container, anchor);
+}
+
+const onResize = (): void => void place();
+onMounted(async () => {
+  window.addEventListener("resize", onResize);
+  await nextTick();
+  await place();
 });
-onBeforeUnmount(() => window.removeEventListener("resize", place));
+onBeforeUnmount(() => window.removeEventListener("resize", onResize));
 watch(
   () => [props.anchor, props.limitRight, props.boundary, props.revision],
   () => void nextTick(place),
