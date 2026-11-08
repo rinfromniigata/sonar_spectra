@@ -5,8 +5,11 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export const FLUSH_TIMEOUT_MS = 1000;
 
-/** 返す関数で見張りをやめる */
-export function beforeClose(prepare: () => Promise<void>): Promise<() => void> {
+/**
+ * 返す関数で見張りをやめる。Tauri の外では getCurrentWindow が同期的に例外を投げるが、async にして、
+ * 呼び出し側の .catch（失敗は記録だけする）に届くようにする
+ */
+export async function beforeClose(prepare: () => Promise<void>): Promise<() => void> {
   return getCurrentWindow().onCloseRequested(async () => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<void>((resolve) => {
