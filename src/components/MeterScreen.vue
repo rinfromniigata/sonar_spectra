@@ -23,13 +23,13 @@
 // - インスタンスの設定（S03）：実行中の状態のストアで開いていれば、選んでいるインスタンスの設定（InstanceSettings）を
 //   ポップオーバー（UiPopover）でそのモジュールの横に開く（右は編集パネルの左端まで）。開いたまま別のモジュールを選ぶと、
 //   作り直さずにそちらへ移る（フォーカスを奪わない）。×・Esc で閉じる。選んだものが置かれていなければ（無効・削除）出さない。
-//   配色・流れる速さを変えたら、そのインスタンスだけを構成に書く（config/instance_settings）。開くボタン（見出しの歯車）は T6-4
+//   配色・流れる速さ・種類ごとの項目（options の1項目）を変えたら、そのインスタンスだけを構成に書く（config/instance_settings）。開くボタン（見出しの歯車）は T6-4
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
 import { useRuntimeStore } from "../app/runtime_store";
 import { useAppVersion } from "../app/use_app_version";
 import { useConfigStore } from "../config/config_store";
-import { setPaletteId, setSpeed } from "../config/instance_settings";
+import { setInstanceOption, setPaletteId, setSpeed } from "../config/instance_settings";
 import type { Instance } from "../config/types";
 import { FrameClient, startFrameStream } from "../frame_client";
 import { useT } from "../i18n/use_t";
@@ -183,6 +183,15 @@ function changeSpeed(id: string, speed: number): void {
   });
 }
 
+/** 種類ごとの項目：そのインスタンスの options の1項目だけを変える */
+function changeOption(id: string, key: string, value: string | number | boolean): void {
+  if (!setInstanceOption(layout.value.instances, id, key, value)) return;
+  config.updateCurrent((draft) => {
+    const next = setInstanceOption(draft.layout.instances, id, key, value);
+    if (next) draft.layout.instances = next;
+  });
+}
+
 defineExpose({ client, channel: () => channel });
 </script>
 
@@ -241,6 +250,7 @@ defineExpose({ client, channel: () => channel });
         :name="settingsTarget.name"
         @palette="changePalette(settingsTarget.instance.id, $event)"
         @speed="changeSpeed(settingsTarget.instance.id, $event)"
+        @option="(key, value) => changeOption(settingsTarget!.instance.id, key, value)"
       />
     </UiPopover>
     <SettingsDrawer v-if="drawer === 'settings'" @select-device="devices.choose" @edit-layout="startLayoutEdit" />

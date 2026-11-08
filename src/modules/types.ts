@@ -73,16 +73,36 @@ export interface ModuleRenderer<O> {
   dispose(): void;
 }
 
-/** インスタンスの設定（S03）に出す項目。文言は辞書キーで書く */
+/** 項目の共通部分 */
+interface InspectorFieldBase<O> {
+  /** 設定（options）のどの項目か */
+  key: keyof O & string;
+  labelKey: MessageKey;
+  /** 別の項目が、この値のときだけ出す（例：「今の波形を表示」がオンのときだけ境目を出す） */
+  visibleWhen?: { key: keyof O & string; equals: string | number | boolean };
+}
+
+/**
+ * インスタンスの設定（S03）に出す項目。文言は辞書キーで書く。
+ * - choice：選択肢から1つ選ぶ。選んでいる選択肢に noteKey があれば、注記として下に出す
+ * - switch：オン／オフ
+ * - slider：数値。format は表示の書式（percent は 0〜100 の値を「72%」と整形する）。
+ *   noteKey の文言には、その項目の既定値を整形した {value} を渡す
+ */
 export type InspectorField<O> =
-  | {
+  | (InspectorFieldBase<O> & {
       type: "choice";
-      key: keyof O & string;
-      labelKey: MessageKey;
       choices: { value: string; labelKey: MessageKey; noteKey?: MessageKey }[];
-    }
-  | { type: "switch"; key: keyof O & string; labelKey: MessageKey }
-  | { type: "slider"; key: keyof O & string; labelKey: MessageKey; min: number; max: number; step: number };
+    })
+  | (InspectorFieldBase<O> & { type: "switch" })
+  | (InspectorFieldBase<O> & {
+      type: "slider";
+      min: number;
+      max: number;
+      step: number;
+      format?: "percent";
+      noteKey?: MessageKey;
+    });
 
 /** 既定の構成に置くインスタンス1つ分 */
 export interface DefaultInstanceSpec<K extends ModuleKind> {

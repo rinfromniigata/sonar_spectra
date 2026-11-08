@@ -4,18 +4,23 @@
 // - 入力源：初版の選択肢は既定の1系統だけ。セレクトに1つだけ出し、注記を添える（sourceId は変えない）
 // - 配色：標準の配色（マゼンタ主・シアン主・アンバー主）の見本。自分で作った配色と「＋ 配色を作る」は Phase 7（T7-2）
 // - 流れる速さ：流れるモジュール（定義の flows）だけ。×0.25〜×3.00、刻み0.05
-// 種類ごとの項目（定義の inspectorFields）は T6-2、「既定に戻す」は T6-3 で加える。
-// 値は持たず、変えたら palette・speed で知らせる（書き込みは置く側）
+// - 種類ごとの項目：定義の inspectorFields（波形・スペクトラム・位相）を、選択肢はセグメント、オン／オフはスイッチ、数値は
+//   スライダーで出す。出すかどうかは visibleWhen で決まる（modules/inspector_fields）。選んでいる選択肢の注記を下に添える
+// 「既定に戻す」は T6-3 で加える。
+// 値は持たず、変えたら palette・speed・option で知らせる（書き込みは置く側）
 import { computed, useId } from "vue";
 import { PRESET_PALETTES, presetSwatchColors } from "../config/palettes";
 import { SPEED_MAX, SPEED_MIN, SPEED_STEP } from "../config/instance_settings";
 import type { Instance } from "../config/types";
-import { formatMultiplier } from "../i18n/format";
-import { useT } from "../i18n/use_t";
-import type { AnyModuleDefinition } from "../modules/types";
+import { formatMultiplier, formatPercent } from "../i18n/format";
+import { useT, type MessageKey } from "../i18n/use_t";
+import { visibleFields } from "../modules/inspector_fields";
+import type { AnyModuleDefinition, InspectorField } from "../modules/types";
 import UiPaletteSwatch from "./ui/UiPaletteSwatch.vue";
+import UiSegmented from "./ui/UiSegmented.vue";
 import UiSelect from "./ui/UiSelect.vue";
 import UiSlider from "./ui/UiSlider.vue";
+import UiSwitch from "./ui/UiSwitch.vue";
 import type { ChoiceOption } from "./ui/types";
 
 const props = defineProps<{
@@ -24,9 +29,16 @@ const props = defineProps<{
   /** 見出しの名前（「波形 2」） */
   name: string;
 }>();
-const emit = defineEmits<{ palette: [paletteId: string]; speed: [speed: number] }>();
+const emit = defineEmits<{
+  palette: [paletteId: string];
+  speed: [speed: number];
+  /** 種類ごとの項目（設定 options の1項目）を変えた */
+  option: [key: string, value: string | number | boolean];
+}>();
 
 const { t } = useT();
+/** 動的な辞書キー（定義が持つ）を引く。プレースホルダの有無は定義と辞書で決まるため、型の検査はここでは行わない */
+const translate = t as unknown as (key: MessageKey, params?: Record<string, string | number>) => string;
 const paletteLabelId = useId();
 
 /** 入力源：初版は既定の1系統だけ */
@@ -53,6 +65,66 @@ const speedModel = computed({
   set: (value: number) => emit("speed", value),
 });
 const speedText = computed(() => t("common.speed_value", { value: formatMultiplier(speedModel.value) }));
+
+// --- 種類ごとの項目 ---
+
+type OptionValues = Record<string, unknown>;
+
+/** 画面に出す項目 1 つ分（文言と今の値を引いたもの） */
+type FieldView =
+  | { type: "choice"; key: string; label: string; options: ChoiceOption<string>[]; value: string; note: string | null }
+  | { type: "switch"; key: string; label: string; value: boolean }
+  | {
+      type: "slider";
+      key: string;
+      label: string;
+      min: number;
+      max: number;
+      step: number;
+      value: number;
+      valueText: string;
+      note: string | null;
+    };
+
+function formatSlider(field: Extract<InspectorField<OptionValues>, { type: "slider" }>, value: number): string {
+  return field.format === "percent" ? formatPercent(value) : String(value);
+}
+
+const fields = computed<FieldView[]>(() => {
+  const options = props.instance.options as OptionValues;
+  const all = props.definition.inspectorFields as readonly InspectorField<OptionValues>[];
+  return visibleFields(all, options).map((field): FieldView => {
+    const label = t(field.labelKey);
+    const current = options[field.key];
+    if (field.type === "switch") return { type: "switch", key: field.key, label, value: current === true };
+    if (field.type === "choice") {
+      const selected = field.choices.find((choice) => choice.value === current);
+      return {
+        type: "choice",
+        key: field.key,
+        label,
+        options: field.choices.map((choice) => ({ value: choice.value, label: t(choice.labelKey) })),
+        value: typeof current === "string" ? current : "",
+        note: selected?.noteKey ? t(selected.noteKey) : null,
+      };
+    }
+    const value = typeof current === "number" ? current : field.min;
+    // 注記には、その項目の既定値を整形して渡す（例：「既定は72%」）
+    const initial = props.definition.defaultOptions as OptionValues;
+    const initialValue = typeof initial[field.key] === "number" ? (initial[field.key] as number) : value;
+    return {
+      type: "slider",
+      key: field.key,
+      label,
+      min: field.min,
+      max: field.max,
+      step: field.step,
+      value,
+      valueText: formatSlider(field, value),
+      note: field.noteKey ? translate(field.noteKey, { value: formatSlider(field, initialValue) }) : null,
+    };
+  });
+});
 </script>
 
 <template>
@@ -90,6 +162,34 @@ const speedText = computed(() => t("common.speed_value", { value: formatMultipli
         :value-text="speedText"
       />
     </div>
+
+    <template v-for="field in fields" :key="field.key">
+      <div v-if="field.type === 'switch'" class="row" :data-field="field.key">
+        <span class="row-label">{{ field.label }}</span>
+        <UiSwitch :model-value="field.value" :label="field.label" @update:model-value="emit('option', field.key, $event)" />
+      </div>
+      <div v-else class="field" :data-field="field.key">
+        <span class="label" aria-hidden="true">{{ field.label }}</span>
+        <UiSegmented
+          v-if="field.type === 'choice'"
+          :model-value="field.value"
+          :label="field.label"
+          :options="field.options"
+          @update:model-value="emit('option', field.key, $event)"
+        />
+        <UiSlider
+          v-else
+          :model-value="field.value"
+          :label="field.label"
+          :min="field.min"
+          :max="field.max"
+          :step="field.step"
+          :value-text="field.valueText"
+          @update:model-value="emit('option', field.key, $event)"
+        />
+        <span v-if="field.note" class="note">{{ field.note }}</span>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -125,6 +225,20 @@ const speedText = computed(() => t("common.speed_value", { value: formatMultipli
 .note {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
+}
+
+/* スイッチの行（モックの .row）：名前を左、スイッチを右に */
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.row-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .swatches {

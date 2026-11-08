@@ -83,3 +83,83 @@ describe("InstanceSettings", () => {
     }
   });
 });
+
+/** 種類ごとの項目：data-field 付きの要素（項目の key の並び） */
+function fieldKeys(html: string): string[] {
+  return [...html.matchAll(/data-field="(\w+)"/g)].map((m) => m[1]);
+}
+
+/** 押された状態のセグメント（グループの読み上げ名ごと） */
+function pressed(html: string, groupLabel: string): string | null {
+  const group = new RegExp(`<div class="ui-segmented[^"]*" role="group" aria-label="${groupLabel}"[^>]*>([\\s\\S]*?)</div>`).exec(html);
+  if (!group) return null;
+  const on = /aria-pressed="true"[^>]*>([^<]*)/.exec(group[1]);
+  return on ? on[1].trim() : null;
+}
+
+describe("InstanceSettings の種類ごとの項目", () => {
+  it("波形：速さ → 履歴の色 → チャンネル → 今の波形 → 境目の順。既定は単色・ステレオ・オン・72%", async () => {
+    const html = await render(instanceOf("wave"));
+    expect(fieldKeys(html)).toEqual(["histColor", "channel", "showNow", "split"]);
+    expect(html.indexOf(`>${ja.instance.speed}<`)).toBeLessThan(html.indexOf('data-field="histColor"'));
+    expect(pressed(html, ja.instance.waveform.history_color)).toBe(ja.instance.waveform.history_color_solid);
+    expect(pressed(html, ja.instance.waveform.channel)).toBe(ja.instance.waveform.channel_stereo);
+    // 選んでいる選択肢の注記
+    expect(html).toContain(`>${ja.instance.waveform.channel_note_stereo}<`);
+    expect(html).not.toContain(ja.instance.waveform.channel_note_mono);
+    // スイッチとスライダー（境目は 10〜90、値は割合、注記に既定の 72%）
+    expect(html).toMatch(new RegExp(`role="switch"[^>]*aria-checked="true"[^>]*aria-label="${ja.instance.waveform.show_now}"`));
+    const split = /<input[^>]*aria-label="履歴と今の波形の境目"[^>]*>/.exec(html)![0];
+    expect(split).toContain('min="10"');
+    expect(split).toContain('max="90"');
+    expect(split).toContain('value="72"');
+    expect(split).toContain('aria-valuetext="72%"');
+    expect(html).toContain(`>${ja.instance.waveform.split_note.replace("{value}", "72%")}<`);
+  });
+
+  it("波形：モノラル・帯域別の設定を反映し、今の波形をオフにすると境目を隠す", async () => {
+    const wave = instanceOf("wave");
+    const options = { ...wave.options, channel: "mono", histColor: "bands", split: 40 };
+    const html = await render({ ...wave, options } as Instance);
+    expect(pressed(html, ja.instance.waveform.channel)).toBe(ja.instance.waveform.channel_mono);
+    expect(pressed(html, ja.instance.waveform.history_color)).toBe(ja.instance.waveform.history_color_bands);
+    expect(html).toContain(`>${ja.instance.waveform.channel_note_mono}<`);
+    expect(html).toContain('aria-valuetext="40%"');
+
+    const off = await render({ ...wave, options: { ...wave.options, showNow: false } } as Instance);
+    expect(fieldKeys(off)).toEqual(["histColor", "channel", "showNow"]);
+    expect(off).toMatch(new RegExp(`role="switch"[^>]*aria-checked="false"[^>]*aria-label="${ja.instance.waveform.show_now}"`));
+  });
+
+  it("スペクトラム：表示方式の4つと、ピークの残像のスイッチ（既定は線＋塗り・オン）", async () => {
+    const html = await render(instanceOf("spec"));
+    expect(fieldKeys(html)).toEqual(["mode", "ghost"]);
+    for (const label of [ja.instance.spectrum.mode_fill, ja.instance.spectrum.mode_bars, ja.instance.spectrum.mode_mirror, ja.instance.spectrum.mode_radial]) {
+      expect(html).toContain(label);
+    }
+    expect(pressed(html, ja.instance.spectrum.mode)).toBe(ja.instance.spectrum.mode_fill);
+    expect(html).toMatch(new RegExp(`role="switch"[^>]*aria-checked="true"[^>]*aria-label="${ja.instance.spectrum.peak_ghost}"`));
+    // 流れる速さは出さない
+    expect(html).not.toContain('type="range"');
+  });
+
+  it("位相：リサージュには点描、周波数別の定位にはモーションブラーを出す。表示方式ごとの注記つき", async () => {
+    const lissajous = await render(instanceOf("stereo"));
+    expect(fieldKeys(lissajous)).toEqual(["mode", "dots"]);
+    expect(pressed(lissajous, ja.instance.phase.dots)).toBe(ja.instance.phase.dots_both);
+    expect(lissajous).toContain(`>${ja.instance.phase.mode_note_lissajous}<`);
+
+    const stereo = instanceOf("stereo");
+    const pan = await render({ ...stereo, options: { ...stereo.options, mode: "pan", blur: false } } as Instance);
+    expect(fieldKeys(pan)).toEqual(["mode", "blur"]);
+    expect(pan).toMatch(new RegExp(`role="switch"[^>]*aria-checked="false"[^>]*aria-label="${ja.instance.phase.motion_blur}"`));
+    expect(pan).toContain(`>${ja.instance.phase.mode_note_pan}<`);
+    expect(pan).not.toContain(ja.instance.phase.dots_size);
+  });
+
+  it("設定のない種類（レベル・ラウドネス）と、速さだけのスペクトログラムは、種類ごとの項目を出さない", async () => {
+    for (const kind of ["level", "loud", "gram"] as const) {
+      expect(fieldKeys(await render(instanceOf(kind)))).toEqual([]);
+    }
+  });
+});

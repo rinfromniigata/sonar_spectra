@@ -556,10 +556,17 @@ Phaseの推奨: Opus・high以上
     - 書き込み：`setPaletteId`・`setInstanceOption`（種類が持つ項目だけ。T6-2でも使う）・`setSpeed`（範囲に収めて0.05刻みに丸める）。`setDirection`と同じく、変わらないときはnullを返し、置く側は書かない（「保存後に変更あり」にしない）。そのインスタンスだけを変え、同じ種類のほかのインスタンスは変えない
     - 辞書：見出しは、文字列の連結を避けるため`layout_edit.selected`を「選択中：{name}」に変えた（名前と番号の「波形 2」は、一覧・見出しと同じ組み立て）。使い始めた7キー（`layout_edit.selected`・`common.speed_value`・`instance.source`・`instance.source_default`・`instance.source_note`・`instance.palette`・`instance.speed`）を`scripts/i18n_pending_keys.ts`から外した
     - 単体テスト13件（`instance_settings`7・`InstanceSettings`のSSR 4・実行中の状態のストア1・`MeterScreen`の組み立て1）を加えた。DOMのテスト環境がないため、ポップオーバーの置き場所とフォーカスの動きは、T6-4のあと実機（W6-3・W6-5）で確かめる。`bun run check`は通った（UI 542件・Rust 114件）
-- [ ] T6-2 【エージェント】種類ごとの項目をつなぐ。波形（チャンネル、今の波形を表示、履歴と今の波形の境目、履歴の色）、スペクトラム（表示方式、ピークの残像）、位相（表示方式、点描、モーションブラー）
+- [x] T6-2 【エージェント】種類ごとの項目をつなぐ。波形（チャンネル、今の波形を表示、履歴と今の波形の境目、履歴の色）、スペクトラム（表示方式、ピークの残像）、位相（表示方式、点描、モーションブラー）
   - 推奨: Sonnet・high以上
   - 依存: T2-11, T3-2, T3-3, T6-1
   - 画面: S03
+  - 実施: Sonnet
+  - 実施メモ（261108）：波形・スペクトラム・位相の定義（`modules/wave/index.ts`・`spec/index.ts`・`stereo/index.ts`）の`inspectorFields`を記述し、T6-1の`InstanceSettings.vue`が、それを選択肢はセグメント・オン／オフはスイッチ・数値はスライダーで出すようにした。変更は`MeterScreen`の`changeOption`が、T6-1で作った`setInstanceOption`でそのインスタンスの`options`の1項目だけに書く
+    - 項目と並び（モックのインスペクターと同じ）：波形＝履歴の色（単色／帯域別）・チャンネル（ステレオ／モノラル、選んだ方の注記）・今の波形を表示・境目（10〜90%、刻み1、注記に既定の72%）。スペクトラム＝表示方式（線＋塗り／バー／鏡写し／円形）・ピークの残像。位相＝表示方式（リサージュ／周波数別の定位、選んだ方の注記）・点描（なし／大きく／明るく／両方）・モーションブラー。流れる速さは共通の項目（T6-1）で、波形の項目より上に出る
+    - 出す条件：型に`visibleWhen`（別の項目がこの値のときだけ出す）を足した（`modules/types.ts`）。境目は「今の波形を表示」がオンのときだけ、点描はリサージュのときだけ、モーションブラーは周波数別の定位のときだけ（モックと同じ）。判定は純粋関数`visibleFields`（`modules/inspector_fields.ts`）。スライダーには値の書式`format: "percent"`（`formatPercent`で整形）と、既定値を`{value}`に入れる注記`noteKey`を足した
+    - 設定の項目は、流れる速さ（共通）を除いてすべて、いずれかの項目から変えられる。定義の整合（項目のkeyと`visibleWhen`がその種類の設定にある、既定値が選択肢・範囲の中にある、文言が辞書にある）をテストで固定した。スペクトログラムは速さだけなので種類ごとの項目はない
+    - 辞書：使い始めた`instance.waveform.*`・`instance.spectrum.*`・`instance.phase.*`の28キーを`scripts/i18n_pending_keys.ts`から外した。Phase 6の使用予定は`common.reset_default`（T6-3）と`layout_edit.open_instance_settings`（T6-4）が残る
+    - 単体テスト13件（`inspector_fields`8〔定義の整合5・`visibleFields`3〕・`InstanceSettings`の種類ごとの項目5〔波形2・スペクトラム・位相・設定のない種類〕）を加えた。DOMのテスト環境がないため、項目を変えたときの描画への反映と、そのインスタンスだけに効くこと、再起動後の引き継ぎは、T6-4のあとW6-2で確かめる。`bun run check`は通った（UI 555件・Rust 114件）
 - [ ] T6-3 【エージェント】「既定に戻す」を作る（方向・配色・種類ごとの設定を戻し、配置と入力源は残す）
   - 推奨: Sonnet・high以上
   - 依存: T6-1
