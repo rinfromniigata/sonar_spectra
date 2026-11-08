@@ -10,6 +10,8 @@
 //   適合判定には、枠の見た目の大きさを格子の大きさとマスの数から求めて渡す（frameSize）。
 //   方向の矢印を押したら direction で知らせる（配置は変えない）。ただし自動配置の縦長の帯で、自動整列が方向を決める
 //   もの（レベル）に、それと違う向きを選んだときは、選んだ向きを効かせるため、固定した配置に選んだ向きを入れて update で知らせる
+// 編集を終えたとき（S03a）：飾りはすべて外れ、モックの表示と同じ 12×8 の格子（モジュールの間は細い線）に戻る。
+// 手動配置で空いたマス（削除・無効・縮小のあと）は、格子の背景の線の色のままだと塊に見えるため、背景色で塗る（hole）。
 // - キーボード：モジュールにフォーカスして矢印キーで1マス移動、Shift＋矢印キーで大きさを1マス変える。
 //   境界線にフォーカスして矢印キーで1マス動かす（縦の線は左右、横の線は上下）
 // - 配置を変えたら update で手動配置の並び（全インスタンス）を知らせる。自動配置のときは、その時点の自動整列の結果を
@@ -34,6 +36,7 @@ import { GRID_COLUMNS, GRID_ROWS } from "../layout/grid";
 import { instanceNumbers } from "../layout/instance_numbers";
 import {
   arrowDelta,
+  findEmptyRects,
   findSplitters,
   moveBy,
   moveSplitter,
@@ -134,6 +137,9 @@ const numbers = computed(() => instanceNumbers(props.instances));
 function sizeOf(rect: GridRect): { width: number; height: number } {
   return frameSize(box.value ?? { left: 0, top: 0, width: aspect.value * 100, height: 100, padding: 0, gap: 0 }, rect);
 }
+
+/** 空いたマス（編集中は格子の点を見せるので塗らない） */
+const holes = computed<GridRect[]>(() => (props.editing ? [] : findEmptyRects(arranged.value)));
 
 const splitters = computed<Splitter[]>(() => (props.editing ? findSplitters(arranged.value) : []));
 
@@ -328,6 +334,7 @@ function onModuleFocus(id: string): void {
         <span class="resize-handle" data-resize aria-hidden="true" />
       </template>
     </ModuleFrame>
+    <div v-for="hole in holes" :key="gridArea(hole)" class="hole" :style="{ gridArea: gridArea(hole) }" aria-hidden="true" />
     <div
       v-for="splitter in splitters"
       :key="splitterKey(splitter)"
@@ -358,6 +365,17 @@ function onModuleFocus(id: string): void {
   min-width: 0;
   min-height: 0;
   background: var(--color-line);
+}
+
+/* 空いたマスは背景色で塗る。線（すき間）の部分も背景色にして、空いた部分を線のない1つの面に見せる
+   （影が格子の外にはみ出さないよう、編集中でないときは格子で切る） */
+.meter-grid:not(.is-editing) {
+  overflow: hidden;
+}
+
+.hole {
+  background: var(--color-bg);
+  box-shadow: 0 0 0 var(--border-width) var(--color-bg);
 }
 
 /* レイアウト編集：すき間を広げ、格子の点を見せる（モックの .stage[data-edit="on"] .grid） */

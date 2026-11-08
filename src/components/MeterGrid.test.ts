@@ -103,3 +103,37 @@ describe("MeterGrid の編集中の見出し", () => {
     expect(await render({ instances: [wide], mode: "manual", editing: true })).toContain('data-fit="good"');
   });
 });
+
+describe("MeterGrid の編集を終えたときの見え方（S03a）", () => {
+  const holeAreas = (html: string) => [...html.matchAll(/class="hole"[^>]*style="grid-area:([^";]+)/g)].map((m) => m[1].trim());
+
+  it("格子が埋まっていれば、空きを塗るものは出さない", async () => {
+    expect(await render({ instances: defaults(), mode: "auto" })).not.toContain('class="hole"');
+    const full = { ...defaults().find((i) => i.kind === "spec")!, rect: { c: 1, r: 1, cs: 12, rs: 8 } } as Instance;
+    expect(await render({ instances: [full], mode: "manual" })).not.toContain('class="hole"');
+  });
+
+  it("手動配置で空いたマスは、まとめた長方形ごとに背景色で塗る（置いたモジュールは変えない）", async () => {
+    const spec = { ...defaults().find((i) => i.kind === "spec")!, rect: { c: 1, r: 1, cs: 6, rs: 4 } } as Instance;
+    const html = await render({ instances: [spec], mode: "manual" });
+    // 右上（7列〜・1〜4行）と、下の4行
+    expect(holeAreas(html)).toEqual(["1 / 7 / span 4 / span 6", "5 / 1 / span 4 / span 12"]);
+    expect(html).toContain("grid-area:1 / 1 / span 4 / span 6");
+  });
+
+  it("無効にしたモジュールの位置も空きとして塗る", async () => {
+    const spec = { ...defaults().find((i) => i.kind === "spec")!, enabled: false, rect: { c: 1, r: 1, cs: 12, rs: 8 } } as Instance;
+    expect(holeAreas(await render({ instances: [spec], mode: "manual" }))).toEqual(["1 / 1 / span 8 / span 12"]);
+  });
+
+  it("編集中は塗らない（格子の点を見せる）。編集の飾りも、終えれば残らない", async () => {
+    const spec = { ...defaults().find((i) => i.kind === "spec")!, rect: { c: 1, r: 1, cs: 6, rs: 4 } } as Instance;
+    const editing = await render({ instances: [spec], mode: "manual", editing: true, selectedId: spec.id });
+    expect(editing).not.toContain('class="hole"');
+    expect(editing).toContain("edit-head");
+    const done = await render({ instances: [spec], mode: "manual", editing: false, selectedId: spec.id });
+    for (const leftover of ["edit-head", "resize-handle", 'role="separator"', "is-editing", "is-selected", "tabindex", "aria-current"]) {
+      expect(done, leftover).not.toContain(leftover);
+    }
+  });
+});

@@ -133,6 +133,32 @@ describe("MeterScreen", () => {
     expect(html.indexOf("crt-overlay")).toBeGreaterThan(drawer);
   });
 
+  it("編集を終えると（S03a）、パネルも編集の飾りも消え、手動配置の位置のまま、タイトル帯のボタンは押されていない状態に戻る", async () => {
+    const recipe = (config: Config) => {
+      for (const instance of config.layout.instances) instance.enabled = instance.kind === "level" || instance.kind === "spec";
+      config.layout.mode = "manual";
+      const [level, , spec] = config.layout.instances;
+      level.rect = { c: 1, r: 1, cs: 2, rs: 8 };
+      spec.rect = { c: 3, r: 1, cs: 10, rs: 6 };
+    };
+    const runtime = createRuntimeStore();
+    runtime.setLayoutEditing(true);
+    runtime.selectInstance("any");
+    runtime.setLayoutEditing(false);
+    const html = await render(recipe, runtime);
+    for (const leftover of ["layout-edit-panel", "edit-head", "resize-handle", 'role="separator"', "is-editing", "is-selected"]) {
+      expect(html, leftover).not.toContain(leftover);
+    }
+    expect(html).toMatch(/aria-label="レイアウト編集"[^>]*aria-pressed="false"|aria-pressed="false"[^>]*aria-label="レイアウト編集"/);
+    expect(html).toContain('data-kind="level"');
+    expect(html).toContain("grid-area:1 / 1 / span 8 / span 2;");
+    expect(html).toContain("grid-area:1 / 3 / span 6 / span 10;");
+    // 状態の表示が戻り、空いた下の2行は背景色で塗る
+    expect(html).toContain("status-overlay");
+    expect(html).toContain('class="hole"');
+    expect(html).toContain("grid-area:7 / 3 / span 2 / span 10");
+  });
+
   it("全画面中は、タイトル帯のボタンが「ボーダレスフルスクリーンを終了」になる", async () => {
     expect(await render()).toContain('aria-label="ボーダレスフルスクリーン"');
     const runtime = createRuntimeStore();

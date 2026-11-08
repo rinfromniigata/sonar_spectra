@@ -8,7 +8,9 @@ import {
   addInstance,
   arrowDelta,
   beginManual,
+  canPlace,
   duplicateInstance,
+  findEmptyRects,
   findSplitters,
   moveBy,
   moveSplitter,
@@ -439,5 +441,57 @@ describe("削除と、新しく置く大きさ", () => {
     expect(shapeFit({ shape: "long", longSide: "along" }, "left", long.width, long.height)).toBe("good");
     const compact = box(NEW_INSTANCE_SIZES.compact);
     expect(shapeFit({ shape: "compact" }, null, compact.width, compact.height)).toBe("good");
+  });
+});
+
+describe("空いたマスのまとめ（編集を終えたときの表示）", () => {
+  /** 空きの長方形で塗ったマス数（重なりも数える） */
+  function coverage(rects: GridRect[]): number[][] {
+    const grid = Array.from({ length: GRID_ROWS }, () => new Array<number>(GRID_COLUMNS).fill(0));
+    for (const rect of rects) {
+      for (let r = rect.r; r < rect.r + rect.rs; r++) for (let c = rect.c; c < rect.c + rect.cs; c++) grid[r - 1][c - 1]++;
+    }
+    return grid;
+  }
+
+  it("空きがなければ空、何も置かなければ格子全体の1つ", () => {
+    expect(findEmptyRects([inst("a", R(1, 1, 12, 8))])).toEqual([]);
+    expect(findEmptyRects([])).toEqual([R(1, 1, 12, 8)]);
+    expect(findEmptyRects([inst("off", R(1, 1, 12, 8), { enabled: false }), inst("none", null)])).toEqual([R(1, 1, 12, 8)]);
+  });
+
+  it("空きの形に合わせて、縦に同じ範囲が続くものは1つにまとめる", () => {
+    // 左半分だけ置く：右半分が1つ
+    expect(findEmptyRects([inst("a", R(1, 1, 6, 8))])).toEqual([R(7, 1, 6, 8)]);
+    // 中央に穴
+    const rects = findEmptyRects([inst("a", R(1, 1, 12, 2)), inst("b", R(1, 3, 4, 3)), inst("c", R(9, 3, 4, 3)), inst("d", R(1, 6, 12, 3))]);
+    expect(rects).toEqual([R(5, 3, 4, 3)]);
+  });
+
+  it("L字の空きは、重ならない2つの長方形になる", () => {
+    const rects = findEmptyRects([inst("a", R(1, 1, 6, 4))]);
+    expect(rects).toEqual([R(7, 1, 6, 4), R(1, 5, 12, 4)]);
+  });
+
+  it("どんな配置でも、空いたマスをちょうど1回ずつ覆う", () => {
+    let seed = 777;
+    const random = (n: number) => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed % n;
+    };
+    for (let trial = 0; trial < 200; trial++) {
+      let instances: Instance[] = [];
+      for (let k = 0; k < 6; k++) {
+        const rect = R(1 + random(12), 1 + random(8), 1 + random(5), 1 + random(4));
+        if (canPlace(instances, rect)) instances = [...instances, inst(`m${k}`, rect, { enabled: random(4) > 0 } as Partial<Instance>)];
+      }
+      const covered = coverage(findEmptyRects(instances));
+      const expected = Array.from({ length: GRID_ROWS }, (_, r) =>
+        Array.from({ length: GRID_COLUMNS }, (_, c) =>
+          instances.some((i) => i.enabled && i.rect && overlaps(i.rect, R(c + 1, r + 1, 1, 1))) ? 0 : 1,
+        ),
+      );
+      expect(covered).toEqual(expected);
+    }
   });
 });

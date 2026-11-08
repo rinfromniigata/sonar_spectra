@@ -33,6 +33,47 @@ function occupants(instances: readonly Instance[]): { id: string; rect: GridRect
   return instances.flatMap((i) => (i.enabled && i.rect ? [{ id: i.id, rect: i.rect }] : []));
 }
 
+/**
+ * 格子の空いているマスを、重ならない長方形にまとめる（編集を終えたときの表示で、空いたマスを背景色で塗るために使う）。
+ * 上の行から、行の中の連続した空きを1つの帯にし、すぐ下の行に同じ列の範囲の帯が続けば縦に合わせる。
+ * 有効で位置を持つインスタンスだけが格子を占める
+ */
+export function findEmptyRects(instances: readonly Instance[]): GridRect[] {
+  const taken = Array.from({ length: GRID_ROWS }, () => new Array<boolean>(GRID_COLUMNS).fill(false));
+  for (const { rect } of occupants(instances)) {
+    for (let r = rect.r; r < rect.r + rect.rs; r++) {
+      for (let c = rect.c; c < rect.c + rect.cs; c++) {
+        if (r >= 1 && r <= GRID_ROWS && c >= 1 && c <= GRID_COLUMNS) taken[r - 1][c - 1] = true;
+      }
+    }
+  }
+  const result: GridRect[] = [];
+  /** 1つ上の行で伸びている帯（列の範囲が同じものだけ、縦に伸ばせる） */
+  let growing: GridRect[] = [];
+  for (let r = 1; r <= GRID_ROWS; r++) {
+    const runs: GridRect[] = [];
+    for (let c = 1; c <= GRID_COLUMNS; c++) {
+      if (taken[r - 1][c - 1]) continue;
+      const start = c;
+      while (c + 1 <= GRID_COLUMNS && !taken[r - 1][c]) c++;
+      runs.push({ c: start, r, cs: c - start + 1, rs: 1 });
+    }
+    const next: GridRect[] = [];
+    for (const run of runs) {
+      const above = growing.find((g) => g.c === run.c && g.cs === run.cs);
+      if (above) {
+        above.rs++;
+        next.push(above);
+      } else {
+        next.push(run);
+        result.push(run);
+      }
+    }
+    growing = next;
+  }
+  return result;
+}
+
 /** `rect` を置けるか：格子の中で1マス以上あり、`ignore` 以外の占有と重ならない */
 export function canPlace(instances: readonly Instance[], rect: GridRect, ignore: readonly string[] = []): boolean {
   return insideGrid(rect) && occupants(instances).every((o) => ignore.includes(o.id) || !overlaps(o.rect, rect));

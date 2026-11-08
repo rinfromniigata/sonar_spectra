@@ -9,6 +9,7 @@ export {
   beginManual,
   canPlace,
   duplicateInstance,
+  findEmptyRects,
   findSpace,
   findSplitters,
   moveBy,
