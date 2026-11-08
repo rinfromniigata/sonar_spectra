@@ -26,7 +26,11 @@ import { moduleRegistry } from "../modules";
 import MeterScreen from "./MeterScreen.vue";
 
 /** 既定の状態の構成のストア（recipe で今の構成を変えられる）を provide して組み立てる */
-async function render(props: { scanline?: boolean } = {}, recipe?: (config: Config) => void): Promise<string> {
+async function render(
+  props: { scanline?: boolean } = {},
+  recipe?: (config: Config) => void,
+  runtime = createRuntimeStore(),
+): Promise<string> {
   const config = createConfigStore({
     persistence: { load: () => Promise.resolve(null), save: () => Promise.resolve() },
     createDefault: () => createDefaultState({ registry: moduleRegistry, defaultName: "既定" }),
@@ -35,7 +39,7 @@ async function render(props: { scanline?: boolean } = {}, recipe?: (config: Conf
   const app = createSSRApp({ render: () => h(MeterScreen, props) });
   app.use(i18n);
   app.provide(CONFIG_STORE_KEY, config);
-  app.provide(RUNTIME_STORE_KEY, createRuntimeStore());
+  app.provide(RUNTIME_STORE_KEY, runtime);
   return renderToString(app);
 }
 
@@ -98,6 +102,17 @@ describe("MeterScreen", () => {
     expect(placedKinds(html)).toEqual(["level", "spec"]);
     expect(html).toMatch(/data-kind="level"[^>]*style="grid-area:1 \/ 1 \/ span 8 \/ span 2;/);
     expect(html).toMatch(/data-kind="spec"[^>]*style="grid-area:1 \/ 3 \/ span 8 \/ span 10;/);
+  });
+
+  it("設定パネル（S02）は、ドロワーが settings のときだけ、状態の表示より上・走査線より下に重ねる", async () => {
+    expect(await render()).not.toContain("settings-drawer");
+    const runtime = createRuntimeStore();
+    runtime.openDrawer("settings");
+    const html = await render({}, undefined, runtime);
+    const overlay = html.indexOf("status-overlay");
+    const drawer = html.indexOf("settings-drawer");
+    expect(drawer).toBeGreaterThan(overlay);
+    expect(html.indexOf("crt-overlay")).toBeGreaterThan(drawer);
   });
 
   it("起動時に source-status の listen を始め、必要な解析（レベル・波形・スペクトラム・位相・ラウドネス。スペクトログラムはスペクトラムを使う）を Rust に伝える", async () => {

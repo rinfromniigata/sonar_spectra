@@ -9,31 +9,6 @@ export const PENDING_KEYS: readonly string[] = [
   // Phase 3：既定のモジュール一式（T3-2〜T3-5）
 
   // Phase 4：設定パネルとウィンドウ（T4-2〜T4-6）
-  "config.section",
-  "config.modified",
-  "settings.title",
-  "settings.theme",
-  "settings.theme_dark",
-  "settings.theme_light",
-  "settings.theme_system",
-  "settings.source",
-  "settings.source_loopback",
-  "settings.source_loopback_desc",
-  "settings.source_device",
-  "settings.source_input",
-  "settings.source_input_desc",
-  "settings.coming_soon",
-  "settings.palette",
-  "settings.palette_note",
-  "settings.manage_palette",
-  "settings.layout",
-  "settings.edit_layout",
-  "settings.display",
-  "settings.scanline",
-  "settings.always_on_top",
-  "settings.start_fullscreen",
-  "config.save_as",
-  "config.manage",
 
   // Phase 5：レイアウト編集（T5-2〜T5-5）
   "common.duplicate",

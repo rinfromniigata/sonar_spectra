@@ -12,4 +12,5 @@ export {
   type UnavailableReason,
 } from "./source_status";
 export { useSourceStatus, type SourceStatusHandle } from "./use_source_status";
-export { retrySource } from "./backend";
+export { listOutputDevices, retrySource } from "./backend";
+export { DEFAULT_DEVICE_VALUE, deviceChoices, deviceIdFromValue, type DeviceChoice } from "./device_choices";

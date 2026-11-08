@@ -6,7 +6,8 @@
 //   （useRuntimeStore）の source に書き込む
 // - 走査線と周辺減光（CrtOverlay）は画面全体に重ねる。表示するかは scanline（設定の display.scanline。既定でオン）で、
 //   設定につなぐのは T4-4
-// - タイトル帯のボタンと「設定」は、まだつながない（設定・全画面は Phase 4、レイアウト編集は Phase 5）
+// - 設定パネル（S02）は、実行中の状態のストアのドロワーが settings のときに重ねる（タイトル帯の下から）
+// - タイトル帯のボタンと「設定」は、まだつながない（設定を開くのは T4-5、全画面は T4-6、レイアウト編集は Phase 5）
 import { computed, onMounted } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
 import { useRuntimeStore } from "../app/runtime_store";
@@ -18,6 +19,7 @@ import { provideRenderLoop } from "../render/use_render_loop";
 import { useSourceStatus } from "../source";
 import CrtOverlay from "./CrtOverlay.vue";
 import MeterGrid from "./MeterGrid.vue";
+import SettingsDrawer from "./SettingsDrawer.vue";
 import StatusOverlay from "./StatusOverlay.vue";
 import TitleBar from "./TitleBar.vue";
 
@@ -27,6 +29,7 @@ const client = new FrameClient();
 const config = useConfigStore();
 const runtime = useRuntimeStore();
 const layout = computed(() => config.current.value.layout);
+const drawer = computed(() => runtime.drawer.value);
 const version = useAppVersion();
 const source = useSourceStatus(runtime.source);
 
@@ -53,6 +56,7 @@ defineExpose({ client, channel: () => channel });
     <TitleBar :version="version" :source="source.event.value" />
     <MeterGrid class="grid" :instances="layout.instances" :mode="layout.mode" :registry="moduleRegistry" />
     <StatusOverlay :source="source.event.value" />
+    <SettingsDrawer v-if="drawer === 'settings'" />
     <CrtOverlay :enabled="scanline" />
   </div>
 </template>
@@ -67,6 +71,8 @@ defineExpose({ client, channel: () => channel });
   overflow: hidden;
   background: var(--color-bg);
   container-type: inline-size;
+  /* 重ねるパネル（ドロワー）は、タイトル帯の下から始める */
+  --drawer-top: var(--title-h);
 }
 
 .meter-screen > :deep(.title-bar) {
