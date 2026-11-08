@@ -439,6 +439,27 @@ mod tests {
         assert_eq!(dir.files(), vec![STATE_FILE.to_string()]);
     }
 
+    /// 書き込みが失敗したとき（一時ファイルを作れない）、前の `state.json` を触らないこと。
+    /// `state.json` に直接書く実装では、ここで `state.json` が先に壊れる
+    #[test]
+    fn failed_write_leaves_the_previous_state_untouched() {
+        let dir = TestDir::new("failed_write");
+        let store = dir.store();
+        let before = sample();
+        store.save(&before).unwrap();
+        let bytes_before = fs::read(store.state_path()).unwrap();
+
+        // 一時ファイルの場所を同じ名前のフォルダでふさぎ、書き込みを失敗させる
+        fs::create_dir(dir.0.join(TEMP_FILE)).unwrap();
+        let mut after = before.clone();
+        after.current.theme = Theme::Dark;
+        after.source.device_id = None;
+        assert!(matches!(store.save(&after), Err(StoreError::Io(_))));
+
+        assert_eq!(fs::read(store.state_path()).unwrap(), bytes_before);
+        assert_eq!(store.load().unwrap(), LoadOutcome::Loaded(before));
+    }
+
     #[test]
     fn invalid_state_is_not_saved() {
         let dir = TestDir::new("invalid_save");
