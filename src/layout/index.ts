@@ -28,3 +28,12 @@ export {
   type Splitter,
   type SplitterAxis,
 } from "./manual";
+export {
+  COMPACT_MAX_RATIO,
+  LONG_MIN_RATIO,
+  TALL_MIN_RATIO,
+  fitProfileOf,
+  shapeFit,
+  type FitProfile,
+  type ShapeFit,
+} from "./shape_fit";
