@@ -8,7 +8,7 @@ export default defineConfig((env) =>
       include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
       environment: "node",
       // 部品の寸法（?raw で文字として読み、部品が参照する寸法が定義されているかを確かめるテストがある）
-      css: { include: [/component_metrics\.css/] },
+      css: { include: [/component_metrics\.css/, /theme[\\/]tokens\.css/] },
     },
   }),
 );
