@@ -54,8 +54,8 @@ const fit = computed(() => {
 <template>
   <div class="edit-head">
     <span class="grip" aria-hidden="true" />
-    <span class="name">{{ name }} {{ number }}</span>
-    <span class="fit" :class="fit.good ? 'is-good' : 'is-warn'" :data-fit="fit.result">{{ fit.text }}</span>
+    <span class="name" :title="`${name} ${number}`">{{ name }} {{ number }}</span>
+    <span class="fit" :class="fit.good ? 'is-good' : 'is-warn'" :data-fit="fit.result" :title="fit.text">{{ fit.text }}</span>
     <span v-if="hasDirection" class="dirs" role="group" data-no-drag :aria-label="t('instance.direction.label')">
       <button
         v-for="item in DIRECTIONS"
@@ -96,8 +96,13 @@ const fit = computed(() => {
     var(--grip-dot-pitch);
 }
 
+/* 名前・バッジは折り返さない。狭い枠では、枠の幅で切って「…」にする（全文は title で読める） */
 .name {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   font-weight: 700;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -106,6 +111,10 @@ const fit = computed(() => {
   padding: 0 var(--space-2);
   border: var(--border-width) solid var(--color-line);
   border-radius: var(--radius-pill);
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -120,8 +129,11 @@ const fit = computed(() => {
 }
 
 /* 流れる方向の矢印（モックの .dirs） */
+/* 方向の矢印：狭い枠では、2段に折り返して枠の幅に収める */
 .dirs {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   overflow: hidden;
   border: var(--border-width) solid var(--color-line);
   border-radius: var(--radius-sm);

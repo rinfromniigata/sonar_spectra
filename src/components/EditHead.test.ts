@@ -63,6 +63,12 @@ describe("EditHead", () => {
     expect(pressedArrows(html)).toEqual([ja.instance.direction.right]);
   });
 
+  it("名前とバッジには、狭い枠で「…」に切り詰められても全文を読めるよう title を付ける", async () => {
+    const html = await render(instanceOf("spec"), { width: 100, height: 100 }, 2);
+    expect(html).toContain(`class="name" title="${ja.modules.spectrum} 2"`);
+    expect(html).toMatch(new RegExp(`data-fit="warn_short" title="${ja.shape_fit.warn_short}"`));
+  });
+
   it("方向のないモジュール（LOUDなど）には矢印を出さない", async () => {
     const html = await render(instanceOf("loud"), { width: 150, height: 150 });
     expect(html).not.toContain("dirs");
