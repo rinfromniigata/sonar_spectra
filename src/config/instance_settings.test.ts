@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { moduleRegistry } from "../modules";
+import type { AnyModuleDefinition } from "../modules/types";
 import { createDefaultInstances } from "./default_instances";
-import { SPEED_MAX, SPEED_MIN, normalizeSpeed, setInstanceOption, setPaletteId, setSpeed } from "./instance_settings";
+import {
+  SPEED_MAX,
+  SPEED_MIN,
+  defaultsOf,
+  isDefaultInstance,
+  normalizeSpeed,
+  resetInstance,
+  setInstanceOption,
+  setPaletteId,
+  setSpeed,
+} from "./instance_settings";
 import type { Instance } from "./types";
 
 /** 既定のインスタンス（ID は種類と通し番号）に、2つ目の波形を足したもの */
@@ -84,5 +95,108 @@ describe("setSpeed", () => {
     expect(setSpeed(list, spec.id, 2)).toBeNull();
     expect(setSpeed(list, "wave-2", 1.01)).toBeNull();
     expect(setSpeed(list, "wave-2", Number.NaN)).toBeNull();
+  });
+});
+
+describe("既定に戻す", () => {
+  const rect = { c: 2, r: 3, cs: 5, rs: 2 };
+
+  /** 波形を、方向・配色・設定をすべて既定から変え、配置・無効・入力源が既定でない状態にする */
+  function changedWave(): { list: Instance[]; id: string } {
+    const list = instances();
+    const id = list.find((i) => i.kind === "wave")!.id;
+    const changed = list.map((i) =>
+      i.id === id
+        ? ({
+            ...i,
+            enabled: false,
+            rect,
+            direction: "up",
+            paletteId: "preset.c",
+            options: { channel: "mono", showNow: false, split: 40, histColor: "bands", speed: 2.5 },
+          } as Instance)
+        : i,
+    );
+    return { list: changed, id };
+  }
+
+  it("方向・配色・種類ごとの設定（流れる速さを含む）が既定に戻り、配置・有効／無効・入力源は残る", () => {
+    const { list, id } = changedWave();
+    const next = resetInstance(list, id, moduleRegistry)!;
+    const wave = next.find((i) => i.id === id)!;
+    expect(wave.direction).toBe("left");
+    expect(wave.paletteId).toBe("preset.a");
+    expect(wave.options).toEqual({ channel: "stereo", showNow: true, split: 72, histColor: "solid", speed: 1 });
+    expect(wave.rect).toEqual(rect);
+    expect(wave.enabled).toBe(false);
+    expect(wave.sourceId).toBe("default");
+    expect(wave.kind).toBe("wave");
+  });
+
+  it("ほかのインスタンス（同じ種類を含む）と並び順は変えない", () => {
+    const { list, id } = changedWave();
+    const next = resetInstance(list, id, moduleRegistry)!;
+    expect(next.map((i) => i.id)).toEqual(list.map((i) => i.id));
+    expect(next.filter((i) => i.id !== id)).toEqual(list.filter((i) => i.id !== id));
+    // 元の並びは書き換えない
+    expect(list.find((i) => i.id === id)!.paletteId).toBe("preset.c");
+  });
+
+  it("方向を持たない種類（位相）は方向のままで、配色と設定だけが戻る", () => {
+    const list = instances();
+    const stereo = list.find((i) => i.kind === "stereo" && !i.slot)!;
+    const changed = list.map((i) =>
+      i.id === stereo.id ? ({ ...i, paletteId: "preset.b", options: { mode: "pan", dots: "none", blur: false } } as Instance) : i,
+    );
+    const next = resetInstance(changed, stereo.id, moduleRegistry)!;
+    const after = next.find((i) => i.id === stereo.id)!;
+    expect(after.direction).toBeNull();
+    expect(after.paletteId).toBe("preset.a");
+    expect(after.options).toEqual({ mode: "lissajous", dots: "both", blur: true });
+  });
+
+  it("専用の位置（周波数別の定位）のインスタンスは、表示方式が「周波数別の定位」のまま戻り、専用の位置も残る", () => {
+    const list = instances();
+    const pan = list.find((i) => i.slot === "pan")!;
+    expect(pan.options).toMatchObject({ mode: "pan" });
+    const changed = list.map((i) =>
+      i.id === pan.id ? ({ ...i, paletteId: "preset.b", options: { mode: "pan", dots: "size", blur: false } } as Instance) : i,
+    );
+    const after = resetInstance(changed, pan.id, moduleRegistry)!.find((i) => i.id === pan.id)!;
+    expect(after.options).toEqual({ mode: "pan", dots: "both", blur: true });
+    expect(after.slot).toBe("pan");
+    expect(after.paletteId).toBe("preset.a");
+  });
+
+  it("作ったときの値に戻るので、既定の構成のインスタンスは何も変えていなければ「既定」", () => {
+    for (const instance of instances()) {
+      const definition = moduleRegistry.get(instance.kind) as AnyModuleDefinition;
+      expect(isDefaultInstance(instance, definition), instance.id).toBe(true);
+      expect(resetInstance([instance], instance.id, moduleRegistry)).toBeNull();
+    }
+  });
+
+  it("方向・配色・設定のどれか1つが違えば既定ではない。配置・有効／無効・入力源の違いは既定かどうかに影響しない", () => {
+    const wave = instances().find((i) => i.kind === "wave")!;
+    const definition = moduleRegistry.get("wave") as AnyModuleDefinition;
+    expect(isDefaultInstance({ ...wave, direction: "down" } as Instance, definition)).toBe(false);
+    expect(isDefaultInstance({ ...wave, paletteId: "preset.b" }, definition)).toBe(false);
+    expect(isDefaultInstance({ ...wave, options: { ...wave.options, split: 73 } } as Instance, definition)).toBe(false);
+    expect(isDefaultInstance({ ...wave, enabled: false, rect } as Instance, definition)).toBe(true);
+  });
+
+  it("すでに既定のとき・知らないIDは null（書かない）", () => {
+    const list = instances();
+    expect(resetInstance(list, "missing", moduleRegistry)).toBeNull();
+    expect(resetInstance(list, "wave-2", moduleRegistry)).toBeNull();
+  });
+
+  it("既定は種類の定義から決まる（方向は種類の既定の向き）", () => {
+    const wave = instances().find((i) => i.kind === "wave")!;
+    expect(defaultsOf(wave, moduleRegistry.get("wave") as AnyModuleDefinition)).toEqual({
+      direction: "left",
+      paletteId: "preset.a",
+      options: { channel: "stereo", showNow: true, split: 72, histColor: "solid", speed: 1 },
+    });
   });
 });

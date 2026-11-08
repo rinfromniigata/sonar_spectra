@@ -6,16 +6,19 @@
 // - 流れる速さ：流れるモジュール（定義の flows）だけ。×0.25〜×3.00、刻み0.05
 // - 種類ごとの項目：定義の inspectorFields（波形・スペクトラム・位相）を、選択肢はセグメント、オン／オフはスイッチ、数値は
 //   スライダーで出す。出すかどうかは visibleWhen で決まる（modules/inspector_fields）。選んでいる選択肢の注記を下に添える
-// 「既定に戻す」は T6-3 で加える。
-// 値は持たず、変えたら palette・speed・option で知らせる（書き込みは置く側）
-import { computed, useId } from "vue";
+// - 「既定に戻す」（見出しの横）：方向・配色・種類ごとの設定をまとめて戻す。すでに既定のままなら押せない。
+//   押したあとは、ボタンが押せなくなってフォーカスが失われる（Esc で閉じられなくなる）ため、見出しへフォーカスを移す
+// 値は持たず、変えたら palette・speed・option・reset で知らせる（書き込みは置く側）
+import { computed, nextTick, ref, useId } from "vue";
 import { PRESET_PALETTES, presetSwatchColors } from "../config/palettes";
-import { SPEED_MAX, SPEED_MIN, SPEED_STEP } from "../config/instance_settings";
+import { SPEED_MAX, SPEED_MIN, SPEED_STEP, isDefaultInstance } from "../config/instance_settings";
 import type { Instance } from "../config/types";
 import { formatMultiplier, formatPercent } from "../i18n/format";
 import { useT, type MessageKey } from "../i18n/use_t";
 import { visibleFields } from "../modules/inspector_fields";
 import type { AnyModuleDefinition, InspectorField } from "../modules/types";
+import UiButton from "./ui/UiButton.vue";
+import UiIcon from "./ui/UiIcon.vue";
 import UiPaletteSwatch from "./ui/UiPaletteSwatch.vue";
 import UiSegmented from "./ui/UiSegmented.vue";
 import UiSelect from "./ui/UiSelect.vue";
@@ -34,12 +37,25 @@ const emit = defineEmits<{
   speed: [speed: number];
   /** 種類ごとの項目（設定 options の1項目）を変えた */
   option: [key: string, value: string | number | boolean];
+  /** 方向・配色・種類ごとの設定を既定に戻す */
+  reset: [];
 }>();
 
 const { t } = useT();
 /** 動的な辞書キー（定義が持つ）を引く。プレースホルダの有無は定義と辞書で決まるため、型の検査はここでは行わない */
 const translate = t as unknown as (key: MessageKey, params?: Record<string, string | number>) => string;
 const paletteLabelId = useId();
+const titleElement = ref<HTMLElement | null>(null);
+
+/** 方向・配色・種類ごとの設定がすべて既定のままか */
+const isDefault = computed(() => isDefaultInstance(props.instance, props.definition));
+
+async function reset(): Promise<void> {
+  emit("reset");
+  // 押せなくなったボタンからフォーカスが外れるので、見出しに移す
+  await nextTick();
+  titleElement.value?.focus();
+}
 
 /** 入力源：初版は既定の1系統だけ */
 const sourceOptions = computed<ChoiceOption<"default">[]>(() => [{ value: "default", label: t("instance.source_default") }]);
@@ -129,7 +145,13 @@ const fields = computed<FieldView[]>(() => {
 
 <template>
   <div class="instance-settings">
-    <h3 class="title">{{ t("layout_edit.selected", { name }) }}</h3>
+    <div class="head">
+      <h3 ref="titleElement" class="title" tabindex="-1">{{ t("layout_edit.selected", { name }) }}</h3>
+      <UiButton class="reset" :disabled="isDefault" @click="reset">
+        <UiIcon name="reset" size="sm" />
+        {{ t("common.reset_default") }}
+      </UiButton>
+    </div>
 
     <div class="field">
       <span class="label" aria-hidden="true">{{ t("instance.source") }}</span>
@@ -200,13 +222,33 @@ const fields = computed<FieldView[]>(() => {
   min-width: 0;
 }
 
-/* 見出し（モックの .ins-title）。右上の×と重ならないよう、余白はポップオーバー側が取る */
+/* 見出しと「既定に戻す」（モックの .ins-head・.ins-reset）。右上の×と重ならないよう、余白はポップオーバー側が取る */
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 .title {
   min-width: 0;
   margin: 0;
   font-size: inherit;
   font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.instance-settings .reset {
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
 }
 
 /* 項目（モックの .ins-field・.ins-label・.ins-note） */

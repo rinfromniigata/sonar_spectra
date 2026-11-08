@@ -163,3 +163,27 @@ describe("InstanceSettings の種類ごとの項目", () => {
     }
   });
 });
+
+describe("InstanceSettings の「既定に戻す」", () => {
+  /** 「既定に戻す」のボタンの開きタグ */
+  function resetButton(html: string): string {
+    const text = html.indexOf(ja.common.reset_default);
+    const start = html.lastIndexOf("<button", text);
+    if (text < 0 || start < 0) throw new Error("reset button not found");
+    return html.slice(start, html.indexOf(">", start) + 1);
+  }
+
+  it("見出しの横に置き、方向・配色・設定がすべて既定のままなら押せない", async () => {
+    const html = await render(instanceOf("wave"));
+    expect(resetButton(html)).toContain("disabled");
+    expect(html.indexOf(ja.common.reset_default)).toBeGreaterThan(html.indexOf("選択中："));
+    expect(html.indexOf(ja.common.reset_default)).toBeLessThan(html.indexOf(`>${ja.instance.source}<`));
+  });
+
+  it("配色・方向・設定のどれかが既定と違えば押せる", async () => {
+    const wave = instanceOf("wave");
+    expect(resetButton(await render({ ...wave, paletteId: "preset.c" }))).not.toContain("disabled");
+    expect(resetButton(await render({ ...wave, direction: "up" } as Instance))).not.toContain("disabled");
+    expect(resetButton(await render({ ...wave, options: { ...wave.options, speed: 2 } } as Instance))).not.toContain("disabled");
+  });
+});

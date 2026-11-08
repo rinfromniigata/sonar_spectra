@@ -15,7 +15,6 @@ export const PENDING_KEYS: readonly string[] = [
   "layout_edit.reset",
 
   // Phase 6：インスタンスの設定（T6-1〜T6-4）
-  "common.reset_default",
   "layout_edit.open_instance_settings",
 
   // Phase 7：配色と構成（T7-2〜T7-5）
