@@ -3,7 +3,7 @@
 // - 走査線：横に細い線を一定の間隔で並べる。周辺減光：中央は透明で、周辺に向けて暗くする
 // - 色はテーマごとのトークン（--color-scanline・--color-vignette）から取り、ライトでは薄くなる
 // - 操作をさえぎらない（pointer-events: none）。タイトル帯・状態の表示・設定パネルより上に重なる
-// - 表示するかは、設定の display.scanline（既定でオン）。切り替えの UI は設定パネルを作る Phase 4 でつなぐ
+// - 表示するかは、設定の display.scanline（既定でオン。MeterScreen が渡す。切り替えは設定パネル）
 withDefaults(defineProps<{ enabled?: boolean }>(), { enabled: true });
 </script>
 

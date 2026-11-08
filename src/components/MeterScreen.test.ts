@@ -26,17 +26,13 @@ import { moduleRegistry } from "../modules";
 import MeterScreen from "./MeterScreen.vue";
 
 /** 既定の状態の構成のストア（recipe で今の構成を変えられる）を provide して組み立てる */
-async function render(
-  props: { scanline?: boolean } = {},
-  recipe?: (config: Config) => void,
-  runtime = createRuntimeStore(),
-): Promise<string> {
+async function render(recipe?: (config: Config) => void, runtime = createRuntimeStore()): Promise<string> {
   const config = createConfigStore({
     persistence: { load: () => Promise.resolve(null), save: () => Promise.resolve() },
     createDefault: () => createDefaultState({ registry: moduleRegistry, defaultName: "既定" }),
   });
   if (recipe) config.updateCurrent(recipe);
-  const app = createSSRApp({ render: () => h(MeterScreen, props) });
+  const app = createSSRApp({ render: () => h(MeterScreen) });
   app.use(i18n);
   app.provide(CONFIG_STORE_KEY, config);
   app.provide(RUNTIME_STORE_KEY, runtime);
@@ -68,14 +64,19 @@ describe("MeterScreen", () => {
     expect(html).toContain("入力源を開いています");
   });
 
-  it("走査線と周辺減光は、画面全体の最後（いちばん上）に重ねる。scanline が false なら出さない", async () => {
+  it("走査線と周辺減光は、画面全体の最後（いちばん上）に重ねる。設定の display.scanline が false なら出さない", async () => {
     const html = await render();
     const overlay = html.indexOf("status-overlay");
     const crt = html.indexOf("crt-overlay");
     expect(crt).toBeGreaterThan(overlay);
     expect(html.indexOf("crt-overlay", crt + 1)).toBe(-1);
 
-    expect(await render({ scanline: false })).not.toContain("crt-overlay");
+    const off = await render((config) => {
+      config.display.scanline = false;
+    });
+    expect(off).not.toContain("crt-overlay");
+    // 走査線を切っても、設定パネルなどほかの重ねる画面は変わらない
+    expect(off).toContain("status-overlay");
   });
 
   it("登録されたモジュール（レベル・波形・スペクトラム・位相2つ・スペクトログラム・LOUD）の既定のインスタンスを、格子の位置に置く", async () => {
@@ -92,7 +93,7 @@ describe("MeterScreen", () => {
   });
 
   it("構成のストアの今の構成を表示する。無効にしたインスタンスは置かず、手動配置では rect の位置に置く", async () => {
-    const html = await render({}, (config) => {
+    const html = await render((config) => {
       for (const instance of config.layout.instances) instance.enabled = instance.kind === "level" || instance.kind === "spec";
       config.layout.mode = "manual";
       const [level, , spec] = config.layout.instances;
@@ -108,7 +109,7 @@ describe("MeterScreen", () => {
     expect(await render()).not.toContain("settings-drawer");
     const runtime = createRuntimeStore();
     runtime.openDrawer("settings");
-    const html = await render({}, undefined, runtime);
+    const html = await render(undefined, runtime);
     const overlay = html.indexOf("status-overlay");
     const drawer = html.indexOf("settings-drawer");
     expect(drawer).toBeGreaterThan(overlay);

@@ -424,9 +424,15 @@ Phaseの推奨: Opus・high以上
     - 使い始めた`config.section`・`config.modified`・`config.save_as`・`config.manage`と`settings.*`を`scripts/i18n_pending_keys.ts`から外した
     - 単体テスト11件（`SettingsDrawer`5・`deviceChoices`4・`listOutputDevices`1・`MeterScreen`1）を加えた。DOMのテスト環境がないため、既存のテストと同じくSSRで組み立てた結果（欄の順、構成の選択肢と使用中、「保存後に変更あり」の出し分け、入力源、ストアの値の反映）を確かめた。操作して値が変わることは、パネルを開けるようになるT4-5のあと、W4-2・W4-4で確かめる。`bun run check`は終了コード0で通った
     - 今はタイトル帯の設定ボタンとS01cの「設定」がまだつながっていないため、アプリからはパネルを開けない（T4-5でつなぐ）
-- [ ] T4-4 【エージェント】テーマ（`data-theme`の付け外しと、Canvasの色の読み直し）と走査線の切り替えを設定につなぐ
+- [x] T4-4 【エージェント】テーマ（`data-theme`の付け外しと、Canvasの色の読み直し）と走査線の切り替えを設定につなぐ
   - 推奨: Sonnet・high以上
   - 依存: T3-6, T4-3
+  - 実施: Sonnet
+  - 実施メモ（261108）：`src/theme/apply_theme.ts`（`applyTheme`・`bindTheme`）を作り、`main.ts`で、ストアの復元のあと・マウントの前に`bindTheme`を呼ぶようにした。設定の`theme`が変わるたびに文書の`data-theme`へ反映する：`dark`・`light`は値を付け、`system`は属性を外す（`tokens.css`の`prefers-color-scheme`に任せるので、OSの切り替えに追従する）。マウントの前に反映するのは、OS設定がライトのときにダークで一瞬見えないようにするため。`index.html`の`data-theme="dark"`は、復元までの間の初期値として残した
+    - Canvasの色の読み直しは、描画ループ（`use_render_loop.ts`）がすでに持つ`watchCanvasColors`が、`data-theme`の付け外しとOSのライト／ダークの切り替えの両方を見て行うため、新しく作らなかった（T4-3の設定パネルのテーマの切り替え → ストアの`theme` → `data-theme` → Canvasの色、の順につながった）
+    - 走査線：`MeterScreen`の`scanline`プロップをやめ、設定の`display.scanline`（構成のストア）から`CrtOverlay`の`enabled`を決めるようにした。スイッチを切ると走査線と周辺減光が消える
+    - 開発用ギャラリーのテーマ切り替え（`use_gallery_theme.ts`）は、設定とは別に、ギャラリーの中だけで見比べるためのものとして残し、コメントを直した
+    - 単体テスト3件（`apply_theme`3）を加え、`MeterScreen`の走査線のテストを設定の値で切り替える形に直した。`bun run check`は終了コード0で通った。アプリを起動しての確認（スイッチ操作で見た目が変わること、OS設定への追従、再起動での引き継ぎ）は、パネルを開けるようになるT4-5のあと、W4-2・W4-3で行う
 - [ ] T4-5 【エージェント】入力源のデバイスの切り替えを設定につなぎ（`select_output_device`、`source.deviceId`の保存、切り替え中のS01d）、タイトル帯の設定ボタン・出力系統のチップと、S01cの「設定」ボタンから設定パネルを開けるようにする
   - 推奨: Opus・high以上
   - 依存: T2-13, T4-3

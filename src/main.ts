@@ -8,12 +8,15 @@ import App from "./App.vue";
 import { flushOnClose } from "./app/flush_on_close";
 import { setupStores } from "./app/stores";
 import { i18n, initLocale } from "./i18n";
+import { bindTheme } from "./theme/apply_theme";
 
 // ロケールを確定し（<html lang> を合わせ）、保存された構成を復元してからマウントする
 void (async () => {
   await initLocale();
   const app = createApp(App).use(i18n);
   const { config } = await setupStores(app);
+  // 保存されたテーマを、最初の表示の前に反映する
+  bindTheme(config);
   app.mount("#app");
   // 閉じるときに、間を置いている保存を済ませる（Tauri の外では使えないので、失敗は記録だけする）
   flushOnClose(config.flush).catch((error: unknown) => console.error(error));

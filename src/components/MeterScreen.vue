@@ -4,8 +4,8 @@
 // - 描画ループを provide し、格子の中の ModuleFrame が自分を登録する
 // - インスタンスと配置の種類は、構成のストア（useConfigStore）の今の構成から取る。入力源の状態は実行中の状態のストア
 //   （useRuntimeStore）の source に書き込む
-// - 走査線と周辺減光（CrtOverlay）は画面全体に重ねる。表示するかは scanline（設定の display.scanline。既定でオン）で、
-//   設定につなぐのは T4-4
+// - 走査線と周辺減光（CrtOverlay）は画面全体に重ねる。表示するかは設定の display.scanline（既定でオン）
+// - テーマは main.ts が bindTheme（theme/apply_theme.ts）で文書の data-theme に反映する
 // - 設定パネル（S02）は、実行中の状態のストアのドロワーが settings のときに重ねる（タイトル帯の下から）
 // - タイトル帯のボタンと「設定」は、まだつながない（設定を開くのは T4-5、全画面は T4-6、レイアウト編集は Phase 5）
 import { computed, onMounted } from "vue";
@@ -23,13 +23,12 @@ import SettingsDrawer from "./SettingsDrawer.vue";
 import StatusOverlay from "./StatusOverlay.vue";
 import TitleBar from "./TitleBar.vue";
 
-withDefaults(defineProps<{ scanline?: boolean }>(), { scanline: true });
-
 const client = new FrameClient();
 const config = useConfigStore();
 const runtime = useRuntimeStore();
 const layout = computed(() => config.current.value.layout);
 const drawer = computed(() => runtime.drawer.value);
+const scanline = computed(() => config.current.value.display.scanline);
 const version = useAppVersion();
 const source = useSourceStatus(runtime.source);
 
