@@ -5,13 +5,15 @@
 //   矢印は押すだけなので、ドラッグを始めないよう data-no-drag を付ける
 // - 適合判定は枠の見た目の大きさ（size）と流れる方向から shapeFit で求める。ライトでは、バッジの文字を --color-label-b・
 //   --color-label-c（= --color-text）にし、枠線だけ発光色を残す（theme/theme_aliases.css）
-// - 歯車ボタン（インスタンスの設定を開く）は Phase 6（T6-4）で加える
+// - 歯車ボタン（インスタンスの設定を開く。モックの .head-gear）は名前の横に置き、押すと settings で知らせる（開くのは置く側）。
+//   押すだけなので、ドラッグを始めないよう data-no-drag を付ける。設定を閉じたとき、フォーカスはこのボタンに戻る
 import { computed } from "vue";
 import type { Instance } from "../config/types";
 import { useT, type MessageKey } from "../i18n/use_t";
 import { fitProfileOf, shapeFit, type ShapeFit } from "../layout/shape_fit";
 import type { Direction } from "../modules/options";
 import type { AnyModuleDefinition } from "../modules/types";
+import UiIconButton from "./ui/UiIconButton.vue";
 
 const props = defineProps<{
   instance: Instance;
@@ -21,7 +23,7 @@ const props = defineProps<{
   /** 枠の見た目の大きさ（比だけを使う） */
   size: { width: number; height: number };
 }>();
-const emit = defineEmits<{ direction: [direction: Direction] }>();
+const emit = defineEmits<{ direction: [direction: Direction]; settings: [] }>();
 
 const { t } = useT();
 
@@ -55,6 +57,9 @@ const fit = computed(() => {
   <div class="edit-head">
     <span class="grip" aria-hidden="true" />
     <span class="name" :title="`${name} ${number}`">{{ name }} {{ number }}</span>
+    <span class="gear" data-no-drag>
+      <UiIconButton icon="settings" size="sm" :label="t('layout_edit.open_instance_settings')" @click="emit('settings')" />
+    </span>
     <span class="fit" :class="fit.good ? 'is-good' : 'is-warn'" :data-fit="fit.result" :title="fit.text">{{ fit.text }}</span>
     <span v-if="hasDirection" class="dirs" role="group" data-no-drag :aria-label="t('instance.direction.label')">
       <button
@@ -86,6 +91,11 @@ const fit = computed(() => {
   background: var(--color-scrim);
   font-size: clamp(var(--edit-head-font-min), var(--edit-head-font-fluid), var(--edit-head-font-max));
   line-height: 1.5;
+}
+
+.gear {
+  display: inline-flex;
+  flex: none;
 }
 
 .grip {

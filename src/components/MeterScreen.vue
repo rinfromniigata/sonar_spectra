@@ -24,7 +24,7 @@
 //   ポップオーバー（UiPopover）でそのモジュールの横に開く（右は編集パネルの左端まで）。開いたまま別のモジュールを選ぶと、
 //   作り直さずにそちらへ移る（フォーカスを奪わない）。×・Esc で閉じる。選んだものが置かれていなければ（無効・削除）出さない。
 //   配色・流れる速さ・種類ごとの項目（options の1項目）を変えたら、そのインスタンスだけを構成に書く（config/instance_settings）。
-//   「既定に戻す」は、そのインスタンスの方向・配色・種類ごとの設定だけを戻す（配置・有効／無効・入力源は残す）。開くボタン（見出しの歯車）は T6-4
+//   「既定に戻す」は、そのインスタンスの方向・配色・種類ごとの設定だけを戻す（配置・有効／無効・入力源は残す）。開くのは見出しの歯車（EditHead）
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
 import { useRuntimeStore } from "../app/runtime_store";
@@ -229,6 +229,7 @@ defineExpose({ client, channel: () => channel });
       @select="runtime.selectInstance"
       @update="applyLayout"
       @direction="changeDirection"
+      @settings="runtime.openInstanceSettings"
     />
     <!-- 編集中は出さない（S01c・S01d の幕が格子をふさがないように。入力源の状態はタイトル帯のチップで分かる） -->
     <StatusOverlay v-if="!editing" :source="source.event.value" @open-settings="openSettings" />

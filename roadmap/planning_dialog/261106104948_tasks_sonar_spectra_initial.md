@@ -578,10 +578,15 @@ Phaseの推奨: Opus・high以上
     - ボタンは、方向・配色・設定がすべて既定のままなら押せない（モックの`isDefault`）。押すと押せなくなってフォーカスが失われ、Escで閉じられなくなるため、押したあとに見出し（`tabindex="-1"`）へフォーカスを移す。すでに既定のときは`resetInstance`がnullを返し、書かない（「保存後に変更あり」にしない）
     - 辞書：`common.reset_default`を`scripts/i18n_pending_keys.ts`から外した。パネル下の帯の「既定に戻す」（`layout_edit.reset`）は、T5-3の未決定（何を戻すか）のまま別
     - 単体テスト10件（`resetInstance`・`isDefaultInstance`・`defaultsOf`8〔戻る項目と残る項目・ほかのインスタンスと元の並びを変えない・方向を持たない種類・専用の位置・既定の構成はすべて「既定」・どれか1つ違えば既定でない・すでに既定ならnull・定義から決まる既定〕、`InstanceSettings`2〔既定のままなら押せない・どれかが違えば押せる〕）を加えた。W6-1の単体テストはこれで通る。押したあとのフォーカスの動きと、画面上での戻り方は、T6-4のあとW6-2・W6-3・W6-5で確かめる。`bun run check`は通った（UI 565件・Rust 114件）
-- [ ] T6-4 【エージェント】編集中のモジュールの見出しに歯車ボタンを加え、インスタンスの設定を開けるようにする
+- [x] T6-4 【エージェント】編集中のモジュールの見出しに歯車ボタンを加え、インスタンスの設定を開けるようにする
   - 推奨: Sonnet・medium以上
   - 依存: T5-4, T6-1
   - 画面: S03
+  - 実施: Sonnet
+  - 実施メモ（261108）：`EditHead.vue`の名前とバッジの間に歯車ボタン（`UiIconButton`の`settings`、読み上げの名前は`layout_edit.open_instance_settings`）を置き、`settings`で知らせる。`MeterGrid`が`settings(id)`で中継し、`MeterScreen`が`runtime.openInstanceSettings(id)`（そのインスタンスを選んで開く）につないだ。方向を持たない種類にも出る
+    - ドラッグ：歯車は`data-no-drag`の要素に入れ、押してもモジュールのドラッグを始めない。設定を閉じる（×・Esc）と、開いたときにフォーカスのあった歯車へフォーカスが戻る（`useDismiss`）
+    - 辞書：`layout_edit.open_instance_settings`を使用予定の一覧から外した。Phase 6の使用予定は空になった
+    - 単体テスト1件（歯車の位置・読み上げの名前・`data-no-drag`。方向のある種類とない種類）を加えた。クリックでの開閉とフォーカスの戻りはDOMのテスト環境がないため、実機でW6-3・W6-5で確かめる。`bun run check`は通った（UI 566件・Rust 114件）
 
 ## Phase 7: 配色と構成
 

@@ -74,4 +74,15 @@ describe("EditHead", () => {
     expect(html).not.toContain("dirs");
     expect(html).not.toContain("dir-button");
   });
+
+  it("歯車ボタン（インスタンスの設定を開く）を、名前とバッジの間に置く。読み上げの名前つきで、ドラッグを始めない", async () => {
+    for (const kind of ["spec", "loud"] as const) {
+      const html = await render(instanceOf(kind), { width: 300, height: 200 });
+      const gear = html.indexOf(`aria-label="${ja.layout_edit.open_instance_settings}"`);
+      expect(gear).toBeGreaterThan(html.indexOf('class="name"'));
+      expect(gear).toBeLessThan(html.indexOf('data-fit="'));
+      // 歯車を包む要素に data-no-drag（方向を持たない種類にも出る）
+      expect(html.lastIndexOf("data-no-drag", gear)).toBeGreaterThan(html.lastIndexOf('class="name"'));
+    }
+  });
 });

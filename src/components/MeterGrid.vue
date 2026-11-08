@@ -71,6 +71,8 @@ const emit = defineEmits<{
   update: [instances: Instance[]];
   /** 流れる方向を変えた（配置は変えない） */
   direction: [id: string, direction: Direction];
+  /** 見出しの歯車：そのインスタンスの設定を開く */
+  settings: [id: string];
 }>();
 
 const { t } = useT();
@@ -339,6 +341,7 @@ function onModuleFocus(id: string): void {
           :number="numbers.get(item.instance.id) ?? 1"
           :size="sizeOf(item.rect)"
           @direction="onDirection(item.instance.id, $event)"
+          @settings="emit('settings', item.instance.id)"
         />
         <span class="resize-handle" data-resize aria-hidden="true" />
       </template>
