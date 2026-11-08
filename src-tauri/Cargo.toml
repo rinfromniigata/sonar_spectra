@@ -23,6 +23,7 @@ tauri = { version = "2.12", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rustfft = "6.4"
+tauri-plugin-window-state = "2.5"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

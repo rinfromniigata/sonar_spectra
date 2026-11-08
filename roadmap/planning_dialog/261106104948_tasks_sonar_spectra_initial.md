@@ -444,10 +444,18 @@ Phaseの推奨: Opus・high以上
     - 設定パネルを開く：タイトル帯の設定ボタン（開いていればもう1度押すと閉じる）、出力系統のチップ、S01cの「設定」。閉じたときのフォーカスは、`UiDrawer`（`useDismiss`）が開いたときの要素へ戻す
     - `StatusOverlay`・`TitleBar`・`SettingsDrawer`のコメントを、つないだ内容に直した
     - 単体テスト10件（`createDeviceSelection`5・`selectOutputDevice`1・`MeterScreen`のイベントのつながり4）を加えた。イベントのつながりは、子のコンポーネントを組み立て時にイベントを出すだけの代役に替え、DOMなしで確かめた（設定ボタンで開閉、チップ・S01cの「設定」で開く、選んだデバイスの保存と切り替え）。`bun run check`は終了コード0で通った。実機での切り替えと再起動での引き継ぎはW4-2、キーボードでの操作とフォーカスの戻りはW4-4、長いデバイス名はW4-5で確かめる
-- [ ] T4-6 【エージェント】ウィンドウを扱う。ボーダレスフルスクリーンの切り替えとボタンのアイコンの変更、`tauri-plugin-window-state`（全画面の状態は記憶しない）、常に最前面、起動時にボーダレスフルスクリーン
+- [x] T4-6 【エージェント】ウィンドウを扱う。ボーダレスフルスクリーンの切り替えとボタンのアイコンの変更、`tauri-plugin-window-state`（全画面の状態は記憶しない）、常に最前面、起動時にボーダレスフルスクリーン
   - 推奨: Sonnet・high以上
   - 依存: T2-12, T4-3
   - 画面: S01, S01a
+  - 実施: Sonnet
+  - 実施メモ（261108）：`src/window/`に、`window_api.ts`（Tauriのウィンドウ APIへの薄い入口。呼ぶたびに`getCurrentWindow()`を取る）・`window_controller.ts`（`createWindowController`＝`start`・`toggleFullscreen`・`leaveFullscreenForClose`・`dispose`）・`use_window_controller.ts`（`provide`/`inject`）・`index.ts`を作った。`main.ts`で、ストアの復元・テーマの反映のあと、マウントの前に`start()`を呼ぶ。全画面中かどうかは`useRuntimeStore`に`fullscreen`を足して映した（実際のウィンドウの状態を読んで入れる。保存しない）
+    - ボーダレスフルスクリーン：タイトル帯の全画面ボタンが`toggleFullscreen`を呼ぶ。`setFullscreen`のあと`isFullscreen`を読み直して`runtime.fullscreen`に映すので、ボタンのアイコン（`fullscreen`／`fullscreen_exit`）と読み上げの名前（「ボーダレスフルスクリーン」／「…を終了」）が実際の状態に合う。OSの操作などで変わっても、`onResized`で読み直す。Windowsでは`setFullscreen(true)`が枠のない全画面（tauri-runtime-wryの`Fullscreen::Borderless`）になることをソースで確かめた。実機の見え方はW4-6（ユーザー）で確かめる
+    - 常に最前面：設定の`display.alwaysOnTop`を、起動時と変わるたびに`setAlwaysOnTop`でウィンドウへ反映する（設定パネルのスイッチから効く）。起動時の全画面：`display.startFullscreen`が真なら、起動時に1度だけ全画面にする（設定の変更では全画面にしない）
+    - `tauri-plugin-window-state`：`tauri-plugin-window-state`の最新の安定版2.5.0（最新は3.0.0-alpha.2のため、`"2.5"`を指定。Tauri 2.12.5と同じ2系）を`Cargo.toml`に足し、`lib.rs`で`StateFlags::all() - StateFlags::FULLSCREEN`（位置・大きさ・最大化・表示・装飾を記憶し、全画面は記憶しない）で登録した。フラグは`window_state_flags()`に切り出し、全画面を含まないことを単体テストで固定した。プラグインは作成時に復元し、閉じるときと終了時に保存する（保存先はアプリの設定フォルダの`.window-state.json`で、`state.json`とは別）。位置を保存したディスプレイがなければ、プラグインがOSに任せる（プラグインのソースで確かめた）。JavaScriptからプラグインのコマンドは呼ばないため、`capabilities`にプラグインの権限は足していない
+    - 気づいた点と対処：プラグインは大きさ・位置が変わるたびに記録するため、全画面のまま終了すると、全画面のときの大きさ・位置が保存され、次の起動で普通のウィンドウが画面いっぱいの大きさで出る。VJでは全画面のまま終えることが多いので、閉じる前に全画面を終えるようにした（`leaveFullscreenForClose`）。`onCloseRequested`のリスナーがあるとRust側は閉じるのを止める（Tauriのソースで確かめた）ため、その中で全画面を終え、大きさの変化の合図（プラグインが記録し直す合図でもある）を待ってから閉じる。待つのは400msまでで、閉じる前の後始末全体でも1秒まで。これに合わせ、`src/app/flush_on_close.ts`を`before_close.ts`（`beforeClose(prepare)`）に改め、保存の確定と全画面の終了を並べて行う。実機でこの対処が効いていること（全画面のまま終了 → 再起動で元の大きさ・位置）はW4-6（ユーザー）で確かめてほしい
+    - `capabilities/default.json`に`core:window:allow-is-fullscreen`・`allow-set-fullscreen`・`allow-set-always-on-top`を足した（ビルド時に権限名が検証される。`bun run check`のRustのビルドで通った）
+    - 単体テスト17件（ウィンドウの扱い14〔切り替え3・起動4・常に最前面3・閉じる前3・dispose1〕・`MeterScreen`の全画面ボタンの表示1・イベントのつながり1・Rustの記憶するフラグ1。ストアの`fullscreen`の初期値は既存のテストに観点を足した）を加えた。`MeterScreen`の既存テスト2本は、ウィンドウの扱いの代役を渡す形に直した。`bun run check`は終了コード0で通った（UI 378件・Rust 113件）
 
 ## Phase 5: レイアウト編集
 

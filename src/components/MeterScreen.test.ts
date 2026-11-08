@@ -23,7 +23,23 @@ import { createDefaultState } from "../config/persisted_state";
 import type { Config } from "../config/types";
 import { i18n } from "../i18n";
 import { moduleRegistry } from "../modules";
+import { WINDOW_CONTROLLER_KEY, type WindowController } from "../window";
 import MeterScreen from "./MeterScreen.vue";
+
+/** ウィンドウの扱いの代役（押された回数だけ数える） */
+function fakeWindowController(): WindowController & { toggles: number } {
+  const controller = {
+    toggles: 0,
+    start: () => Promise.resolve(),
+    toggleFullscreen: () => {
+      controller.toggles++;
+      return Promise.resolve();
+    },
+    leaveFullscreenForClose: () => Promise.resolve(),
+    dispose: () => {},
+  };
+  return controller;
+}
 
 /** 既定の状態の構成のストア（recipe で今の構成を変えられる）を provide して組み立てる */
 async function render(recipe?: (config: Config) => void, runtime = createRuntimeStore()): Promise<string> {
@@ -36,6 +52,7 @@ async function render(recipe?: (config: Config) => void, runtime = createRuntime
   app.use(i18n);
   app.provide(CONFIG_STORE_KEY, config);
   app.provide(RUNTIME_STORE_KEY, runtime);
+  app.provide(WINDOW_CONTROLLER_KEY, fakeWindowController());
   return renderToString(app);
 }
 
@@ -114,6 +131,15 @@ describe("MeterScreen", () => {
     const drawer = html.indexOf("settings-drawer");
     expect(drawer).toBeGreaterThan(overlay);
     expect(html.indexOf("crt-overlay")).toBeGreaterThan(drawer);
+  });
+
+  it("全画面中は、タイトル帯のボタンが「ボーダレスフルスクリーンを終了」になる", async () => {
+    expect(await render()).toContain('aria-label="ボーダレスフルスクリーン"');
+    const runtime = createRuntimeStore();
+    runtime.fullscreen.value = true;
+    const html = await render(undefined, runtime);
+    expect(html).toContain('aria-label="ボーダレスフルスクリーンを終了"');
+    expect(html).not.toContain('aria-label="ボーダレスフルスクリーン"');
   });
 
   it("起動時に source-status の listen を始め、必要な解析（レベル・波形・スペクトラム・位相・ラウドネス。スペクトログラムはスペクトラムを使う）を Rust に伝える", async () => {

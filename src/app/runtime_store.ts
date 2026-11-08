@@ -1,4 +1,4 @@
-// 実行中だけの状態のストア（imple 4.4 の useRuntimeStore）：入力源の状態、レイアウト編集中かどうか、開いているドロワー。
+// 実行中だけの状態のストア（imple 4.4 の useRuntimeStore）：入力源の状態、レイアウト編集中かどうか、開いているドロワー、全画面かどうか。
 // 保存しない。
 
 import { inject, ref, shallowRef, type InjectionKey, type Ref, type ShallowRef } from "vue";
@@ -14,6 +14,8 @@ export interface RuntimeStore {
   readonly layoutEditing: Ref<boolean>;
   /** 開いているドロワー。なければ null */
   readonly drawer: Ref<DrawerId | null>;
+  /** ボーダレスフルスクリーン中か（実際のウィンドウの状態を映す。保存しない。起動時の全画面は設定の display.startFullscreen） */
+  readonly fullscreen: Ref<boolean>;
   openDrawer(id: DrawerId): void;
   closeDrawer(): void;
   setLayoutEditing(editing: boolean): void;
@@ -22,10 +24,12 @@ export interface RuntimeStore {
 export function createRuntimeStore(): RuntimeStore {
   const drawer = ref<DrawerId | null>(null);
   const layoutEditing = ref(false);
+  const fullscreen = ref(false);
   return {
     source: shallowRef<SourceStatusEvent | null>(null),
     layoutEditing,
     drawer,
+    fullscreen,
     openDrawer: (id) => {
       drawer.value = id;
     },

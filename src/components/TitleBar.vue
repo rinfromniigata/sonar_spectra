@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // タイトル帯：SONAR/SPECTRA とバージョン、出力系統のチップ、レイアウト編集・設定・ボーダレスフルスクリーンのボタン。
 // 高さは --title-h（画面の幅に応じて変わる）。置く側が container-type: inline-size を持つこと。
-// ボタンの動作はここでは持たず、イベントで知らせる（設定とチップは MeterScreen が設定パネルを開く。全画面は T4-6、レイアウト編集は Phase 5 でつなぐ）。
+// ボタンの動作はここでは持たず、イベントで知らせる（設定とチップは MeterScreen が設定パネルを開く。全画面は MeterScreen がウィンドウの扱いにつなぐ。レイアウト編集は Phase 5 でつなぐ）。
 import { computed } from "vue";
 import { useT } from "../i18n/use_t";
 import { chipView, type SourceStatusEvent } from "../source";

@@ -12,7 +12,9 @@
 //   タイトル帯の設定ボタン（開いていれば閉じる）・出力系統のチップと、S01c の「設定」で開く
 // - 設定パネルで出力デバイスを選んだら、source.deviceId を保存して select_output_device で切り替える。
 //   切り替え中は Rust が Opening を通知するので、状態の表示が S01d（スピナー）、チップが消灯になる
-// - タイトル帯の全画面（T4-6）とレイアウト編集（Phase 5）のボタンは、まだつながない
+// - タイトル帯の全画面ボタンは、ウィンドウの扱い（useWindowController）の toggleFullscreen を呼ぶ。全画面中かどうかは
+//   実行中の状態のストアの fullscreen（実際のウィンドウの状態）で、ボタンのアイコンと読み上げの名前が変わる
+// - レイアウト編集のボタンは、まだつながない（Phase 5）
 import { computed, onMounted } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
 import { useRuntimeStore } from "../app/runtime_store";
@@ -21,6 +23,7 @@ import { useConfigStore } from "../config/config_store";
 import { FrameClient, startFrameStream } from "../frame_client";
 import { moduleRegistry } from "../modules";
 import { provideRenderLoop } from "../render/use_render_loop";
+import { useWindowController } from "../window";
 import { createDeviceSelection, useSourceStatus } from "../source";
 import CrtOverlay from "./CrtOverlay.vue";
 import MeterGrid from "./MeterGrid.vue";
@@ -37,6 +40,7 @@ const scanline = computed(() => config.current.value.display.scanline);
 const version = useAppVersion();
 const source = useSourceStatus(runtime.source);
 const devices = createDeviceSelection(config);
+const windowController = useWindowController();
 
 provideRenderLoop({ source: client, instances: () => layout.value.instances, registry: moduleRegistry });
 
@@ -58,6 +62,10 @@ function openSettings(): void {
   runtime.openDrawer("settings");
 }
 
+function toggleFullscreen(): void {
+  void windowController.toggleFullscreen();
+}
+
 function toggleSettings(): void {
   if (drawer.value === "settings") runtime.closeDrawer();
   else openSettings();
@@ -69,7 +77,14 @@ defineExpose({ client, channel: () => channel });
 
 <template>
   <div class="meter-screen">
-    <TitleBar :version="version" :source="source.event.value" @settings="toggleSettings" @source="openSettings" />
+    <TitleBar
+      :version="version"
+      :source="source.event.value"
+      :fullscreen="runtime.fullscreen.value"
+      @settings="toggleSettings"
+      @source="openSettings"
+      @fullscreen="toggleFullscreen"
+    />
     <MeterGrid class="grid" :instances="layout.instances" :mode="layout.mode" :registry="moduleRegistry" />
     <StatusOverlay :source="source.event.value" @open-settings="openSettings" />
     <SettingsDrawer v-if="drawer === 'settings'" @select-device="devices.choose" />
