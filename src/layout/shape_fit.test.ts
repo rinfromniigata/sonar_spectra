@@ -52,6 +52,28 @@ describe("縦長（周波数別の定位）", () => {
   });
 });
 
+describe("向きを問わない形（正方形に近い・縦長）", () => {
+  const sizes: [number, number][] = [
+    [100, 100],
+    [180, 100],
+    [181, 100],
+    [100, 181],
+    [400, 100],
+    [100, 129],
+    [100, 130],
+    [300, 100],
+  ];
+
+  it("流れる方向がどれでも（なしでも）、同じ大きさには同じ判定を返す", () => {
+    for (const profile of [{ shape: "compact" }, { shape: "tall" }] as FitProfile[]) {
+      for (const [w, h] of sizes) {
+        const results = new Set(DIRECTIONS.map((direction) => shapeFit(profile, direction, w, h)));
+        expect([...results], `${profile.shape} ${w}x${h}`).toHaveLength(1);
+      }
+    }
+  });
+});
+
 describe("細長い・長辺が流れに沿う（long / along：波形・重心と変化量）", () => {
   const profile: FitProfile = { shape: "long", longSide: "along" };
 
