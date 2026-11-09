@@ -1,5 +1,6 @@
 // モジュールの入口。モジュールを作ったら、ここで moduleRegistry に登録する。
 
+import { centroidModule } from "./centroid";
 import { chromaModule } from "./chroma";
 import { gramModule } from "./gram";
 import { levelModule } from "./level";
@@ -18,6 +19,7 @@ moduleRegistry.register(gramModule);
 moduleRegistry.register(loudModule);
 moduleRegistry.register(vuModule);
 moduleRegistry.register(chromaModule);
+moduleRegistry.register(centroidModule);
 
 export { MODULE_KINDS, type Direction, type ModuleKind, type ModuleOptions, type Shape } from "./options";
 export type {

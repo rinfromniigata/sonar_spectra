@@ -44,5 +44,5 @@ export {
   type WaveformValues,
 } from "./sections";
 export { RowHistory } from "./history";
-export { FrameClient, GRAM_HISTORY_CAPACITY, WAVE_HISTORY_CAPACITY, type FrameStats, type Histories } from "./client";
+export { CENTROID_HISTORY_CAPACITY, FrameClient, GRAM_HISTORY_CAPACITY, WAVE_HISTORY_CAPACITY, type FrameStats, type Histories } from "./client";
 export { startFrameStream } from "./stream";

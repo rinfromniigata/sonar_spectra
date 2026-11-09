@@ -3,7 +3,7 @@
 
 import { decodeFrame, type AnalysisFrame } from "./format";
 import { RowHistory } from "./history";
-import { SPECTRUM_LEN, WAVE_SUMMARY_LEN, readSpectrum, readWaveform } from "./sections";
+import { CENTROID_LEN, SPECTRUM_LEN, WAVE_SUMMARY_LEN, readCentroid, readSpectrum, readWaveform } from "./sections";
 
 /** 波形の履歴に積む行数（約60行/秒で約68秒分。広い画面で流れる速さを最も遅くしても足りる量） */
 export const WAVE_HISTORY_CAPACITY = 4096;
@@ -14,12 +14,17 @@ export const WAVE_HISTORY_CAPACITY = 4096;
  */
 export const GRAM_HISTORY_CAPACITY = 2048;
 
+/** 重心と変化量の履歴に積む行数（約60行/秒で約68秒分。波形と同じく、広い画面で最も細かく流しても足りる量） */
+export const CENTROID_HISTORY_CAPACITY = 4096;
+
 /** モジュールのインスタンス間で共有する履歴 */
 export interface Histories {
   /** 波形：1行＝履歴用の要約（`WaveSummary` の並び） */
   wave: RowHistory;
   /** スペクトログラム：1行＝スペクトラムの帯域ごとの振幅（線形。低い順） */
   gram: RowHistory;
+  /** 重心と変化量：1行＝[重心（Hz）, フラックス（0〜1）]（`readCentroid` の並び） */
+  centroid: RowHistory;
 }
 
 /** 受信の状況（確かめるときと、食い違いを知らせるときに使う） */
@@ -40,6 +45,7 @@ export class FrameClient {
   readonly histories: Histories = {
     wave: new RowHistory(WAVE_SUMMARY_LEN, WAVE_HISTORY_CAPACITY),
     gram: new RowHistory(SPECTRUM_LEN, GRAM_HISTORY_CAPACITY),
+    centroid: new RowHistory(CENTROID_LEN, CENTROID_HISTORY_CAPACITY),
   };
   readonly stats: FrameStats = { received: 0, rejected: 0, missed: 0, incompatibleVersion: null };
 
@@ -62,6 +68,8 @@ export class FrameClient {
       if (wave) this.histories.wave.push(wave.summary);
       const spectrum = readSpectrum(frame);
       if (spectrum) this.histories.gram.push(spectrum.bands);
+      const centroid = readCentroid(frame);
+      if (centroid) this.histories.centroid.push([centroid.centroidHz, centroid.flux]);
     }
     return true;
   }
@@ -71,6 +79,7 @@ export class FrameClient {
     this.latest = null;
     this.histories.wave.clear();
     this.histories.gram.clear();
+    this.histories.centroid.clear();
   }
 
   private countMissed(seq: number): void {

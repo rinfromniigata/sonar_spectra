@@ -27,8 +27,8 @@ describe("setupStores", () => {
     const [saved] = savedStates();
     expect(saved.savedConfigs.map((c) => c.name)).toEqual(["既定"]);
     // 登録されたモジュールの既定のインスタンス（周波数別の定位を含む。VU は初期状態では無効）
-    expect(saved.current.layout.instances.map((i) => i.kind)).toEqual(["level", "wave", "spec", "stereo", "gram", "loud", "vu", "chroma", "stereo"]);
-    expect(saved.current.layout.instances.filter((i) => !i.enabled).map((i) => i.kind)).toEqual(["vu", "chroma"]);
+    expect(saved.current.layout.instances.map((i) => i.kind)).toEqual(["level", "wave", "spec", "stereo", "gram", "loud", "vu", "chroma", "centroid", "stereo"]);
+    expect(saved.current.layout.instances.filter((i) => !i.enabled).map((i) => i.kind)).toEqual(["vu", "chroma", "centroid"]);
     expect(config.activeConfig.value?.name).toBe("既定");
 
     const provided = app.runWithContext(() => [inject(CONFIG_STORE_KEY), inject(RUNTIME_STORE_KEY)]);
