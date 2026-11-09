@@ -2,6 +2,7 @@
 // モジュールギャラリー（画面ID: MODULES）。開発時だけ開ける。各モジュールの表示方式を、同じ合成信号で並べて見比べる。
 // - スペクトラムの4方式とピークの残像（S05）、波形の履歴の色とチャンネル（S06）、
 //   位相のリサージュの点描と周波数別の定位のモーションブラー（S08）
+// - 追加のモジュール（VU・クロマ・重心と変化量）の見本（S07）。設定項目のないものは、推奨の形を添える
 // - 本物の描画の経路（ModuleFrame と描画ループ）をそのまま使う。入力は音声の取得ではなく合成信号（synthetic_signal.ts）
 //   なので、Tauri の外でも動く。テーマを切り替えて、ダークとライトでも見比べられる
 import { onBeforeUnmount, onMounted, provide } from "vue";
@@ -12,10 +13,13 @@ import type { Instance } from "../config/types";
 import { FrameClient } from "../frame_client";
 import { encodeTestFrame } from "../frame_client/test_frames";
 import { useT } from "../i18n/use_t";
+import { centroidModule } from "../modules/centroid";
+import { chromaModule } from "../modules/chroma";
 import type { SpecOptions, StereoOptions, WaveOptions } from "../modules/options";
 import { specModule } from "../modules/spec";
 import { stereoModule } from "../modules/stereo";
 import type { AnyModuleDefinition } from "../modules/types";
+import { vuModule } from "../modules/vu";
 import { waveModule } from "../modules/wave";
 import { RenderLoop } from "../render/render_loop";
 import { RENDER_LOOP_KEY } from "../render/use_render_loop";
@@ -83,6 +87,13 @@ function spec(options: Partial<SpecOptions>): Instance {
 function wave(options: Partial<WaveOptions>): Instance {
   return createInstance(waveModule, { enabled: true, options }, `gallery-${nextId++}`) as unknown as Instance;
 }
+function centroid(speed: number): Instance {
+  return createInstance(centroidModule, { enabled: true, options: { speed } }, `gallery-${nextId++}`) as unknown as Instance;
+}
+/** 設定項目のないモジュールの見本 */
+function plain(definition: AnyModuleDefinition): Instance {
+  return createInstance(definition as never, { enabled: true }, `gallery-${nextId++}`) as unknown as Instance;
+}
 function stereo(options: Partial<StereoOptions>): Instance {
   return createInstance(stereoModule, { enabled: true, options }, `gallery-${nextId++}`) as unknown as Instance;
 }
@@ -126,11 +137,36 @@ const phaseSamples: Sample[] = [
   sample(stereo({ mode: "pan", blur: false }), stereoDefinition, t("instance.phase.mode_pan"), blurName, onOff(false)),
 ];
 
+const vuDefinition = vuModule as unknown as AnyModuleDefinition;
+const chromaDefinition = chromaModule as unknown as AnyModuleDefinition;
+const centroidDefinition = centroidModule as unknown as AnyModuleDefinition;
+
+/** 設定項目のないモジュールの見本：説明には推奨の形を出す */
+const shapeNote = (definition: AnyModuleDefinition): Sample => ({
+  instance: plain(definition),
+  definition,
+  title: t(definition.labelKey),
+  detail: t(`module_shape.${definition.shape}` as "module_shape.compact"),
+});
+const vuSamples: Sample[] = [shapeNote(vuDefinition)];
+const chromaSamples: Sample[] = [shapeNote(chromaDefinition)];
+
+const speedName = t("instance.speed");
+const centroidSamples: Sample[] = [1, 2].map((speed) => ({
+  instance: centroid(speed),
+  definition: centroidDefinition,
+  title: t("modules.centroid"),
+  detail: t("dev_gallery.caption_option", { option: speedName, state: t("common.speed_value", { value: speed }) }),
+}));
+
 /** 画面ごとの見本の並び（見出しは本物のモジュール名） */
 const groups = [
   { screen: "S05", heading: t("modules.spectrum"), shape: "is-wide", samples: spectrumSamples },
   { screen: "S06", heading: t("modules.waveform"), shape: "is-wide", samples: waveSamples },
   { screen: "S08", heading: t("modules.phase"), shape: "is-square", samples: phaseSamples },
+  { screen: "S07", heading: t("modules.vu"), shape: "is-square", samples: vuSamples },
+  { screen: "S07", heading: t("modules.chroma"), shape: "is-square", samples: chromaSamples },
+  { screen: "S07", heading: t("modules.centroid"), shape: "is-wide", samples: centroidSamples },
 ];
 </script>
 
@@ -144,7 +180,7 @@ const groups = [
       <UiSegmented v-model="theme" :label="t('settings.theme')" :options="themeOptions" />
     </header>
 
-    <section v-for="group in groups" :key="group.screen" class="group" :data-screen="group.screen">
+    <section v-for="group in groups" :key="group.heading" class="group" :data-screen="group.screen">
       <h2>{{ group.heading }}</h2>
       <div class="samples" :class="group.shape">
         <figure v-for="item in group.samples" :key="item.instance.id" class="sample">

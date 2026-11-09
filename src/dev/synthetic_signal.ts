@@ -3,6 +3,9 @@
 // 乱数は使わず、時刻だけで決まる（見比べるとき、どの表示方式にも同じ信号が入る）。
 
 import {
+  CHROMA_BINS,
+  ChordQuality,
+  KeyMode,
   LISSAJOUS_POINTS,
   LOUDNESS_FLOOR_DB,
   PAN_BANDS,
@@ -78,7 +81,29 @@ function stereoPair(time: number): [number, number] {
   return [waveSig(time, 0) * 0.8 + a * wd, waveSig(time, 1) * 0.8 - b * wd];
 }
 
-/** 解析のセクション（レベル・波形・スペクトラム・位相・ラウドネス）を、時刻 `time`（秒）の信号から作る */
+/** コード進行（モックの PROGRESSION）：Am → F → C → G。各コードの構成音（先頭が根音）と種類。2小節（8拍）ごとに変わる */
+const PROGRESSION: { notes: number[]; quality: ChordQuality }[] = [
+  { notes: [9, 0, 4], quality: ChordQuality.Minor },
+  { notes: [5, 9, 0], quality: ChordQuality.Major },
+  { notes: [0, 4, 7], quality: ChordQuality.Major },
+  { notes: [7, 11, 2], quality: ChordQuality.Major },
+];
+/** この進行のキー：A マイナー */
+const SYNTHETIC_KEY: [number, KeyMode] = [9, KeyMode.Minor];
+
+/** クロマ：音名ごとの強さ（モックの drawChroma の値）、コードの根音と種類、キーの主音と調 */
+function chromaPayload(time: number): number[] {
+  const chord = PROGRESSION[Math.floor(time / (BEAT * 8)) % PROGRESSION.length];
+  const strengths = Array.from({ length: CHROMA_BINS }, (_, n) => {
+    let v = 0.08 + 0.05 * Math.sin(time * 2 + n);
+    if (chord.notes.includes(n)) v += n === chord.notes[0] ? 0.85 : 0.6;
+    if (n === 9) v += 0.15 * kickEnv(time);
+    return Math.max(0, Math.min(1, v));
+  });
+  return [...strengths, chord.notes[0], chord.quality, ...SYNTHETIC_KEY];
+}
+
+/** 解析のセクション（レベル・波形・スペクトラム・位相・ラウドネス・VU・クロマ・重心と変化量）を、時刻 `time`（秒）の信号から作る */
 export function syntheticSections(time: number): [number, number[]][] {
   // レベル：ピークとRMS（L・R）
   const peakL = Math.min(1, 0.55 * kickEnv(time) + 0.3 + 0.05 * Math.sin(time * 2));
@@ -137,11 +162,20 @@ export function syntheticSections(time: number): [number, number[]][] {
   const shortTerm = -9.8 + Math.sin(time * 0.9) * 1.6 + k * 0.8;
   const loudness = [shortTerm + k * 2, shortTerm, Math.max(LOUDNESS_FLOOR_DB, -1.2 - 0.4 * (1 - k))];
 
+  // VU：L・R の針の位置（dB）。キックで振れる
+  const vu = [-9 + 7 * k + 1.5 * Math.sin(time * 2), -9.5 + 6.5 * k + 1.5 * Math.sin(time * 2.3)];
+
+  // 重心と変化量：明るさがゆっくり動き、キックとハイハットの立ち上がりでフラックスが上がる
+  const centroid = [1200 + 900 * (0.5 + 0.5 * Math.sin(time * 0.5)) + 700 * hat, 0.06 + 0.4 * k ** 3 + 0.2 * hat];
+
   return [
     [SectionId.Level, level],
     [SectionId.Waveform, waveform],
     [SectionId.Spectrum, spectrum],
     [SectionId.Stereo, stereo],
     [SectionId.Loudness, loudness],
+    [SectionId.Vu, vu],
+    [SectionId.Chroma, chromaPayload(time)],
+    [SectionId.Centroid, centroid],
   ];
 }
