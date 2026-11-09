@@ -4,6 +4,7 @@ import { testDefinition } from "../modules/test_definitions";
 import { SAVE_DELAY_MS, createConfigStore, type ConfigPersistence } from "./config_store";
 import { createDefaultState, normalizeState } from "./persisted_state";
 import type { PersistedState } from "./types";
+import { configOf } from "./saved_configs";
 
 function registry(): ModuleRegistry {
   const r = new ModuleRegistry();
@@ -52,6 +53,7 @@ function fakePersistence(loaded: PersistedState | null | Error = null) {
 }
 
 function store(persistence: ConfigPersistence, onError = vi.fn()) {
+  let minutes = 0;
   return {
     onError,
     store: createConfigStore({
@@ -59,6 +61,9 @@ function store(persistence: ConfigPersistence, onError = vi.fn()) {
       createDefault: defaultState,
       normalize: (s) => normalizeState(s, registry()),
       onError,
+      newConfigId: counter("saved"),
+      // 呼ばれるたびに1分進む時計
+      now: () => new Date(Date.UTC(2026, 10, 9, 1, minutes++)),
     }),
   };
 }
@@ -230,6 +235,28 @@ describe("createConfigStore", () => {
     expect(p.persistence.save).toHaveBeenCalledTimes(2);
   });
 
+  it("変えてから元に戻すと、「保存後に変更あり」も消える。復元したときも中身で決め直す", async () => {
+    const p = fakePersistence(defaultState());
+    const { store: s } = store(p.persistence);
+    await s.restore();
+    s.updateCurrent((c) => {
+      c.theme = "light";
+    });
+    expect(s.dirty.value).toBe(true);
+    s.updateCurrent((c) => {
+      c.theme = "dark";
+    });
+    expect(s.dirty.value).toBe(false);
+
+    // 保存された dirty が true でも、中身が同じなら変更なしで起動する
+    const stale = defaultState();
+    stale.dirty = true;
+    const q = fakePersistence(stale);
+    const { store: t } = store(q.persistence);
+    await t.restore();
+    expect(t.dirty.value).toBe(false);
+  });
+
   it("dispose は間を置いている保存を取り消す", async () => {
     const p = fakePersistence(defaultState());
     const { store: s } = store(p.persistence);
@@ -240,5 +267,157 @@ describe("createConfigStore", () => {
     s.dispose();
     await vi.runAllTimersAsync();
     expect(p.saved).toHaveLength(0);
+  });
+});
+
+describe("構成の操作（T7-3）", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function opened() {
+    const p = fakePersistence(defaultState());
+    const { store: s } = store(p.persistence);
+    await s.restore();
+    return { p, s };
+  }
+
+  const names = (s: ReturnType<typeof store>["store"]) => s.state.value.savedConfigs.map((c) => c.name);
+
+  it("imple 5.2 の9〜11：名前を付けて保存 → 配色を作る → 切り替えで確認 → 破棄で「既定」の写しに戻り、作った配色は消える", async () => {
+    const { p, s } = await opened();
+    s.updateCurrent((c) => {
+      c.theme = "light";
+    });
+
+    // 9. 「クラブ用」と付けて保存
+    const club = s.saveAs("クラブ用")!;
+    expect(club).toBe("saved-1");
+    expect(names(s)).toEqual(["既定", "クラブ用"]);
+    expect(s.activeConfig.value?.id).toBe(club);
+    expect(s.activeConfig.value?.savedAt).toBe("2026-11-09T01:00:00.000Z");
+    expect(s.dirty.value).toBe(false);
+
+    // 10. 配色を作る → 変更あり
+    s.updateCurrent((c) => {
+      c.customPalettes.push({ id: "custom.p1", name: "マイ配色 1", main: "#b7ff3c", sub: "#8b5cff", accent: "#ffb547" });
+    });
+    expect(s.dirty.value).toBe(true);
+
+    // 11. 「既定」に切り替える → 変更があるので確かめる（まだ何も変えない）
+    const before = s.state.value;
+    expect(s.switchConfig("c-1")).toBe("needsConfirm");
+    expect(s.state.value).toBe(before);
+
+    // 破棄を選ぶ
+    expect(s.switchConfig("c-1", { action: "discard" })).toBe("switched");
+    expect(s.activeConfig.value?.name).toBe("既定");
+    expect(s.current.value).toEqual(configOf(s.state.value.savedConfigs[0]));
+    expect(s.current.value.theme).toBe("dark");
+    expect(s.current.value.customPalettes).toEqual([]);
+    expect(s.dirty.value).toBe(false);
+    // 「クラブ用」は配色を作る前のまま
+    expect(s.state.value.savedConfigs[1].customPalettes).toEqual([]);
+    expect(s.state.value.savedConfigs[1].theme).toBe("light");
+
+    // 切り替えも自動保存する
+    await vi.runAllTimersAsync();
+    expect(p.saved[p.saved.length - 1]?.activeConfigId).toBe("c-1");
+  });
+
+  it("切り替えで上書きを選ぶと、使用中の構成に上書きしてから切り替える", async () => {
+    const { s } = await opened();
+    s.saveAs("クラブ用");
+    s.updateCurrent((c) => {
+      c.display.scanline = false;
+    });
+    expect(s.switchConfig("c-1", { action: "overwrite" })).toBe("switched");
+    expect(s.activeConfig.value?.name).toBe("既定");
+    expect(s.state.value.savedConfigs[1].display.scanline).toBe(false);
+    expect(s.dirty.value).toBe(false);
+  });
+
+  it("切り替えで別名で保存を選ぶと、名前を付けて保存してから切り替える。名前が空なら何もしない", async () => {
+    const { s } = await opened();
+    s.updateCurrent((c) => {
+      c.theme = "system";
+    });
+    const before = s.state.value;
+    expect(s.switchConfig("c-1", { action: "saveAs", name: " " })).toBe("invalidName");
+    expect(s.state.value).toBe(before);
+
+    expect(s.switchConfig("c-1", { action: "saveAs", name: "昼用" })).toBe("switched");
+    expect(names(s)).toEqual(["既定", "昼用"]);
+    expect(s.state.value.savedConfigs[1].theme).toBe("system");
+    expect(s.activeConfig.value?.name).toBe("既定");
+    expect(s.current.value.theme).toBe("dark");
+  });
+
+  it("変更がなければ確かめずに切り替える。使用中で変更がなければ何もしない。ない構成は notFound", async () => {
+    const { s } = await opened();
+    const club = s.saveAs("クラブ用")!;
+    expect(s.switchConfig("c-1")).toBe("switched");
+    expect(s.activeConfig.value?.id).toBe("c-1");
+
+    const before = s.state.value;
+    expect(s.switchConfig("c-1")).toBe("unchanged");
+    expect(s.switchConfig("none")).toBe("notFound");
+    expect(s.switchConfig("none", { action: "discard" })).toBe("notFound");
+    expect(s.state.value).toBe(before);
+    expect(s.switchConfig(club)).toBe("switched");
+  });
+
+  it("使用中の構成に変更があるとき、同じ構成を選び直すと確かめ、破棄すれば保存した内容に戻る", async () => {
+    const { s } = await opened();
+    s.updateCurrent((c) => {
+      c.theme = "light";
+    });
+    expect(s.switchConfig("c-1")).toBe("needsConfirm");
+    expect(s.switchConfig("c-1", { action: "discard" })).toBe("switched");
+    expect(s.current.value.theme).toBe("dark");
+    expect(s.dirty.value).toBe(false);
+  });
+
+  it("上書き：使用中の構成を今の構成にし、変更なしにする", async () => {
+    const { s } = await opened();
+    s.updateCurrent((c) => {
+      c.theme = "light";
+    });
+    expect(s.overwrite()).toBe(true);
+    expect(s.activeConfig.value?.theme).toBe("light");
+    expect(s.activeConfig.value?.name).toBe("既定");
+    expect(s.dirty.value).toBe(false);
+  });
+
+  it("複製：元のすぐ後ろに足し、使用中は変えない。削除：使用中は消せず、それ以外は消すだけ", async () => {
+    const { s } = await opened();
+    s.saveAs("クラブ用");
+    s.switchConfig("c-1");
+    const copy = s.duplicateConfig("c-1", "既定のコピー")!;
+    expect(names(s)).toEqual(["既定", "既定のコピー", "クラブ用"]);
+    expect(s.activeConfig.value?.id).toBe("c-1");
+    expect(s.duplicateConfig("none", "x")).toBeNull();
+
+    expect(s.canRemoveConfig("c-1")).toBe(false);
+    expect(s.removeConfig("c-1")).toBe(false);
+    expect(s.canRemoveConfig(copy)).toBe(true);
+    const current = s.current.value;
+    expect(s.removeConfig(copy)).toBe(true);
+    expect(names(s)).toEqual(["既定", "クラブ用"]);
+    expect(s.current.value).toBe(current);
+    expect(s.removeConfig(copy)).toBe(false);
+  });
+
+  it("名前を付けて保存は、同じ名前でも別の構成として足す。空の名前は何もしない", async () => {
+    const { s } = await opened();
+    expect(s.saveAs("既定")).toBe("saved-1");
+    expect(s.saveAs("既定")).toBe("saved-2");
+    expect(names(s)).toEqual(["既定", "既定", "既定"]);
+    const before = s.state.value;
+    expect(s.saveAs("  ")).toBeNull();
+    expect(s.state.value).toBe(before);
   });
 });

@@ -24,9 +24,11 @@ function defaultState(): PersistedState {
     newConfigId: counter("c"),
     newInstanceId: counter("i"),
   });
-  // 同じ種類のインスタンスを2つにする（片方だけ変わることを確かめるため）
+  // 同じ種類のインスタンスを2つにする（片方だけ変わることを確かめるため）。
+  // 保存済みの「既定」も同じ中身にする（変更ありは、今の構成と使用中の保存済み構成の中身を比べて決まるため）
   const wave = state.current.layout.instances.find((i) => i.kind === "wave")!;
   state.current.layout.instances.push({ ...structuredClone(wave), id: "wave-2" });
+  state.savedConfigs[0].layout = structuredClone(state.current.layout);
   return state;
 }
 
