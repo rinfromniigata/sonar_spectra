@@ -157,6 +157,32 @@ mod tests {
         }
     }
 
+    /// UI と共有する見本（`fixtures/config_file_v1.json`）。UI の `buildConfigFile` が書いたとおりの本文で、
+    /// UI 側（`src/config/config_flow.test.ts`）は「この見本の構成を書き出すと、同じ本文になる」を確かめる
+    const SHARED_FIXTURE: &str = include_str!("fixtures/config_file_v1.json");
+
+    #[test]
+    fn accepts_the_file_the_ui_writes() {
+        let saved = parse_config_file(SHARED_FIXTURE).unwrap();
+        assert_eq!(saved.id, "c-club");
+        assert_eq!(saved.name, "クラブ用");
+        assert_eq!(saved.config.layout.instances.len(), 8);
+        // 専用の位置・方向なし・無効で位置なしのインスタンスも読める
+        let instances = &saved.config.layout.instances;
+        assert!(instances.iter().any(|i| i.slot.is_some()));
+        assert!(instances.iter().any(|i| i.direction.is_none()));
+        assert!(instances.iter().any(|i| !i.enabled && i.rect.is_none()));
+        assert_eq!(saved.config.custom_palettes[0].id, "custom.p1");
+    }
+
+    #[test]
+    fn returns_the_same_config_the_ui_wrote() {
+        // UI が受け取る値（Rust が JSON にしたもの）が、書き出した構成と同じ中身になる
+        let saved = parse_config_file(SHARED_FIXTURE).unwrap();
+        let file: Value = serde_json::from_str(SHARED_FIXTURE).unwrap();
+        assert_eq!(serde_json::to_value(&saved).unwrap(), file["config"]);
+    }
+
     /// 架空の schema 1 → 2：`config.theme` がなかった旧版に `"dark"` を足す
     fn add_theme(mut map: Map<String, Value>) -> Result<Map<String, Value>, String> {
         let config = map

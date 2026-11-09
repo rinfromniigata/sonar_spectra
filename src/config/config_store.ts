@@ -237,7 +237,9 @@ export function createConfigStore(options: ConfigStoreOptions): ConfigStore {
     const id = newConfigId();
     const next = importConfigState(state.value, saved, id);
     if (!next) return null;
-    commit(normalize(next));
+    // 設定の既定値を補うのは、足した1件だけにする（今の構成とほかの保存済み構成は、同じオブジェクトのまま残す）
+    const added = normalize(next).savedConfigs.find((c) => c.id === id)!;
+    commit({ ...next, savedConfigs: next.savedConfigs.map((c) => (c.id === id ? added : c)) });
     return id;
   }
 

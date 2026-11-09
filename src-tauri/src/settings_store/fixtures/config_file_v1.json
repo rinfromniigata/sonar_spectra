@@ -1,0 +1,167 @@
+{
+  "format": "sonar_spectra.config",
+  "schema": 1,
+  "config": {
+    "id": "c-club",
+    "name": "クラブ用",
+    "savedAt": "2026-11-09T01:00:00.000Z",
+    "layout": {
+      "mode": "manual",
+      "instances": [
+        {
+          "id": "i-1",
+          "kind": "level",
+          "enabled": true,
+          "rect": {
+            "c": 1,
+            "r": 1,
+            "cs": 1,
+            "rs": 8
+          },
+          "direction": "up",
+          "paletteId": "preset.a",
+          "sourceId": "default",
+          "options": {}
+        },
+        {
+          "id": "i-2",
+          "kind": "wave",
+          "enabled": true,
+          "rect": {
+            "c": 2,
+            "r": 1,
+            "cs": 1,
+            "rs": 8
+          },
+          "direction": "right",
+          "paletteId": "preset.a",
+          "sourceId": "default",
+          "options": {
+            "channel": "stereo",
+            "showNow": true,
+            "split": 72,
+            "histColor": "solid",
+            "speed": 1
+          }
+        },
+        {
+          "id": "i-3",
+          "kind": "spec",
+          "enabled": true,
+          "rect": {
+            "c": 3,
+            "r": 1,
+            "cs": 1,
+            "rs": 8
+          },
+          "direction": "up",
+          "paletteId": "custom.p1",
+          "sourceId": "default",
+          "options": {
+            "mode": "fill",
+            "ghost": true
+          }
+        },
+        {
+          "id": "i-4",
+          "kind": "stereo",
+          "enabled": true,
+          "rect": {
+            "c": 4,
+            "r": 1,
+            "cs": 1,
+            "rs": 8
+          },
+          "direction": null,
+          "paletteId": "preset.a",
+          "sourceId": "default",
+          "options": {
+            "mode": "lissajous",
+            "dots": "both",
+            "blur": true
+          }
+        },
+        {
+          "id": "i-5",
+          "kind": "gram",
+          "enabled": true,
+          "rect": {
+            "c": 5,
+            "r": 1,
+            "cs": 1,
+            "rs": 8
+          },
+          "direction": "left",
+          "paletteId": "preset.a",
+          "sourceId": "default",
+          "options": {
+            "speed": 1
+          }
+        },
+        {
+          "id": "i-6",
+          "kind": "loud",
+          "enabled": true,
+          "rect": {
+            "c": 6,
+            "r": 1,
+            "cs": 1,
+            "rs": 8
+          },
+          "direction": null,
+          "paletteId": "preset.a",
+          "sourceId": "default",
+          "options": {}
+        },
+        {
+          "id": "i-7",
+          "kind": "stereo",
+          "enabled": true,
+          "rect": {
+            "c": 7,
+            "r": 1,
+            "cs": 1,
+            "rs": 8
+          },
+          "direction": null,
+          "paletteId": "preset.a",
+          "sourceId": "default",
+          "options": {
+            "mode": "pan",
+            "dots": "both",
+            "blur": true
+          },
+          "slot": "pan"
+        },
+        {
+          "id": "i-off",
+          "kind": "spec",
+          "enabled": false,
+          "rect": null,
+          "direction": "up",
+          "paletteId": "custom.p1",
+          "sourceId": "default",
+          "options": {
+            "mode": "fill",
+            "ghost": true
+          }
+        }
+      ]
+    },
+    "customPalettes": [
+      {
+        "id": "custom.p1",
+        "name": "夜明け",
+        "main": "#ff3d9a",
+        "sub": "#3df0ff",
+        "accent": "#ffd23d"
+      }
+    ],
+    "theme": "light",
+    "display": {
+      "scanline": false,
+      "alwaysOnTop": true,
+      "startFullscreen": false
+    }
+  }
+}

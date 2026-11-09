@@ -440,6 +440,7 @@ describe("構成の読み込み（T7-4）", () => {
     const spec = file.layout.instances.find((i) => i.kind === "spec")!;
     spec.options = { mode: "bars" } as typeof spec.options;
     const current = s.current.value;
+    const before = s.state.value.savedConfigs[0];
 
     const id = s.importConfig(file)!;
     expect(id).toBe("saved-1");
@@ -447,7 +448,9 @@ describe("構成の読み込み（T7-4）", () => {
     expect(added.name).toBe("別のPCの構成");
     expect(added.layout.instances.find((i) => i.kind === "spec")!.options).toEqual({ mode: "bars", ghost: true });
     expect(s.activeConfig.value?.id).toBe("c-1");
-    expect(s.current.value).toEqual(current);
+    // 今の構成と、ほかの保存済み構成は作り直さない（同じオブジェクト）
+    expect(s.current.value).toBe(current);
+    expect(s.state.value.savedConfigs[0]).toBe(before);
     expect(s.dirty.value).toBe(false);
 
     // 同じものをもう1度読み込むと、別の ID でもう1件
