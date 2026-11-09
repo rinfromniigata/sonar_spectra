@@ -17,11 +17,19 @@ import { createConfigManager, type ConfigManager } from "../components/config_ma
 import { createPaletteActions } from "../components/palette_actions";
 import { moduleRegistry } from "../modules";
 import { CONFIG_FORMAT, buildConfigFile, type ConfigFileIo } from "./config_file";
+import ja from "../i18n/locales/ja";
 import { createConfigStore, type ConfigPersistence, type ConfigStore } from "./config_store";
 import { DEFAULT_PALETTE_ID, resolvePaletteColors } from "./palettes";
 import { createDefaultState, normalizeState } from "./persisted_state";
 import { configOf, configsEqual } from "./saved_configs";
 import { STATE_SCHEMA, type PersistedState, type SavedConfig } from "./types";
+
+/** 標準の配色の名前（実際の辞書の文言。画面は t(labelKey) で引く） */
+const PRESET_NAMES = {
+  "palette.preset_magenta": ja.palette.preset_magenta,
+  "palette.preset_cyan": ja.palette.preset_cyan,
+  "palette.preset_amber": ja.palette.preset_amber,
+} as const;
 
 /** 両方の PC から見えるファイル（USB メモリなど）の代役 */
 type Files = Map<string, string>;
@@ -105,7 +113,7 @@ async function startPc(name: string, files: Files, disk = fakeDisk()): Promise<P
   const palettes = createPaletteActions({
     config,
     runtime: createRuntimeStore(),
-    names: { fresh: (n) => `マイ配色 ${n}`, copy: (n) => `${n}のコピー`, preset: (p) => p.labelKey },
+    names: { fresh: (n) => `マイ配色 ${n}`, copy: (n) => `${n}のコピー`, preset: (p) => PRESET_NAMES[p.labelKey as keyof typeof PRESET_NAMES] },
     newId: counter(`${name}-p`),
   });
   return { disk, config, manager, palettes, pick };
@@ -420,5 +428,86 @@ describe("自分で作った配色の削除（W7-4）", () => {
     expect(pc.config.current.value.customPalettes).toEqual([]);
     expect(pc.config.activeConfig.value!.customPalettes.map((p) => p.id)).toEqual([id]);
     expect(pc.config.dirty.value).toBe(true);
+  });
+});
+
+describe("名前の重複（W7-7）", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const dupes = (list: string[]) => list.filter((n, i) => list.indexOf(n) !== i);
+
+  it("名前を付けて保存・別名で保存・複製・読み込みを、わざとかぶる名前で繰り返しても、構成の名前は1つも重ならない", async () => {
+    const files: Files = new Map([["E:/club.json", fixtureText]]);
+    const pc = await startPc("a", files);
+    pc.pick.path = "E:/club.json";
+    const ops: (() => Promise<void> | void)[] = [
+      () => {
+        pc.manager.startSaveAs();
+        pc.manager.submitName("クラブ用");
+      },
+      () => {
+        pc.manager.startSaveAs();
+        pc.manager.submitName(pc.manager.nameForm.value!.initial);
+      },
+      () => pc.manager.duplicate(pc.config.state.value.savedConfigs[0].id),
+      () => pc.manager.duplicate(pc.config.activeConfig.value!.id),
+      () => pc.manager.importConfig(),
+      () => {
+        // 変更ありの切り替えで「別の名前で保存」
+        pc.config.updateCurrent((c) => {
+          c.display.scanline = !c.display.scanline;
+        });
+        pc.manager.requestSwitch(pc.config.state.value.savedConfigs[0].id);
+        pc.manager.startSwitchSaveAs();
+        pc.manager.submitName("クラブ用");
+      },
+    ];
+    for (let round = 0; round < 4; round++) {
+      for (const op of ops) {
+        await op();
+        const list = names(pc);
+        expect(dupes(list), list.join(",")).toEqual([]);
+      }
+    }
+    expect(names(pc).length).toBeGreaterThan(20);
+    // 名前がかぶっても id は別（内部の区別は変わらない）
+    const ids = pc.config.state.value.savedConfigs.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    // 付いた名前は「{元の名前}_{n}」の形（上限の40文字に収まる）
+    for (const n of names(pc)) expect([...n].length).toBeLessThanOrEqual(40);
+  });
+
+  it("自分で作った配色も、作る・複製・名前の変更を繰り返しても、一覧の中でも標準の配色の名前とも重ならない", async () => {
+    const pc = await startPc("a", new Map());
+    const preset = ["マゼンタ主", "シアン主", "アンバー主"];
+    const palettes = () => pc.config.current.value.customPalettes.map((p) => p.name);
+    for (let i = 0; i < 4; i++) {
+      pc.palettes.create();
+      pc.palettes.duplicate("preset.a");
+      pc.palettes.duplicate(pc.config.current.value.customPalettes[0].id);
+      const target = pc.config.current.value.customPalettes[pc.config.current.value.customPalettes.length - 1].id;
+      pc.palettes.update(target, { name: "マイ配色 1" });
+      pc.palettes.update(target, { name: preset[i % 3] });
+      const list = palettes();
+      expect(dupes(list), list.join(",")).toEqual([]);
+      expect(list.filter((n) => preset.includes(n))).toEqual([]);
+    }
+    expect(palettes().length).toBe(12);
+  });
+
+  it("上書きは名前を変えない（かぶる名前にならない）。上書きしても一覧は重ならない", async () => {
+    const pc = await startPc("a", new Map());
+    pc.manager.startSaveAs();
+    pc.manager.submitName("クラブ用");
+    pc.config.updateCurrent((c) => {
+      c.theme = "light";
+    });
+    expect(pc.config.overwrite()).toBe(true);
+    expect(names(pc)).toEqual(["既定", "クラブ用"]);
   });
 });
