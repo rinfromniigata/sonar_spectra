@@ -148,6 +148,7 @@ const ja = {
     section: "構成",
     default_name: "既定",
     modified: "保存後に変更あり。上書きするか、別の名前で保存する",
+    overwrite: "上書き保存",
     save_as: "名前を付けて保存",
     manage: "構成を管理",
     title: "構成の管理",

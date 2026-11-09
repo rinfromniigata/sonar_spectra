@@ -57,7 +57,7 @@ describe("SettingsDrawer", () => {
     ]);
     // 見出しの横と、下の帯の2か所
     expect(html.split(`>${ja.common.close}<`).length - 1).toBe(2);
-    for (const text of [ja.config.save_as, ja.config.manage, ja.settings.manage_palette, ja.settings.edit_layout, ja.settings.palette_note]) {
+    for (const text of [ja.config.overwrite, ja.config.save_as, ja.config.manage, ja.settings.manage_palette, ja.settings.edit_layout, ja.settings.palette_note]) {
       expect(html).toContain(text);
     }
   });
@@ -80,6 +80,40 @@ describe("SettingsDrawer", () => {
       c.theme = "light";
     });
     expect(await render(store)).toContain(ja.config.modified);
+  });
+
+  it("構成の欄のボタンは「上書き保存」「名前を付けて保存」「構成を管理」の順。「上書き保存」は変更ありのときだけ押せる", async () => {
+    /** 構成の欄のボタン（文言と無効か） */
+    const buttons = (html: string) => {
+      const field = /<fieldset class="field"[^>]*>[\s\S]*?<\/fieldset>/.exec(html)![0];
+      return [...field.matchAll(/<button([^>]*)>([\s\S]*?)<\/button>/g)].map((m) => [
+        m[2].replace(/<!--[\s\S]*?-->/g, ""),
+        /\bdisabled\b/.test(m[1]),
+      ]);
+    };
+    expect(buttons(await render())).toEqual([
+      [ja.config.overwrite, true],
+      [ja.config.save_as, false],
+      [ja.config.manage, false],
+    ]);
+    const store = configStore();
+    store.updateCurrent((c) => {
+      c.theme = "light";
+    });
+    expect(buttons(await render(store))[0]).toEqual([ja.config.overwrite, false]);
+  });
+
+  it("上書き保存を押すと、使用中の構成が今の構成になり、「保存後に変更あり」が消えて、また押せなくなる。名前は変わらない", () => {
+    const store = configStore();
+    store.updateCurrent((c) => {
+      c.theme = "light";
+    });
+    expect(store.dirty.value).toBe(true);
+    // ボタンの押下は config.overwrite()（SettingsDrawer のクリックの先）
+    expect(store.overwrite()).toBe(true);
+    expect(store.activeConfig.value?.theme).toBe("light");
+    expect(store.activeConfig.value?.name).toBe("既定");
+    expect(store.dirty.value).toBe(false);
   });
 
   it("入力源の欄：出力音声（ループバック）を選び、出力デバイスのセレクトは既定のデバイス。入力デバイスは「今後対応」で無効", async () => {

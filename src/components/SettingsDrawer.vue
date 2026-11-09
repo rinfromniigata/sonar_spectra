@@ -3,6 +3,7 @@
 // 欄の並びはモックのとおり：構成 → 入力源 → テーマ → 配色 → レイアウト → 表示。
 // - テーマと表示の切り替えは、構成のストアの今の構成に書く（「保存後に変更あり」になる）。
 //   書いた値を画面とウィンドウに効かせるのは T4-4（テーマ・走査線）と T4-6（常に最前面・起動時の全画面）
+// - 「上書き保存」は、「保存後に変更あり」のときだけ押せ、確認なしで使用中の構成を今の構成で上書きする（構成のストアの overwrite）
 // - 閉じる（「閉じる」・Esc）は、実行中の状態のストアのドロワーを閉じる
 // - 次の操作は、イベントで知らせるだけにする：出力デバイスの選択（selectDevice。MeterScreen が保存して切り替える）、
 //   構成の切り替え・名前を付けて保存・構成を管理（switchConfig・saveAs・manageConfigs。Phase 7）、
@@ -123,6 +124,7 @@ function close(): void {
       <UiSelect v-model="activeConfigId" :label="t('config.section')" :options="configOptions" />
       <p v-if="config.dirty.value" class="note is-modified">{{ t("config.modified") }}</p>
       <div class="button-row">
+        <UiButton :disabled="!config.dirty.value" @click="config.overwrite()">{{ t("config.overwrite") }}</UiButton>
         <UiButton @click="emit('saveAs')">{{ t("config.save_as") }}</UiButton>
         <UiButton @click="emit('manageConfigs')">{{ t("config.manage") }}</UiButton>
       </div>
