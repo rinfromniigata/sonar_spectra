@@ -74,6 +74,9 @@ const activeName = computed(() => config.activeConfig.value?.name ?? "");
 // 名前の入力：開いたら初めの値を入れて、入力欄へフォーカスを移す
 const nameText = ref("");
 const nameInput = ref<HTMLInputElement | null>(null);
+const nameFormElement = ref<HTMLElement | null>(null);
+const confirmTitle = ref<HTMLElement | null>(null);
+const noticeElement = ref<HTMLElement | null>(null);
 const nameValid = computed(() => nameText.value.trim() !== "");
 watch(
   () => manager.nameForm.value,
@@ -83,8 +86,29 @@ watch(
     await nextTick();
     nameInput.value?.focus();
     nameInput.value?.select();
+    nameFormElement.value?.scrollIntoView?.({ block: "nearest" });
   },
   { immediate: true },
+);
+
+// 確認・名前の入力・お知らせは一覧の下に出るため、出たら見える位置までスクロールする（低い画面で、押しても
+// 何も起きていないように見えないように）。確認は、その文へフォーカスを移す（読み上げで伝わり、決定のボタンを
+// 誤って Enter で押さないように）
+watch(
+  () => manager.pendingSwitch.value !== null && manager.nameForm.value === null,
+  (showing) => {
+    if (!showing) return;
+    confirmTitle.value?.focus?.({ preventScroll: true });
+    confirmTitle.value?.parentElement?.scrollIntoView?.({ block: "nearest" });
+  },
+  { immediate: true, flush: "post" },
+);
+watch(
+  () => manager.notice.value,
+  (value) => {
+    if (value) noticeElement.value?.scrollIntoView?.({ block: "nearest" });
+  },
+  { flush: "post" },
 );
 
 function submitName(): void {
@@ -171,7 +195,9 @@ defineExpose({ manager });
       :aria-labelledby="confirmId"
       @keydown="onInlineKeydown"
     >
-      <p :id="confirmId" class="inline-title">{{ t("config.confirm_switch", { name: pendingName }) }}</p>
+      <p :id="confirmId" ref="confirmTitle" class="inline-title" tabindex="-1">
+        {{ t("config.confirm_switch", { name: pendingName }) }}
+      </p>
       <div class="button-column">
         <UiButton @click="manager.resolveSwitch('overwrite')">{{ t("config.confirm_overwrite", { name: activeName }) }}</UiButton>
         <UiButton @click="manager.startSwitchSaveAs()">{{ t("config.confirm_save_as") }}</UiButton>
@@ -180,7 +206,13 @@ defineExpose({ manager });
       </div>
     </section>
 
-    <form v-if="manager.nameForm.value" class="inline name-form" @submit.prevent="submitName" @keydown="onInlineKeydown">
+    <form
+      v-if="manager.nameForm.value"
+      ref="nameFormElement"
+      class="inline name-form"
+      @submit.prevent="submitName"
+      @keydown="onInlineKeydown"
+    >
       <label class="label" :for="nameId">{{ t("config.name") }}</label>
       <input
         :id="nameId"
@@ -203,7 +235,7 @@ defineExpose({ manager });
       <UiButton @click="manager.importConfig()">{{ t("config.import") }}</UiButton>
     </div>
 
-    <p v-if="notice" class="notice" :class="{ 'is-error': notice.error }" role="status">{{ notice.text }}</p>
+    <p v-if="notice" ref="noticeElement" class="notice" :class="{ 'is-error': notice.error }" role="status">{{ notice.text }}</p>
   </UiDrawer>
 </template>
 
@@ -299,6 +331,7 @@ defineExpose({ manager });
 
 .inline-title {
   margin: 0;
+  outline: none;
   font-weight: 700;
   overflow-wrap: anywhere;
 }

@@ -6,7 +6,7 @@
 //   ライトテーマでの色の注記。色は選ぶそばから書く（使っているモジュールにすぐ効く）。名前は確定したときに書き、空なら元に戻す
 // - 見出しのボタン：戻る先（設定パネル）があれば「戻る」、なければ「閉じる」。Esc も同じ
 // - 構成への書き込みはイベントで知らせるだけにする（MeterScreen が palette_actions で書く）
-import { computed, useId } from "vue";
+import { computed, ref, useId, watch } from "vue";
 import { useRuntimeStore } from "../app/runtime_store";
 import { useConfigStore } from "../config/config_store";
 import { PALETTE_NAME_MAX_LENGTH, normalizePaletteName, type PalettePatch } from "../config/custom_palettes";
@@ -29,6 +29,13 @@ const runtime = useRuntimeStore();
 const listId = useId();
 const editorId = useId();
 const editorTitleId = useId();
+/** 編集の欄。一覧の下に出るので、編集する配色が変わったら（作った・複製した・名前を押した）見える位置までスクロールする */
+const editorElement = ref<HTMLElement | null>(null);
+watch(
+  () => runtime.editingPaletteId.value,
+  () => editorElement.value?.scrollIntoView?.({ block: "nearest" }),
+  { immediate: true, flush: "post" },
+);
 const nameId = useId();
 
 const customPalettes = computed(() => config.current.value.customPalettes);
@@ -125,7 +132,14 @@ function onColor(key: "main" | "sub" | "accent", event: Event): void {
       <UiButton wide @click="emit('create')">{{ t("palette.new") }}</UiButton>
     </section>
 
-    <section v-if="editing" :id="editorId" :key="editing.id" class="editor" :aria-labelledby="editorTitleId">
+    <section
+      v-if="editing"
+      :id="editorId"
+      ref="editorElement"
+      :key="editing.id"
+      class="editor"
+      :aria-labelledby="editorTitleId"
+    >
       <h3 :id="editorTitleId" class="editor-title">{{ t("palette.editing", { name: editing.name }) }}</h3>
       <div class="field">
         <label class="label" :for="nameId">{{ t("palette.name") }}</label>
