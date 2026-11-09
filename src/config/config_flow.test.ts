@@ -232,27 +232,27 @@ describe("imple 5.4 の規則（W7-2）", () => {
     expect(pc.config.current.value).toBe(current);
   });
 
-  it("同じ名前での保存を許し、id で区別する。上書きは「上書き」の操作だけで行う", async () => {
+  it("すでにある名前で保存すると、_1・_2 を付けて別の構成として足す（v3）。元の構成は書き換わらない", async () => {
     const pc = await startPc("a", new Map());
     for (let i = 0; i < 2; i++) {
       pc.manager.startSaveAs();
       pc.manager.submitName("既定");
     }
     const saved = pc.config.state.value.savedConfigs;
-    expect(saved.map((c) => c.name)).toEqual(["既定", "既定", "既定"]);
+    expect(saved.map((c) => c.name)).toEqual(["既定", "既定_1", "既定_2"]);
     expect(new Set(saved.map((c) => c.id)).size).toBe(3);
-    // 同じ名前で保存しても、元の「既定」は書き換わらない
+    // すでにある名前で保存しても、元の「既定」は書き換わらない
     expect(saved[0].savedAt).toBe("2026-11-08T07:00:00.000Z");
   });
 
-  it("同じファイルを2回読み込むと、それぞれ新しい id で2件増える", async () => {
+  it("同じファイルを2回読み込むと、それぞれ新しい id で2件増える（2件目は名前に _1 が付く）", async () => {
     const files: Files = new Map([["E:/club.json", fixtureText]]);
     const pc = await startPc("a", files);
     pc.pick.path = "E:/club.json";
     await pc.manager.importConfig();
     await pc.manager.importConfig();
     const saved = pc.config.state.value.savedConfigs;
-    expect(saved.map((c) => c.name)).toEqual(["既定", "クラブ用", "クラブ用"]);
+    expect(saved.map((c) => c.name)).toEqual(["既定", "クラブ用", "クラブ用_1"]);
     expect(new Set(saved.map((c) => c.id)).size).toBe(3);
     expect(saved.some((c) => c.id === "c-club")).toBe(false);
   });

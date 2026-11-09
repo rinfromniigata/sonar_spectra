@@ -7,11 +7,14 @@
 // - 複製：保存済み構成の写しを、新しい id・name・savedAt で元のすぐ後ろに足す。使用中は変えない
 // - 削除：使用中の構成は消せない。それ以外は一覧から消すだけで、今の構成は変えない
 // - 読み込み：検証済みの構成を新しい id で末尾に足す。使用中は変えない（一覧から切り替えて使う）
-// - 同じ名前は許し、id で区別する（imple 5.4）
+// - 名前は一覧の中で重ならない（imple 5.4。v3で変更）。名前を付けて保存・複製・読み込みで、すでにある名前なら
+//   末尾に `_{n}` を付ける（unique_name）。上書きは名前を変えない。内部の区別は id で行う。
+//   すでに保存されている同名の構成は書き換えない
 // - 変更ありの判定：今の構成と、使用中の保存済み構成の中身（配置・モジュールの設定・自分で作った配色・テーマと表示）を比べる。
 //   変えてから元に戻せば、変更なしに戻る
 
 import type { Config, PersistedState, SavedConfig } from "./types";
+import { uniqueName } from "./unique_name";
 
 /** 構成の名前の長さの上限（文字数） */
 export const CONFIG_NAME_MAX_LENGTH = 40;
@@ -20,6 +23,19 @@ export const CONFIG_NAME_MAX_LENGTH = 40;
 export function normalizeConfigName(text: string): string | null {
   const name = [...text.trim()].slice(0, CONFIG_NAME_MAX_LENGTH).join("").trim();
   return name === "" ? null : name;
+}
+
+/**
+ * 一覧に足すときの名前：前後の空白を除いて上限までにし、すでにある名前なら `_{n}` を付ける。空なら null
+ */
+export function availableConfigName(state: Pick<PersistedState, "savedConfigs">, text: string): string | null {
+  const name = normalizeConfigName(text);
+  if (name === null) return null;
+  return uniqueName(
+    name,
+    state.savedConfigs.map((c) => c.name),
+    CONFIG_NAME_MAX_LENGTH,
+  );
 }
 
 /** 保存済み構成から、構成の中身（配置・自分で作った配色・テーマ・表示）だけを写して取り出す */
@@ -64,7 +80,7 @@ export function isModified(state: Pick<PersistedState, "current" | "activeConfig
 
 /** 名前を付けて保存。名前が空なら null */
 export function saveAs(state: PersistedState, name: string, id: string, now: Date): PersistedState | null {
-  const normalized = normalizeConfigName(name);
+  const normalized = availableConfigName(state, name);
   if (normalized === null) return null;
   const saved: SavedConfig = { ...configOf(state.current), id, name: normalized, savedAt: now.toISOString() };
   return { ...state, savedConfigs: [...state.savedConfigs, saved], activeConfigId: id, dirty: false };
@@ -90,7 +106,7 @@ export function switchTo(state: PersistedState, id: string): PersistedState | nu
 /** 複製。ない構成・空の名前なら null */
 export function duplicate(state: PersistedState, sourceId: string, name: string, id: string, now: Date): PersistedState | null {
   const index = state.savedConfigs.findIndex((c) => c.id === sourceId);
-  const normalized = normalizeConfigName(name);
+  const normalized = availableConfigName(state, name);
   if (index < 0 || normalized === null) return null;
   const copy: SavedConfig = { ...configOf(state.savedConfigs[index]), id, name: normalized, savedAt: now.toISOString() };
   const savedConfigs = [...state.savedConfigs.slice(0, index + 1), copy, ...state.savedConfigs.slice(index + 1)];
@@ -98,11 +114,11 @@ export function duplicate(state: PersistedState, sourceId: string, name: string,
 }
 
 /**
- * 読み込んだ構成を、新しい id で末尾に足す（imple 5.2 の13）。名前と保存日はファイルのまま。使用中と今の構成は変えない。
- * 同じファイルを2回読み込めば2件になる（imple 5.4）。名前が空なら null
+ * 読み込んだ構成を、新しい id で末尾に足す（imple 5.2 の13）。保存日はファイルのまま。名前もファイルのままだが、すでにあれば `_{n}` を付ける。使用中と今の構成は変えない。
+ * 同じファイルを2回読み込めば2件になる（2件目は `_1`。imple 5.4）。名前が空なら null
  */
 export function importConfig(state: PersistedState, saved: SavedConfig, id: string): PersistedState | null {
-  const name = normalizeConfigName(saved.name);
+  const name = availableConfigName(state, saved.name);
   if (name === null) return null;
   const added: SavedConfig = { ...configOf(saved), id, name, savedAt: saved.savedAt };
   return { ...state, savedConfigs: [...state.savedConfigs, added] };

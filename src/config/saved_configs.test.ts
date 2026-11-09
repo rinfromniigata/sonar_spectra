@@ -4,6 +4,7 @@ import { testDefinition } from "../modules/test_definitions";
 import { createDefaultState } from "./persisted_state";
 import {
   CONFIG_NAME_MAX_LENGTH,
+  availableConfigName,
   canRemove,
   configOf,
   configsEqual,
@@ -102,12 +103,12 @@ describe("保存済みの構成の操作", () => {
     expect(saveAs(state, "  ", "c-x", T1)).toBeNull();
   });
 
-  it("同じ名前で保存しても、別の構成として足す（imple 5.4）", () => {
-    const next = saveAs(saveAs(base(), "既定", "c-2", T1)!, "既定", "c-3", T2)!;
+  it("すでにある名前で保存すると、末尾に _1・_2 を付けて別の構成として足す（imple 5.4。v3）", () => {
+    const next = saveAs(saveAs(base(), "既定", "c-2", T1)!, " 既定 ", "c-3", T2)!;
     expect(next.savedConfigs.map((c) => [c.id, c.name])).toEqual([
       ["c-default", "既定"],
-      ["c-2", "既定"],
-      ["c-3", "既定"],
+      ["c-2", "既定_1"],
+      ["c-3", "既定_2"],
     ]);
   });
 
@@ -186,5 +187,31 @@ describe("読み込み（imple 5.2 の13・5.4）", () => {
     const twice = importConfig(importConfig(base(), file, "c-a")!, file, "c-b")!;
     expect(twice.savedConfigs.map((c) => c.id)).toEqual(["c-default", "c-a", "c-b"]);
     expect(importConfig(base(), { ...file, name: " " }, "c-x")).toBeNull();
+  });
+});
+
+describe("名前の重複を避ける（imple 5.4。v3）", () => {
+  it("複製の名前がすでにあれば _1 を付ける", () => {
+    const once = duplicate(base(), "c-default", "既定のコピー", "c-a", T1)!;
+    const twice = duplicate(once, "c-default", "既定のコピー", "c-b", T2)!;
+    expect(twice.savedConfigs.map((c) => c.name)).toEqual(["既定", "既定のコピー_1", "既定のコピー"]);
+  });
+
+  it("読み込んだ構成の名前がすでにあれば _1 を付ける", () => {
+    const file = { ...base().savedConfigs[0], name: "既定" };
+    expect(importConfig(base(), file, "c-x")!.savedConfigs[1].name).toBe("既定_1");
+  });
+
+  it("上書きは名前を変えない。すでにある同名の構成は書き換えない", () => {
+    const state = base();
+    state.savedConfigs.push({ ...structuredClone(state.savedConfigs[0]), id: "c-dup" });
+    const next = overwrite(state, T1)!;
+    expect(next.savedConfigs.map((c) => c.name)).toEqual(["既定", "既定"]);
+  });
+
+  it("availableConfigName は、前後の空白を除き、上限に収め、かぶれば _n を付ける。空なら null", () => {
+    expect(availableConfigName(base(), "  既定  ")).toBe("既定_1");
+    expect(availableConfigName(base(), "クラブ用")).toBe("クラブ用");
+    expect(availableConfigName(base(), " ")).toBeNull();
   });
 });

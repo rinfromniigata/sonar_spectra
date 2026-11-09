@@ -1,8 +1,9 @@
 # sonar_spectra 実装設計（imple）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v2.md` と同版のデザインアセット
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v3.md` と同版のデザインアセット
 - 種別：Agentic Coding
-- 対になるドキュメント：`261106104948_tasks_sonar_spectra_initial.md`、`261106104948_walk_sonar_spectra_initial.md`
+- 対になるドキュメント：`261109115345_tasks_sonar_spectra_initial.md`、`261109115345_walk_sonar_spectra_initial.md`
+- 改訂：change「261109114953_change_config_name_unique_and_overwrite」を反映（5.2の9・11・13、5.3の設定パネルと配色の管理、5.4の同じ名前・二重読み込み）。前の版は`archived/261106104948_imple_sonar_spectra_architecture.md`
 
 ## 1. 方針
 
@@ -281,14 +282,14 @@ interface Palette { id: string; name: string; main: string; sub: string; accent:
 10. **配色を作る（主色・副色・強調色）** → `current.customPalettes`に1件増える。`dirty = true`。どのインスタンスもまだ使っていない
 11. **構成を「既定」に切り替える** → `dirty = true`なので、上書き・別名で保存・破棄を確認する。破棄を選ぶと`current`は「既定」の写しになり、`activeConfigId`が「既定」、`dirty = false`。10で作った配色は「クラブ用」に保存していないので消える
 12. **「クラブ用」を書き出す** → `state.json`は変わらない。選んだ場所に`{ format: "sonar_spectra.config", schema: 1, config: SavedConfig }`のJSONを書く
-13. **別のPCでそのファイルを読み込む** → 検証してから、新しい`id`を振って`savedConfigs`に1件増やす。`activeConfigId`は変えない（読み込んだ構成は一覧から切り替えて使う）
+13. **別のPCでそのファイルを読み込む** → 検証してから、新しい`id`を振って`savedConfigs`に1件増やす。`activeConfigId`は変えない（読み込んだ構成は一覧から切り替えて使う）。そのPCに「クラブ用」がすでにあれば、「クラブ用_1」として足す（5.4）
 14. **入力源のデバイスを変える** → `source.deviceId`だけが変わる。構成は変わらず、`dirty`も変わらない
 15. **アプリを終了して起動し直す** → `state.json`から`current`をそのまま復元し、`display.startFullscreen`がオンなら全画面で始める。ウィンドウの位置・大きさはwindow-stateから復元する（そのディスプレイがなければOSが置く位置）
 
 ### 5.3 画面の項目とデータの対応
 
 - タイトル帯の出力系統のチップ（S01、S01b〜S01d）：`source-status`イベント（保存しない）と`source.deviceId`
-- 設定パネル（S02）：構成の欄 → `activeConfigId`の`name`と`dirty`／入力源 → `source.deviceId`／テーマ → `current.theme`／表示 → `current.display.*`
+- 設定パネル（S02）：構成の欄 → `activeConfigId`の`name`と`dirty`（「上書き保存」は`dirty`のときだけ押せ、使用中の保存済み構成を`current`の写しにして`dirty = false`）／入力源 → `source.deviceId`／テーマ → `current.theme`／表示 → `current.display.*`
 - 配色の管理（S02a）：標準 → コード上のプリセット／自分で作った配色 → `current.customPalettes`
 - 構成の管理（S02b）：一覧 → `savedConfigs`（名前、配置の種類・モジュール数・保存日は`layout.mode`・有効なインスタンスの数・`savedAt`から作る）／使用中 → `activeConfigId`
 - レイアウト編集（S03）：置いたモジュールの一覧 → `current.layout.instances`（`enabled`はスイッチ）／見出しの矢印 → `direction`／自動配置・手動配置のバッジ → `layout.mode`
@@ -299,8 +300,9 @@ interface Palette { id: string; name: string; main: string; sub: string; accent:
 - **インスタンスの削除**：そのインスタンスだけを消す。手動配置では空いたマスはそのまま残り、自動配置では残りで並べ直す。種類の最後の1つも消せる（「＋ モジュールを追加」で戻せる）
 - **自分で作った配色の削除**：その配色を使っていたインスタンスは`paletteId`が既定（マゼンタ主）に戻る
 - **保存済み構成の削除**：使用中の構成は削除できない（ボタンを無効にする）。それ以外は一覧から消えるだけで、`current`は変わらない
-- **同じ名前での保存**：名前の重複は許し、`id`で区別する（上書きは「上書き」の操作だけで行う）
-- **同じファイルの二重読み込み**：2件として増える（それぞれ新しい`id`）
+- **同じ名前での保存**（v3で変更）：構成の名前は重ならない。すでにある名前で、名前を付けて保存（切り替えの確認の「別の名前で保存」を含む）・複製・読み込みをすると、末尾に`_{n}`（使われていない最小のn。1から）を付ける。名前の比べ方は前後の空白を除いた完全一致で、`_{n}`を付けたあとも40文字に収める（本体の末尾を削る）。上書きは名前を変えず、「上書き」の操作だけで行う。内部の区別は引き続き`id`で行う。すでに保存されている同名の構成は書き換えない
+- **自分で作った配色の名前**（v3で追加）：構成と同じ規則で、今の構成の配色の一覧の中で重ならない。標準の配色の名前（今の言語の文言）とも重ならない。作る・複製・名前の変更で当てる
+- **同じファイルの二重読み込み**：2件として増える（それぞれ新しい`id`。2件目は名前に`_1`が付く）
 - **壊れた・形式の違うファイルの読み込み**：検証で拒否し、`state.json`は変えない
 - **書き込み中の異常終了**：一時ファイルからの置き換えなので、前回の`state.json`が残る
 

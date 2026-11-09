@@ -166,7 +166,7 @@ describe("createConfigManager：書き出し・読み込み", () => {
     expect(failed.errors).toHaveLength(1);
   });
 
-  it("読み込み：検証した構成を新しい ID で足し、お知らせを出す。二重に読み込むと2件。使用中は変えない", async () => {
+  it("読み込み：検証した構成を新しい ID で足し、お知らせを出す。二重に読み込むと2件（_1 付き）。使用中は変えない", async () => {
     const source = setup();
     source.config.updateCurrent((c) => {
       c.theme = "light";
@@ -177,11 +177,12 @@ describe("createConfigManager：書き出し・読み込み", () => {
     const s = setup({ readText: () => Promise.resolve(text) });
     await s.manager.importConfig();
     await s.manager.importConfig();
-    expect(names(s)).toEqual(["既定", "クラブ用", "クラブ用"]);
+    expect(names(s)).toEqual(["既定", "クラブ用", "クラブ用_1"]);
     expect(new Set(s.config.state.value.savedConfigs.map((c) => c.id)).size).toBe(3);
     expect(s.config.state.value.savedConfigs[1].theme).toBe("light");
     expect(s.config.activeConfig.value?.name).toBe("既定");
-    expect(s.manager.notice.value).toEqual({ kind: "imported", name: "クラブ用" });
+    // お知らせには、実際に付いた名前を出す
+    expect(s.manager.notice.value).toEqual({ kind: "imported", name: "クラブ用_1" });
   });
 
   it("壊れた・形式の違うファイルは拒否し、一覧を変えずに失敗のお知らせを出す。選ばなければ何もしない", async () => {
@@ -214,3 +215,28 @@ describe("createConfigManager：書き出し・読み込み", () => {
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));
 vi.mock("@tauri-apps/plugin-fs", () => ({ readTextFile: vi.fn(), writeTextFile: vi.fn() }));
+
+describe("createConfigManager：名前の重複を避ける（v3）", () => {
+  it("名前の入力の初めの値は、一覧とかぶらない名前（「既定のコピー」があれば「既定のコピー_1」）", () => {
+    const s = setup();
+    s.manager.startSaveAs();
+    expect(s.manager.nameForm.value?.initial).toBe("既定のコピー");
+    s.manager.submitName("既定のコピー");
+    s.config.switchConfig("c-default");
+    s.manager.startSaveAs();
+    expect(s.manager.nameForm.value?.initial).toBe("既定のコピー_1");
+  });
+
+  it("別の名前で保存・複製でも、かぶれば _1 を付ける", () => {
+    const s = setup();
+    s.config.saveAs("クラブ用");
+    s.config.updateCurrent((c) => {
+      c.theme = "light";
+    });
+    s.manager.requestSwitch("c-default");
+    s.manager.startSwitchSaveAs();
+    s.manager.submitName("クラブ用");
+    s.manager.duplicate("c-default");
+    expect(names(s)).toEqual(["既定", "既定のコピー", "クラブ用", "クラブ用_1"]);
+  });
+});

@@ -121,3 +121,17 @@ describe("createPaletteActions", () => {
     expect(palettes(s)).toHaveLength(1);
   });
 });
+
+describe("createPaletteActions：名前の重複を避ける（v3）", () => {
+  it("同じ配色を2回複製すると、2つ目は _1 が付く。名前の変更でほかとかぶれば _1、標準の配色の名前とかぶっても _1", () => {
+    const s = setup();
+    s.actions.duplicate("preset.b");
+    s.actions.duplicate("preset.b");
+    expect(palettes(s).map((p) => p.name)).toEqual(["palette.preset_cyanのコピー", "palette.preset_cyanのコピー_1"]);
+
+    s.actions.update("custom.p2", { name: "palette.preset_cyanのコピー" });
+    expect(palettes(s)[1].name).toBe("palette.preset_cyanのコピー_1");
+    s.actions.update("custom.p2", { name: "palette.preset_magenta" });
+    expect(palettes(s)[1].name).toBe("palette.preset_magenta_1");
+  });
+});

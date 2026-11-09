@@ -4,6 +4,7 @@ import {
   CUSTOM_PALETTE_ID_PREFIX,
   PALETTE_NAME_MAX_LENGTH,
   addPalette,
+  availablePaletteName,
   createPaletteId,
   nextPaletteName,
   normalizeColor,
@@ -108,5 +109,41 @@ describe("removePalette", () => {
   it("ない配色・標準の配色は消せない", () => {
     expect(removePalette(withMine(), "custom.none")).toBeNull();
     expect(removePalette(withMine(), "preset.a")).toBeNull();
+  });
+});
+
+describe("名前の重複を避ける（imple 5.4。v3）", () => {
+  const RESERVED = ["マゼンタ主", "シアン主", "アンバー主"];
+
+  it("足すとき、ほかの配色・標準の配色の名前とかぶれば _1 を付ける", () => {
+    const base = withMine();
+    expect(addPalette(base, { ...MINE, id: "custom.b" }, RESERVED)!.customPalettes[1].name).toBe("マイ配色 1_1");
+    expect(addPalette(base, { ...MINE, id: "custom.c", name: "シアン主" }, RESERVED)!.customPalettes[1].name).toBe("シアン主_1");
+  });
+
+  it("名前を変えるとき、ほかの配色・標準の配色とかぶれば _1 を付ける。自分の今の名前のままなら変えない", () => {
+    const base = addPalette(withMine(), { ...MINE, id: "custom.b", name: "夜明け" })!;
+    expect(updatePalette(base, "custom.b", { name: "マイ配色 1" }, RESERVED)!.customPalettes[1].name).toBe("マイ配色 1_1");
+    expect(updatePalette(base, "custom.b", { name: "マゼンタ主" }, RESERVED)!.customPalettes[1].name).toBe("マゼンタ主_1");
+    expect(updatePalette(base, "custom.b", { name: " 夜明け " }, RESERVED)).toBeNull();
+  });
+
+  it("以前からある同名の配色はそのまま。そのどちらかの名前を変えないかぎり書き換えない", () => {
+    const dup: Config = { ...withMine(), customPalettes: [MINE, { ...MINE, id: "custom.dup" }] };
+    expect(updatePalette(dup, "custom.dup", { main: "#000000" }, RESERVED)!.customPalettes.map((p) => p.name)).toEqual([
+      "マイ配色 1",
+      "マイ配色 1",
+    ]);
+  });
+
+  it("新しい名前（マイ配色 n）は、標準の配色の名前も避ける", () => {
+    expect(nextPaletteName([], (n) => `シアン主${n === 1 ? "" : n}`, RESERVED)).toBe("シアン主2");
+  });
+
+  it("availablePaletteName は、指定した配色（自分）を比べる相手から外す", () => {
+    const base = withMine();
+    expect(availablePaletteName(base.customPalettes, "マイ配色 1", RESERVED, MINE.id)).toBe("マイ配色 1");
+    expect(availablePaletteName(base.customPalettes, "マイ配色 1", RESERVED)).toBe("マイ配色 1_1");
+    expect(availablePaletteName(base.customPalettes, "  ", RESERVED)).toBeNull();
   });
 });

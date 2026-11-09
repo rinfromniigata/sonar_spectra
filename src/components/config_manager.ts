@@ -2,14 +2,15 @@
 // 構成の書き換えは構成のストア（T7-3）の操作で行い、ここでは確認と名前の入力の流れ、ファイルの書き出し・読み込みを扱う。
 // - 切り替え：変更がなければすぐ切り替える。変更があれば確認を出し、上書き・別の名前で保存・破棄・キャンセルを選ばせる。
 //   別の名前で保存は、名前を入れてもらってから保存して切り替える
-// - 名前を付けて保存：名前を入れてもらってから保存する（初めの値は「{使用中の名前}のコピー」）
+// - 名前を付けて保存：名前を入れてもらってから保存する（初めの値は「{使用中の名前}のコピー」。すでにあれば _1 などを付けた名前）
 // - 複製：「{name}のコピー」として元のすぐ後ろに足す。削除：使用中は消せない（ボタンを押せなくする）
+// - 名前が一覧とかぶるときは、ストアが末尾に _{n} を付ける（imple 5.4）。読み込みのお知らせには、付いた名前を出す
 // - 書き出し・読み込み：config/config_file。結果はお知らせ（notice）で知らせる。ダイアログで選ばなかったときは何も出さない
 
 import { shallowRef, type ShallowRef } from "vue";
 import type { ConfigStore, SwitchResult } from "../config/config_store";
 import { exportConfigFile, readConfigFile, tauriConfigFileIo, type ConfigFileIo } from "../config/config_file";
-import { findSavedConfig, normalizeConfigName } from "../config/saved_configs";
+import { availableConfigName, findSavedConfig, normalizeConfigName } from "../config/saved_configs";
 
 /** お知らせ。文言は画面が辞書から引く */
 export type ConfigNotice =
@@ -72,6 +73,12 @@ export function createConfigManager(options: ConfigManagerOptions): ConfigManage
     return config.activeConfig.value?.name ?? "";
   }
 
+  /** 名前の入力の初めの値：「{使用中の名前}のコピー」を、一覧とかぶらない名前にしたもの */
+  function initialName(): string {
+    const copy = names.copy(activeName());
+    return availableConfigName(config.state.value, copy) ?? copy;
+  }
+
   function cancel(): void {
     pendingSwitch.value = null;
     nameForm.value = null;
@@ -113,12 +120,12 @@ export function createConfigManager(options: ConfigManagerOptions): ConfigManage
     resolveSwitch,
     startSwitchSaveAs() {
       if (!pendingSwitch.value) return;
-      nameForm.value = { purpose: "switchSaveAs", initial: names.copy(activeName()) };
+      nameForm.value = { purpose: "switchSaveAs", initial: initialName() };
     },
     startSaveAs() {
       notice.value = null;
       pendingSwitch.value = null;
-      nameForm.value = { purpose: "saveAs", initial: names.copy(activeName()) };
+      nameForm.value = { purpose: "saveAs", initial: initialName() };
     },
     submitName,
     cancel,
@@ -149,8 +156,9 @@ export function createConfigManager(options: ConfigManagerOptions): ConfigManage
       try {
         const saved = await readConfigFile(io, { filterName: names.filterName() });
         if (!saved) return;
-        if (config.importConfig(saved) === null) throw new Error("imported config has no name");
-        notice.value = { kind: "imported", name: normalizeConfigName(saved.name) ?? saved.name };
+        const id = config.importConfig(saved);
+        if (id === null) throw new Error("imported config has no name");
+        notice.value = { kind: "imported", name: findSavedConfig(config.state.value, id)?.name ?? saved.name };
       } catch (error) {
         onError(error);
         notice.value = { kind: "import_failed" };

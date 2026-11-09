@@ -411,11 +411,11 @@ describe("構成の操作（T7-3）", () => {
     expect(s.removeConfig(copy)).toBe(false);
   });
 
-  it("名前を付けて保存は、同じ名前でも別の構成として足す。空の名前は何もしない", async () => {
+  it("名前を付けて保存は、すでにある名前なら _1・_2 を付けて足す。空の名前は何もしない", async () => {
     const { s } = await opened();
     expect(s.saveAs("既定")).toBe("saved-1");
     expect(s.saveAs("既定")).toBe("saved-2");
-    expect(names(s)).toEqual(["既定", "既定", "既定"]);
+    expect(names(s)).toEqual(["既定", "既定_1", "既定_2"]);
     const before = s.state.value;
     expect(s.saveAs("  ")).toBeNull();
     expect(s.state.value).toBe(before);

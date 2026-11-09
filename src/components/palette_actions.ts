@@ -3,6 +3,7 @@
 // - 作る：既定の配色（マゼンタ主）のダーク用の値を初期値に、「マイ配色 n」を足して編集中にする
 // - 複製：標準の配色はトークンのダークの値、自分で作った配色はその値を写し、「{name}のコピー」を足して編集中にする
 // - 削除：使っていたインスタンスは既定の配色に戻す。編集中なら編集をやめる
+// - 名前は、ほかの配色と標準の配色の名前（今の言語の文言）と重ならない。かぶれば末尾に _{n} が付く（imple 5.4）
 // - インスタンスの設定の「＋ 配色を作る」：そのインスタンスの今の配色の値を初期値に作って、そのインスタンスに当て、
 //   インスタンスの設定を閉じて、配色の管理を編集中の状態で開く（色を変えるとそのモジュールにすぐ効く）
 
@@ -21,6 +22,7 @@ import {
   DEFAULT_PALETTE_ID,
   findCustomPalette,
   findPresetPalette,
+  PRESET_PALETTES,
   paletteDarkColors,
   type PresetPalette,
 } from "../config/palettes";
@@ -54,6 +56,8 @@ export interface PaletteActionsOptions {
 export function createPaletteActions(options: PaletteActionsOptions): PaletteActions {
   const { config, runtime, names } = options;
   const newId = options.newId ?? createPaletteId;
+  /** 標準の配色の名前（今の言語の文言）。自分で作った配色の名前は、これとも重ならないようにする */
+  const reserved = (): string[] => PRESET_PALETTES.map((p) => names.preset(p));
 
   /** 今の構成に op を当てる。変わらなければ書かない。書いたら true */
   function apply(op: (current: Config) => Config | null): boolean {
@@ -73,7 +77,7 @@ export function createPaletteActions(options: PaletteActionsOptions): PaletteAct
     const id = newId();
     const colors = paletteDarkColors(sourceId, config.current.value.customPalettes);
     const added = apply((current) => {
-      const next = addPalette(current, { id, name, ...colors });
+      const next = addPalette(current, { id, name, ...colors }, reserved());
       if (!next || assignTo === undefined) return next;
       const instances = setPaletteId(next.layout.instances, assignTo, id);
       return instances ? { ...next, layout: { ...next.layout, instances } } : next;
@@ -83,7 +87,7 @@ export function createPaletteActions(options: PaletteActionsOptions): PaletteAct
   }
 
   function freshName(): string {
-    return nextPaletteName(config.current.value.customPalettes, names.fresh);
+    return nextPaletteName(config.current.value.customPalettes, names.fresh, reserved());
   }
 
   return {
@@ -101,7 +105,7 @@ export function createPaletteActions(options: PaletteActionsOptions): PaletteAct
       if (runtime.editingPaletteId.value === id) runtime.editPalette(null);
     },
     update(id, patch) {
-      apply((current) => updatePalette(current, id, patch));
+      apply((current) => updatePalette(current, id, patch, reserved()));
     },
     createForInstance(instanceId) {
       const instance = config.current.value.layout.instances.find((i) => i.id === instanceId);
