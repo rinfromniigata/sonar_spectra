@@ -4,8 +4,8 @@
 // 見出しは枠の左上に置いたまま回さない（モックと同じ）。
 // 描画ループ（src/render）が provide されていれば、マウント時に自分を登録し、ループが毎フレーム draw() を呼ぶ。
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { resolvePaletteColors } from "../config/palettes";
-import type { Instance } from "../config/types";
+import { findCustomPalette, resolvePaletteColors } from "../config/palettes";
+import type { Instance, Palette } from "../config/types";
 import { useT } from "../i18n/use_t";
 import { directionTransform, logicalSize, quarterTurns } from "../modules/direction";
 import type { ModuleKind, ModuleOptions } from "../modules/options";
@@ -21,8 +21,10 @@ const props = withDefaults(
     editing?: boolean;
     /** レイアウト編集で選んでいる */
     selected?: boolean;
+    /** 自分で作った配色（今の構成の customPalettes） */
+    customPalettes?: readonly Palette[];
   }>(),
-  { editing: false, selected: false },
+  { editing: false, selected: false, customPalettes: () => [] },
 );
 defineSlots<{ default?(): unknown }>();
 
@@ -44,12 +46,15 @@ let boxWidth = 0;
 let boxHeight = 0;
 let geometry: Geometry | null = null;
 
-// 配色はインスタンスと色の組が変わったときだけ当て直す
-let paletteCache: { paletteId: string; colors: CanvasColors; result: PaletteColors } | null = null;
+// 配色は、インスタンスの配色ID・色の組・（自分で作った配色なら）その3色が変わったときだけ当て直す
+// （ライトでは自分で作った配色からライト用の色を計算するため、毎フレームは計算しない）
+let paletteCache: { key: string; colors: CanvasColors; result: PaletteColors } | null = null;
 function paletteColors(colors: CanvasColors): PaletteColors {
   const paletteId = props.instance.paletteId;
-  if (!paletteCache || paletteCache.paletteId !== paletteId || paletteCache.colors !== colors) {
-    paletteCache = { paletteId, colors, result: resolvePaletteColors(paletteId, colors) };
+  const custom = findCustomPalette(paletteId, props.customPalettes);
+  const key = custom ? `${paletteId}|${custom.main}|${custom.sub}|${custom.accent}` : paletteId;
+  if (!paletteCache || paletteCache.key !== key || paletteCache.colors !== colors) {
+    paletteCache = { key, colors, result: resolvePaletteColors(paletteId, colors, props.customPalettes) };
   }
   return paletteCache.result;
 }

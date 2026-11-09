@@ -25,6 +25,9 @@
 //   作り直さずにそちらへ移る（フォーカスを奪わない）。×・Esc で閉じる。選んだものが置かれていなければ（無効・削除）出さない。
 //   配色・流れる速さ・種類ごとの項目（options の1項目）を変えたら、そのインスタンスだけを構成に書く（config/instance_settings）。
 //   「既定に戻す」は、そのインスタンスの方向・配色・種類ごとの設定だけを戻す（配置・有効／無効・入力源は残す）。開くのは見出しの歯車（EditHead）
+// - 配色の管理（S02a）：実行中の状態のストアのドロワーが palettes のときに重ねる（PaletteDrawer）。作る・複製・削除・編集は
+//   palette_actions で構成に書く。インスタンスの設定の「＋ 配色を作る」は、そのインスタンスの今の配色を写した配色を作って当て、
+//   インスタンスの設定を閉じて配色の管理を開く。自分で作った配色は、格子（各モジュールの描画）とインスタンスの設定に渡す
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
 import { useRuntimeStore } from "../app/runtime_store";
@@ -48,6 +51,8 @@ import InstanceSettings from "./InstanceSettings.vue";
 import LayoutEditPanel from "./LayoutEditPanel.vue";
 import { createLayoutEditActions } from "./layout_edit_actions";
 import MeterGrid from "./MeterGrid.vue";
+import PaletteDrawer from "./PaletteDrawer.vue";
+import { createPaletteActions } from "./palette_actions";
 import SettingsDrawer from "./SettingsDrawer.vue";
 import StatusOverlay from "./StatusOverlay.vue";
 import TitleBar from "./TitleBar.vue";
@@ -64,6 +69,16 @@ const version = useAppVersion();
 const source = useSourceStatus(runtime.source);
 const devices = createDeviceSelection(config);
 const listActions = createLayoutEditActions({ config, runtime, registry: moduleRegistry });
+const paletteActions = createPaletteActions({
+  config,
+  runtime,
+  names: {
+    fresh: (number) => t("palette.new_name", { number }),
+    copy: (name) => t("palette.copy_name", { name }),
+    preset: (palette) => t(palette.labelKey),
+  },
+});
+const customPalettes = computed(() => config.current.value.customPalettes);
 const windowController = useWindowController();
 
 provideRenderLoop({ source: client, instances: () => layout.value.instances, registry: moduleRegistry });
@@ -226,6 +241,7 @@ defineExpose({ client, channel: () => channel });
       :registry="moduleRegistry"
       :editing="editing"
       :selected-id="runtime.selectedInstanceId.value"
+      :custom-palettes="customPalettes"
       @select="runtime.selectInstance"
       @update="applyLayout"
       @direction="changeDirection"
@@ -259,13 +275,22 @@ defineExpose({ client, channel: () => channel });
         :instance="settingsTarget.instance"
         :definition="settingsTarget.definition"
         :name="settingsTarget.name"
+        :custom-palettes="customPalettes"
         @palette="changePalette(settingsTarget.instance.id, $event)"
+        @create-palette="paletteActions.createForInstance(settingsTarget.instance.id)"
         @speed="changeSpeed(settingsTarget.instance.id, $event)"
         @option="(key, value) => changeOption(settingsTarget!.instance.id, key, value)"
         @reset="resetSettings(settingsTarget.instance.id)"
       />
     </UiPopover>
     <SettingsDrawer v-if="drawer === 'settings'" @select-device="devices.choose" @edit-layout="startLayoutEdit" />
+    <PaletteDrawer
+      v-else-if="drawer === 'palettes'"
+      @create="paletteActions.create"
+      @duplicate="paletteActions.duplicate"
+      @remove="paletteActions.remove"
+      @update="paletteActions.update"
+    />
     <CrtOverlay :enabled="scanline" />
   </div>
 </template>

@@ -5,8 +5,9 @@ import UiButton from "./UiButton.vue";
 import { useDismiss } from "./use_dismiss";
 
 // 右から重ねて開くパネル（設定など）。メーターは動かしたまま開くため、モーダルにはしない。
-// 使う側は v-if で出し入れし、close を受けて閉じる。上端の位置は --drawer-top で指定する（既定は0）
-defineProps<{ title: string }>();
+// 使う側は v-if で出し入れし、close を受けて閉じる。上端の位置は --drawer-top で指定する（既定は0）。
+// 見出しの横のボタン（と Esc）は close を出す。ボタンの文言は closeLabel で替えられる（別のドロワーへ戻るときの「戻る」など）
+defineProps<{ title: string; closeLabel?: string }>();
 const emit = defineEmits<{ close: [] }>();
 defineSlots<{ default(): unknown; footer?(): unknown }>();
 
@@ -20,7 +21,7 @@ useDismiss(root, () => emit("close"));
   <aside ref="root" class="ui-drawer" role="dialog" :aria-labelledby="titleId" tabindex="-1">
     <header class="head">
       <h2 :id="titleId" class="title">{{ title }}</h2>
-      <UiButton @click="emit('close')">{{ t("common.close") }}</UiButton>
+      <UiButton @click="emit('close')">{{ closeLabel ?? t("common.close") }}</UiButton>
     </header>
     <div class="body">
       <slot />

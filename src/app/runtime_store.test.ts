@@ -20,6 +20,33 @@ describe("createRuntimeStore", () => {
     expect(store.drawer.value).toBeNull();
   });
 
+  it("戻る先を付けて開くと、見出しのボタンでそのドロワーへ戻る。付けなければ閉じる。閉じると戻る先も消える", () => {
+    const store = createRuntimeStore();
+    expect(store.drawerBack.value).toBeNull();
+    store.openDrawer("palettes", "settings");
+    expect(store.drawerBack.value).toBe("settings");
+    store.backDrawer();
+    expect(store.drawer.value).toBe("settings");
+    expect(store.drawerBack.value).toBeNull();
+
+    store.openDrawer("palettes");
+    store.backDrawer();
+    expect(store.drawer.value).toBeNull();
+
+    store.openDrawer("palettes", "settings");
+    store.closeDrawer();
+    expect(store.drawerBack.value).toBeNull();
+  });
+
+  it("配色の管理で編集する配色は、初めはなく、選び直せる", () => {
+    const store = createRuntimeStore();
+    expect(store.editingPaletteId.value).toBeNull();
+    store.editPalette("custom.a");
+    expect(store.editingPaletteId.value).toBe("custom.a");
+    store.editPalette(null);
+    expect(store.editingPaletteId.value).toBeNull();
+  });
+
   it("レイアウト編集中かどうかを切り替える", () => {
     const store = createRuntimeStore();
     store.setLayoutEditing(true);

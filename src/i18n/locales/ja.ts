@@ -134,6 +134,7 @@ const ja = {
     preset_amber: "アンバー主",
     new: "＋ 配色を作る",
     new_name: "マイ配色 {number}",
+    copy_name: "{name}のコピー",
     editing: "編集中：{name}",
     name: "名前",
     role_main: "主色（L・Mid・主な線）",

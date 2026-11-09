@@ -122,6 +122,25 @@ describe("MeterScreen", () => {
     expect(html).toMatch(/data-kind="spec"[^>]*style="grid-area:1 \/ 3 \/ span 8 \/ span 10;/);
   });
 
+  it("配色の管理（S02a）は、ドロワーが palettes のときだけ、設定パネルの代わりに重ねる", async () => {
+    expect(await render()).not.toContain("palette-drawer");
+    const runtime = createRuntimeStore();
+    runtime.openDrawer("palettes", "settings");
+    const html = await render(undefined, runtime);
+    expect(html).toContain("palette-drawer");
+    expect(html).not.toContain("settings-drawer");
+    expect(html.indexOf("crt-overlay")).toBeGreaterThan(html.indexOf("palette-drawer"));
+  });
+
+  it("自分で作った配色を使うモジュールも、格子に置く（知らない配色IDでも置ける）", async () => {
+    const html = await render((config) => {
+      config.customPalettes = [{ id: "custom.mine", name: "マイ配色 1", main: "#b7ff3c", sub: "#8b5cff", accent: "#ffb547" }];
+      config.layout.instances[0].paletteId = "custom.mine";
+      config.layout.instances[1].paletteId = "custom.removed";
+    });
+    expect(placedKinds(html)).toEqual(["level", "wave", "spec", "stereo", "gram", "loud", "stereo"]);
+  });
+
   it("設定パネル（S02）は、ドロワーが settings のときだけ、状態の表示より上・走査線より下に重ねる", async () => {
     expect(await render()).not.toContain("settings-drawer");
     const runtime = createRuntimeStore();

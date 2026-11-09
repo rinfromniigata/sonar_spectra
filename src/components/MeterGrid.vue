@@ -17,7 +17,7 @@
 // - 配置を変えたら update で手動配置の並び（全インスタンス）を知らせる。自動配置のときは、その時点の自動整列の結果を
 //   固定したもの（pinAutoLayout）を基準に操作するので、最初の操作で手動配置に固定される。保存は置く側が行う
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
-import type { GridRect, Instance } from "../config/types";
+import type { GridRect, Instance, Palette } from "../config/types";
 import { useT } from "../i18n/use_t";
 import { autoArrange } from "../layout/auto_arrange";
 import {
@@ -61,8 +61,10 @@ const props = withDefaults(
     editing?: boolean;
     /** レイアウト編集で選んでいるインスタンスのID */
     selectedId?: string | null;
+    /** 自分で作った配色（今の構成の customPalettes）。各モジュールの枠に渡す */
+    customPalettes?: readonly Palette[];
   }>(),
-  { registry: () => moduleRegistry, editing: false, selectedId: null },
+  { registry: () => moduleRegistry, editing: false, selectedId: null, customPalettes: () => [] },
 );
 const emit = defineEmits<{
   /** モジュールを選んだ */
@@ -325,6 +327,7 @@ function onModuleFocus(id: string): void {
       :definition="item.definition"
       :editing="editing"
       :selected="item.instance.id === selectedId"
+      :custom-palettes="customPalettes"
       :data-instance-id="item.instance.id"
       :class="{ 'is-dragging': item.instance.id === draggingId }"
       :style="{ gridArea: gridArea(item.rect) }"

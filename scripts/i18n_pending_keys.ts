@@ -17,18 +17,6 @@ export const PENDING_KEYS: readonly string[] = [
   // Phase 6：インスタンスの設定（T6-1〜T6-4）
 
   // Phase 7：配色と構成（T7-2〜T7-5）
-  "common.back",
-  "palette.title",
-  "palette.list",
-  "palette.builtin",
-  "palette.new",
-  "palette.new_name",
-  "palette.editing",
-  "palette.name",
-  "palette.role_main",
-  "palette.role_sub",
-  "palette.role_accent",
-  "palette.light_note",
   "config.title",
   "config.hint",
   "config.in_use",

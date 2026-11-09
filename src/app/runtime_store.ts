@@ -21,10 +21,22 @@ export interface RuntimeStore {
   readonly instanceSettingsOpen: Ref<boolean>;
   /** 開いているドロワー。なければ null */
   readonly drawer: Ref<DrawerId | null>;
+  /**
+   * 見出しのボタンで戻る先のドロワー（設定パネルから開いた配色の管理なら settings）。
+   * なければ null で、見出しのボタンは「閉じる」になる
+   */
+  readonly drawerBack: Ref<DrawerId | null>;
+  /** 配色の管理（S02a）で編集している、自分で作った配色のID。なければ null */
+  readonly editingPaletteId: Ref<string | null>;
   /** ボーダレスフルスクリーン中か（実際のウィンドウの状態を映す。保存しない。起動時の全画面は設定の display.startFullscreen） */
   readonly fullscreen: Ref<boolean>;
-  openDrawer(id: DrawerId): void;
+  /** ドロワーを開く。back を渡すと、見出しのボタンが「戻る」になり、そのドロワーへ戻る */
+  openDrawer(id: DrawerId, back?: DrawerId | null): void;
   closeDrawer(): void;
+  /** 見出しのボタン：戻る先があればそこを開き、なければ閉じる */
+  backDrawer(): void;
+  /** 配色の管理で編集する配色を選ぶ（null で選ばない） */
+  editPalette(id: string | null): void;
   /** レイアウト編集を始める・終える。終えると選択を外し、インスタンスの設定を閉じる */
   setLayoutEditing(editing: boolean): void;
   selectInstance(id: string | null): void;
@@ -35,6 +47,8 @@ export interface RuntimeStore {
 
 export function createRuntimeStore(): RuntimeStore {
   const drawer = ref<DrawerId | null>(null);
+  const drawerBack = ref<DrawerId | null>(null);
+  const editingPaletteId = ref<string | null>(null);
   const layoutEditing = ref(false);
   const fullscreen = ref(false);
   const selectedInstanceId = ref<string | null>(null);
@@ -45,12 +59,23 @@ export function createRuntimeStore(): RuntimeStore {
     selectedInstanceId,
     instanceSettingsOpen,
     drawer,
+    drawerBack,
+    editingPaletteId,
     fullscreen,
-    openDrawer: (id) => {
+    openDrawer: (id, back = null) => {
       drawer.value = id;
+      drawerBack.value = back;
     },
     closeDrawer: () => {
       drawer.value = null;
+      drawerBack.value = null;
+    },
+    backDrawer: () => {
+      drawer.value = drawerBack.value;
+      drawerBack.value = null;
+    },
+    editPalette: (id) => {
+      editingPaletteId.value = id;
     },
     setLayoutEditing: (editing) => {
       layoutEditing.value = editing;

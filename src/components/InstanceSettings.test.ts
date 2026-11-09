@@ -2,7 +2,8 @@ import { createSSRApp, h } from "vue";
 import { renderToString } from "vue/server-renderer";
 import { describe, expect, it } from "vitest";
 import { createDefaultInstances } from "../config/default_instances";
-import type { Instance } from "../config/types";
+import { customSwatchColors } from "../config/palettes";
+import type { Instance, Palette } from "../config/types";
 import { i18n } from "../i18n";
 import ja from "../i18n/locales/ja";
 import { moduleRegistry } from "../modules";
@@ -16,9 +17,9 @@ function instanceOf(kind: ModuleKind, patch: Partial<Instance> = {}): Instance {
   return { ...instance, ...patch } as Instance;
 }
 
-async function render(instance: Instance, name = "波形 2"): Promise<string> {
+async function render(instance: Instance, name = "波形 2", customPalettes: Palette[] = []): Promise<string> {
   const definition = moduleRegistry.get(instance.kind) as AnyModuleDefinition;
-  const app = createSSRApp({ render: () => h(InstanceSettings, { instance, definition, name }) });
+  const app = createSSRApp({ render: () => h(InstanceSettings, { instance, definition, name, customPalettes }) });
   app.use(i18n);
   return renderToString(app);
 }
@@ -63,6 +64,22 @@ describe("InstanceSettings", () => {
     const html = await render(instanceOf("spec"));
     const label = new RegExp(`<span id="([^"]+)" class="label"[^>]*>${ja.instance.palette}</span>`).exec(html)!;
     expect(html).toMatch(new RegExp(`role="group" aria-labelledby="${label[1]}"`));
+  });
+
+  it("自分で作った配色を標準の後ろに並べ（見本はテーマに合わせた色）、最後に「＋ 配色を作る」を置く", async () => {
+    const mine: Palette = { id: "custom.mine", name: "マイ配色 1", main: "#b7ff3c", sub: "#8b5cff", accent: "#ffb547" };
+    const html = await render(instanceOf("spec", { paletteId: mine.id }), "スペクトラム 1", [mine]);
+    expect(swatches(html)).toEqual([
+      { name: ja.palette.preset_magenta, pressed: false },
+      { name: ja.palette.preset_cyan, pressed: false },
+      { name: ja.palette.preset_amber, pressed: false },
+      { name: mine.name, pressed: true },
+    ]);
+    const [main, sub] = customSwatchColors(mine);
+    expect(html).toContain(`background:${main}`);
+    expect(html).toContain(`background:${sub}`);
+    const group = /role="group"[^>]*>([\s\S]*?)<\/div>/.exec(html)![1];
+    expect(group).toMatch(new RegExp(`<button type="button" class="new-palette ui-focusable"[^>]*>${ja.palette.new}</button>$`));
   });
 
   it("流れる速さは、流れるモジュール（波形・スペクトログラム）だけに、×0.25〜×3.00・刻み0.05のスライダーで出す", async () => {

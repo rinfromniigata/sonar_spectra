@@ -2,7 +2,8 @@
 // インスタンスの設定の中身（S03。モックの .inspector）。ポップオーバー（UiPopover）の中に入れる。
 // 見出し（選択中：名前と番号）と、種類を問わない項目：
 // - 入力源：初版の選択肢は既定の1系統だけ。セレクトに1つだけ出し、注記を添える（sourceId は変えない）
-// - 配色：標準の配色（マゼンタ主・シアン主・アンバー主）の見本。自分で作った配色と「＋ 配色を作る」は Phase 7（T7-2）
+// - 配色：標準の配色（マゼンタ主・シアン主・アンバー主）と、自分で作った配色（構成の customPalettes）の見本。
+//   最後に「＋ 配色を作る」（createPalette で知らせる。置く側が、今の配色を写した配色を作ってこのインスタンスに当て、配色の管理を開く）
 // - 流れる速さ：流れるモジュール（定義の flows）だけ。×0.25〜×3.00、刻み0.05
 // - 種類ごとの項目：定義の inspectorFields（波形・スペクトラム・位相）を、選択肢はセグメント、オン／オフはスイッチ、数値は
 //   スライダーで出す。出すかどうかは visibleWhen で決まる（modules/inspector_fields）。選んでいる選択肢の注記を下に添える
@@ -10,9 +11,9 @@
 //   押したあとは、ボタンが押せなくなってフォーカスが失われる（Esc で閉じられなくなる）ため、見出しへフォーカスを移す
 // 値は持たず、変えたら palette・speed・option・reset で知らせる（書き込みは置く側）
 import { computed, nextTick, ref, useId } from "vue";
-import { PRESET_PALETTES, presetSwatchColors } from "../config/palettes";
+import { PRESET_PALETTES, customSwatchColors, presetSwatchColors } from "../config/palettes";
 import { SPEED_MAX, SPEED_MIN, SPEED_STEP, isDefaultInstance } from "../config/instance_settings";
-import type { Instance } from "../config/types";
+import type { Instance, Palette } from "../config/types";
 import { formatMultiplier, formatPercent } from "../i18n/format";
 import { useT, type MessageKey } from "../i18n/use_t";
 import { visibleFields } from "../modules/inspector_fields";
@@ -26,14 +27,21 @@ import UiSlider from "./ui/UiSlider.vue";
 import UiSwitch from "./ui/UiSwitch.vue";
 import type { ChoiceOption } from "./ui/types";
 
-const props = defineProps<{
-  instance: Instance;
-  definition: AnyModuleDefinition;
-  /** 見出しの名前（「波形 2」） */
-  name: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    instance: Instance;
+    definition: AnyModuleDefinition;
+    /** 見出しの名前（「波形 2」） */
+    name: string;
+    /** 自分で作った配色（今の構成の customPalettes） */
+    customPalettes?: readonly Palette[];
+  }>(),
+  { customPalettes: () => [] },
+);
 const emit = defineEmits<{
   palette: [paletteId: string];
+  /** 「＋ 配色を作る」 */
+  createPalette: [];
   speed: [speed: number];
   /** 種類ごとの項目（設定 options の1項目）を変えた */
   option: [key: string, value: string | number | boolean];
@@ -66,9 +74,10 @@ const source = computed({
   },
 });
 
-const palettes = computed(() =>
-  PRESET_PALETTES.map((palette) => ({ id: palette.id, name: t(palette.labelKey), colors: presetSwatchColors(palette) })),
-);
+const palettes = computed(() => [
+  ...PRESET_PALETTES.map((palette) => ({ id: palette.id, name: t(palette.labelKey), colors: presetSwatchColors(palette) })),
+  ...props.customPalettes.map((palette) => ({ id: palette.id, name: palette.name, colors: customSwatchColors(palette) })),
+]);
 
 /** 流れる速さ。流れるモジュールでなければ null */
 const speed = computed<number | null>(() => {
@@ -170,6 +179,7 @@ const fields = computed<FieldView[]>(() => {
           :selected="instance.paletteId === item.id"
           @select="emit('palette', item.id)"
         />
+        <button type="button" class="new-palette ui-focusable" @click="emit('createPalette')">{{ t("palette.new") }}</button>
       </div>
     </div>
 
@@ -288,5 +298,30 @@ const fields = computed<FieldView[]>(() => {
   flex-wrap: wrap;
   gap: var(--space-2);
   min-width: 0;
+}
+
+/* 「＋ 配色を作る」：見本と同じ形のボタン（モックの .swatch） */
+.new-palette {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--motion-ease);
+}
+
+.new-palette:hover {
+  border-color: var(--color-neon-b);
+}
+
+.new-palette:active {
+  background: var(--color-surface-raised);
 }
 </style>

@@ -14,6 +14,8 @@ const plan = vi.hoisted(() => ({
   /** kind の最初のインスタンスの方向を変えるイベントを出す（kind が null なら、ないIDで出す） */
   gridDirection: null as { kind: string | null; direction: string } | null,
   panel: [] as ("autoArrange" | "done")[],
+  /** 配色の管理：順に出すイベント（create・duplicate は引数の配色ID、update は main を変える、remove は消す） */
+  paletteDrawer: [] as ["create"] | ["create", "duplicate" | "update" | "remove"] | [],
 }));
 
 vi.mock("./TitleBar.vue", async () => {
@@ -49,6 +51,25 @@ vi.mock("./SettingsDrawer.vue", async () => {
         if (plan.drawerDevice !== undefined) emit("selectDevice", plan.drawerDevice);
         if (plan.drawerEditLayout) emit("editLayout");
         return () => vue.h("aside", { class: "settings-drawer" });
+      },
+    }),
+  };
+});
+vi.mock("./PaletteDrawer.vue", async () => {
+  const vue = await import("vue");
+  const { useConfigStore } = await import("../config/config_store");
+  return {
+    default: vue.defineComponent({
+      emits: ["create", "duplicate", "remove", "update"],
+      setup(_, { emit }) {
+        const config = useConfigStore();
+        const [first, second] = plan.paletteDrawer;
+        if (first === "create") emit("create");
+        const created = config.current.value.customPalettes[0]?.id;
+        if (second === "duplicate") emit("duplicate", created);
+        if (second === "update") emit("update", created, { main: "#123456" });
+        if (second === "remove") emit("remove", created);
+        return () => vue.h("aside", { class: "palette-drawer" });
       },
     }),
   };
@@ -187,6 +208,52 @@ describe("MeterScreen のイベントのつながり", () => {
     expect(config.deviceId.value).toBe("{dev-1}");
     expect(config.dirty.value).toBe(false);
     expect(invoke).toHaveBeenCalledWith("select_output_device", { deviceId: "{dev-1}" });
+  });
+});
+
+describe("MeterScreen の配色の管理のつながり", () => {
+  beforeEach(() => {
+    plan.titleBar = [];
+    plan.overlaySettings = false;
+    plan.drawerDevice = undefined;
+    plan.drawerEditLayout = false;
+    plan.gridSelect = null;
+    plan.gridUpdate = null;
+    plan.gridDirection = null;
+    plan.panel = [];
+    plan.paletteDrawer = [];
+    invoke.mockReset();
+    invoke.mockResolvedValue(undefined);
+  });
+
+  function opened() {
+    const runtime = createRuntimeStore();
+    runtime.openDrawer("palettes", "settings");
+    return runtime;
+  }
+
+  it("「＋ 配色を作る」で「マイ配色 1」を足して編集中にし、「保存後に変更あり」になる", async () => {
+    plan.paletteDrawer = ["create"];
+    const runtime = opened();
+    const config = await render(runtime);
+    const palettes = config.current.value.customPalettes;
+    expect(palettes.map((p) => p.name)).toEqual(["マイ配色 1"]);
+    expect(runtime.editingPaletteId.value).toBe(palettes[0].id);
+    expect(config.dirty.value).toBe(true);
+  });
+
+  it("複製は「{name}のコピー」を足し、編集は値を変え、削除は一覧から消す", async () => {
+    plan.paletteDrawer = ["create", "duplicate"];
+    const duplicated = await render(opened());
+    expect(duplicated.current.value.customPalettes.map((p) => p.name)).toEqual(["マイ配色 1", "マイ配色 1のコピー"]);
+
+    plan.paletteDrawer = ["create", "update"];
+    expect((await render(opened())).current.value.customPalettes[0].main).toBe("#123456");
+
+    plan.paletteDrawer = ["create", "remove"];
+    const runtime = opened();
+    expect((await render(runtime)).current.value.customPalettes).toEqual([]);
+    expect(runtime.editingPaletteId.value).toBeNull();
   });
 });
 
