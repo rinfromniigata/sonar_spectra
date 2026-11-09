@@ -694,7 +694,6 @@ Phaseの推奨: Opus・high以上
 Phaseの推奨: Opus・high以上
 
 - [ ] T8-1 【エージェント】VU、クロマ（12音名、コードとキーの推定、時間方向の平滑化）、重心とフラックスの解析を作る
-  - 推奨: Opus・high以上
   - 依存: T3-1
 - [ ] T8-2 【エージェント】VUメーターのモジュールを作る（L・Rの2本の針、振れた跡の残像。初期状態は無効）
   - 推奨: Sonnet・high以上
@@ -718,11 +717,11 @@ Phaseの推奨: Opus・high以上
 Phaseの推奨: Opus・xhigh以上
 
 - [ ] T9-1 【エージェント】全モジュールを有効にした状態で、CPU・GPUの使用率と1フレームの描画時間を測り、重いモジュールを軽くする（必要ならそのモジュールだけWebGLへ移す案を報告する）
-  - 推奨: Opus・xhigh以上
   - 依存: T8-5
   - W2-5の実施メモの気づき：モジュール2つでも可視のときWebView2側のCPUが1コアの約145〜160%（開発用のビルド、約120 Hzのディスプレイ）。描画の回数（受信の約60回/秒に合わせて間引く）と、発光（`shadowBlur`）の負荷を確かめる
 - [ ] T9-2 【エージェント】`.github/workflows/release.yml`を作る（`v*`タグのpushで起動、`bun run check`、tauri-actionでWindows x64のインストーラーをビルドし、GitHub Releasesにドラフトを作る）
-  - 推奨: Opus・high以上
+  - 推奨: Sonnet・high以上
+  - 推奨の見直し: 改訂後の目安（CIのワークフローの作成）に合わせ、Opus・highから下げた。checkコマンドを呼ぶ定型の構成で、実行して確かめられるため
   - 依存: T1-8
 - [ ] T9-3 【エージェント】`CONTRIBUTING.md`に、ビルドとリリースの手順を追記する
   - 推奨: Sonnet・medium以上
@@ -733,17 +732,13 @@ Phaseの推奨: Opus・xhigh以上
 Phaseの推奨: Sonnet・high以上
 
 - [ ] T10-1 【エージェント】`README.md`（日本語）を書き、主要画面のスクリーンショットを実物から撮って`docs/images/`に置く
-  - 推奨: Sonnet・high以上
   - 依存: T9-1
   - 画面: S01
 - [ ] T10-2 【エージェント】GitHubのAbout欄（説明文は英語、Webサイト、トピック）の文案を提示する
-  - 推奨: Sonnet・high以上
   - 依存: T10-1
 - [ ] T10-3 【エージェント】`CHANGELOG.md`（Keep a Changelog形式）に0.1.0を書き、`package.json`・`tauri.conf.json`・`Cargo.toml`のバージョンが`0.1.0`でそろっていることを確かめる
-  - 推奨: Sonnet・high以上
   - 依存: T10-1
 - [ ] T10-4 【エージェント】ローカルでビルドし、アイコン一式が`specs/`の最新のマスターSVGから生成されたものであることを確かめる。`roadmap/timeline.md`にリリース準備の行（`0.1.0`と、その時点のプランアセットの版）を追記し、コミットメッセージとタグ作成・pushのコマンドを提示して停止する
-  - 推奨: Sonnet・high以上
   - 依存: T9-2, T10-3
   - pushの前にバージョンを変えた場合は、timelineに新しい行を追記する（過去の行は書き換えない）
 - [ ] T10-5 【ユーザー】コミット・`v0.1.0`タグの作成・pushを行い、GitHub Releasesにドラフトができたことを確かめる。About欄を設定する
