@@ -115,6 +115,11 @@ const notice = computed(() => {
   }
 });
 
+// 設定パネルから開いたときの最初の操作（名前の入力・切り替えの確認）
+const intent = runtime.takeConfigIntent();
+if (intent?.kind === "saveAs") manager.startSaveAs();
+else if (intent?.kind === "switch") manager.requestSwitch(intent.id);
+
 defineExpose({ manager });
 </script>
 

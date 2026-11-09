@@ -7,6 +7,9 @@ import type { SourceStatusEvent } from "../source/source_status";
 /** 開くドロワー：設定（S02）、配色の管理（S02a）、構成の管理（S02b） */
 export type DrawerId = "settings" | "palettes" | "configs";
 
+/** 構成の管理を開いたときの最初の操作：名前を付けて保存の入力、または変更があるときの切り替えの確認 */
+export type ConfigIntent = { kind: "saveAs" } | { kind: "switch"; id: string };
+
 export interface RuntimeStore {
   /** 最後に届いた入力源の状態（イベント source-status）。まだ届いていなければ null */
   readonly source: ShallowRef<SourceStatusEvent | null>;
@@ -28,6 +31,13 @@ export interface RuntimeStore {
   readonly drawerBack: Ref<DrawerId | null>;
   /** 配色の管理（S02a）で編集している、自分で作った配色のID。なければ null */
   readonly editingPaletteId: Ref<string | null>;
+  /**
+   * 構成の管理（S02b）を開いたときに、最初にやること（設定パネルの「名前を付けて保存」・確認が要る切り替え）。
+   * S02b が開いたときに取り出す（takeConfigIntent）。なければ null
+   */
+  readonly configIntent: Ref<ConfigIntent | null>;
+  /** configIntent を取り出して null に戻す */
+  takeConfigIntent(): ConfigIntent | null;
   /** ボーダレスフルスクリーン中か（実際のウィンドウの状態を映す。保存しない。起動時の全画面は設定の display.startFullscreen） */
   readonly fullscreen: Ref<boolean>;
   /** ドロワーを開く。back を渡すと、見出しのボタンが「戻る」になり、そのドロワーへ戻る */
@@ -49,6 +59,7 @@ export function createRuntimeStore(): RuntimeStore {
   const drawer = ref<DrawerId | null>(null);
   const drawerBack = ref<DrawerId | null>(null);
   const editingPaletteId = ref<string | null>(null);
+  const configIntent = ref<ConfigIntent | null>(null);
   const layoutEditing = ref(false);
   const fullscreen = ref(false);
   const selectedInstanceId = ref<string | null>(null);
@@ -61,6 +72,12 @@ export function createRuntimeStore(): RuntimeStore {
     drawer,
     drawerBack,
     editingPaletteId,
+    configIntent,
+    takeConfigIntent: () => {
+      const intent = configIntent.value;
+      configIntent.value = null;
+      return intent;
+    },
     fullscreen,
     openDrawer: (id, back = null) => {
       drawer.value = id;

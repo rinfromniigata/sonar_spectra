@@ -133,6 +133,27 @@ describe("ConfigDrawer", () => {
     expect(form).toContain(`>${ja.common.cancel}<`);
   });
 
+  it("設定パネルから開いたとき：「名前を付けて保存」は名前の入力から、変更ありの切り替えは確認から始める。操作は1度だけ取り出す", async () => {
+    const saveAs = createRuntimeStore();
+    saveAs.configIntent.value = { kind: "saveAs" };
+    const nameForm = await render(configStore(), { runtime: saveAs });
+    expect(nameForm).toContain("inline name-form");
+    expect(saveAs.configIntent.value).toBeNull();
+
+    const config = configStore();
+    config.updateCurrent((c) => {
+      c.theme = "light";
+    });
+    const sw = createRuntimeStore();
+    sw.configIntent.value = { kind: "switch", id: "c-1" };
+    const confirm = await render(config, { runtime: sw });
+    expect(confirm).toContain("inline confirm");
+    expect(confirm).toContain(ja.config.confirm_switch.replace("{name}", "クラブ用"));
+    expect(config.activeConfig.value?.name).toBe("既定");
+
+    expect(await render(configStore())).not.toMatch(/inline (confirm|name-form)/);
+  });
+
   it("お知らせを出す（書き出し・読み込みの結果）。失敗は強調する", async () => {
     const config = configStore();
     const manager = managerFor(config);

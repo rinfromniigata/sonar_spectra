@@ -656,10 +656,15 @@ Phaseの推奨: Opus・high以上
     - お知らせ：書き出した・読み込んだ（「一覧から切り替えて使う」）・書き出せなかった・読み込めなかった。ダイアログで選ばなかったときは何も出さない
     - 辞書に`common.save`・`common.cancel`・`config.switch_to`・`config.name`・`config.copy_name`・`config.confirm_*`（4つ）・`config.file_filter`・`config.file_fallback_name`・`config.exported`・`config.export_failed`・`config.imported`・`config.import_failed`を足した。使い始めた`config.title`ほか6キーを使用予定から外した
   - 実施メモ（261109）：設定パネルの「構成を管理」「名前を付けて保存」と、構成のセレクトでの切り替え（確認つき）はT7-5でつなぐ（`openDrawer("configs", "settings")`で開く）。それまで画面からS02bを開く手段はない。単体テストはUI 28件（`config_file`7・`config_manager`10・`ConfigDrawer`のSSR 7・`saved_configs`2・構成のストア1・`MeterScreen`1）とRust 7件（`config_file`）を加えた。`bun run check`は通った（UI 689件・Rust 121件）。`bun run build`も通った。実際のダイアログでの書き出し・読み込み（権限の範囲を含む）は、T7-5でつないでから実機（W7-3）で確かめる
-- [ ] T7-5 【エージェント】設定パネルの「構成を管理」「名前を付けて保存」「配色を管理」をつなぐ
+- [x] T7-5 【エージェント】設定パネルの「構成を管理」「名前を付けて保存」「配色を管理」をつなぐ
   - 推奨: Sonnet・medium以上
   - 依存: T7-2, T7-4
   - 画面: S02
+  - 実施: Sonnet
+  - 実施メモ（261109）：`MeterScreen`で、設定パネルのイベントをつないだ。「構成を管理」は構成の管理（S02b）、「配色を管理」は配色の管理（S02a）を、どちらも戻る先を設定パネルにして開く（見出しのボタンは「戻る」）。
+    - 「名前を付けて保存」：構成の管理を開き、名前の入力から始める。設定パネルの構成のセレクトでの切り替えは、変更がなければその場で切り替え、あれば構成の管理を開いて確認（上書き・別の名前で保存・破棄・キャンセル）から始める。確認も名前の入力もS02bの中にあるため、開いたときの最初の操作を、実行中の状態のストアの`configIntent`（`takeConfigIntent`で1度だけ取り出す）で渡す（委任の範囲）
+    - これでS02a・S02bとも画面から開ける。T7-2・T7-4の申し送り（S02a・S02bを開く手段、実際のダイアログでの読み書き）は、実機で確かめる（W7-3・ユーザーの確認）
+    - 単体テスト6件（`MeterScreen`のイベント4・`ConfigDrawer`1・実行中の状態のストア1）を加えた。`bun run check`は通った（UI 695件・Rust 121件）。変更ありのときの切り替えが構成の管理を開く流れは、DOMのテスト環境がないため実機で確かめる
 
 ## Phase 8: 追加のモジュール（VU・クロマ・重心と変化量）
 

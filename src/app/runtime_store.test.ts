@@ -38,6 +38,14 @@ describe("createRuntimeStore", () => {
     expect(store.drawerBack.value).toBeNull();
   });
 
+  it("構成の管理を開いたときの最初の操作は、取り出すと null に戻る", () => {
+    const store = createRuntimeStore();
+    expect(store.takeConfigIntent()).toBeNull();
+    store.configIntent.value = { kind: "switch", id: "c-1" };
+    expect(store.takeConfigIntent()).toEqual({ kind: "switch", id: "c-1" });
+    expect(store.configIntent.value).toBeNull();
+  });
+
   it("配色の管理で編集する配色は、初めはなく、選び直せる", () => {
     const store = createRuntimeStore();
     expect(store.editingPaletteId.value).toBeNull();

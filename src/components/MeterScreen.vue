@@ -31,7 +31,7 @@
 // - 構成の管理（S02b）：ドロワーが configs のときに重ねる（ConfigDrawer。操作は中の config_manager が構成のストアに書く）
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
-import { useRuntimeStore } from "../app/runtime_store";
+import { useRuntimeStore, type ConfigIntent } from "../app/runtime_store";
 import { useAppVersion } from "../app/use_app_version";
 import { useConfigStore } from "../config/config_store";
 import { resetInstance, setInstanceOption, setPaletteId, setSpeed } from "../config/instance_settings";
@@ -110,6 +110,17 @@ function toggleFullscreen(): void {
 function toggleSettings(): void {
   if (drawer.value === "settings") runtime.closeDrawer();
   else openSettings();
+}
+
+/** 構成の管理（S02b）を、設定パネルから戻れる形で開く。intent は開いたときの最初の操作 */
+function openConfigs(intent: ConfigIntent | null): void {
+  runtime.configIntent.value = intent;
+  runtime.openDrawer("configs", "settings");
+}
+
+/** 設定パネルの構成のセレクト：変更がなければそのまま切り替え、あれば構成の管理で確認する */
+function switchConfig(id: string): void {
+  if (config.switchConfig(id) === "needsConfirm") openConfigs({ kind: "switch", id });
 }
 
 const editing = computed(() => runtime.layoutEditing.value);
@@ -285,7 +296,15 @@ defineExpose({ client, channel: () => channel });
         @reset="resetSettings(settingsTarget.instance.id)"
       />
     </UiPopover>
-    <SettingsDrawer v-if="drawer === 'settings'" @select-device="devices.choose" @edit-layout="startLayoutEdit" />
+    <SettingsDrawer
+      v-if="drawer === 'settings'"
+      @select-device="devices.choose"
+      @edit-layout="startLayoutEdit"
+      @switch-config="switchConfig"
+      @save-as="openConfigs({ kind: 'saveAs' })"
+      @manage-configs="openConfigs(null)"
+      @manage-palettes="runtime.openDrawer('palettes', 'settings')"
+    />
     <ConfigDrawer v-else-if="drawer === 'configs'" />
     <PaletteDrawer
       v-else-if="drawer === 'palettes'"

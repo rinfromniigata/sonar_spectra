@@ -9,6 +9,8 @@ const plan = vi.hoisted(() => ({
   overlaySettings: false,
   drawerDevice: undefined as string | null | undefined,
   drawerEditLayout: false,
+  /** 設定パネルが出す構成・配色のイベント（switchConfig は切り替え先のID） */
+  drawerConfig: [] as ("saveAs" | "manageConfigs" | "managePalettes" | { switchConfig: string })[],
   gridSelect: null as string | null,
   gridUpdate: null as unknown[] | null,
   /** kind の最初のインスタンスの方向を変えるイベントを出す（kind が null なら、ないIDで出す） */
@@ -46,8 +48,12 @@ vi.mock("./SettingsDrawer.vue", async () => {
   const vue = await import("vue");
   return {
     default: vue.defineComponent({
-      emits: ["selectDevice", "editLayout"],
+      emits: ["selectDevice", "editLayout", "switchConfig", "saveAs", "manageConfigs", "managePalettes"],
       setup(_, { emit }) {
+        for (const item of plan.drawerConfig) {
+          if (typeof item === "object") emit("switchConfig", item.switchConfig);
+          else emit(item);
+        }
         if (plan.drawerDevice !== undefined) emit("selectDevice", plan.drawerDevice);
         if (plan.drawerEditLayout) emit("editLayout");
         return () => vue.h("aside", { class: "settings-drawer" });
@@ -159,6 +165,7 @@ describe("MeterScreen のイベントのつながり", () => {
     plan.overlaySettings = false;
     plan.drawerDevice = undefined;
     plan.drawerEditLayout = false;
+    plan.drawerConfig = [];
     plan.gridSelect = null;
     plan.gridUpdate = null;
     plan.gridDirection = null;
@@ -211,12 +218,66 @@ describe("MeterScreen のイベントのつながり", () => {
   });
 });
 
+describe("MeterScreen の設定パネルから構成・配色の管理へのつながり（T7-5）", () => {
+  beforeEach(() => {
+    plan.drawerConfig = [];
+    plan.titleBar = [];
+    plan.overlaySettings = false;
+    plan.drawerDevice = undefined;
+    plan.drawerEditLayout = false;
+    plan.drawerConfig = [];
+    plan.paletteDrawer = [];
+    invoke.mockReset();
+    invoke.mockResolvedValue(undefined);
+  });
+
+  function fromSettings() {
+    const runtime = createRuntimeStore();
+    runtime.openDrawer("settings");
+    return runtime;
+  }
+
+  it("「構成を管理」で構成の管理を開く（戻る先は設定パネル）。開いたときの操作はなし", async () => {
+    plan.drawerConfig = ["manageConfigs"];
+    const runtime = fromSettings();
+    await render(runtime);
+    expect(runtime.drawer.value).toBe("configs");
+    expect(runtime.drawerBack.value).toBe("settings");
+    expect(runtime.configIntent.value).toBeNull();
+  });
+
+  it("「名前を付けて保存」で構成の管理を開き、名前の入力から始める", async () => {
+    plan.drawerConfig = ["saveAs"];
+    const runtime = fromSettings();
+    await render(runtime);
+    expect(runtime.drawer.value).toBe("configs");
+    expect(runtime.configIntent.value).toEqual({ kind: "saveAs" });
+  });
+
+  it("「配色を管理」で配色の管理を開く（戻る先は設定パネル）", async () => {
+    plan.drawerConfig = ["managePalettes"];
+    const runtime = fromSettings();
+    await render(runtime);
+    expect(runtime.drawer.value).toBe("palettes");
+    expect(runtime.drawerBack.value).toBe("settings");
+  });
+
+  it("構成のセレクトでの切り替え：ない構成・変更のない使用中の選び直しでは、設定パネルのまま何も変えない", async () => {
+    plan.drawerConfig = [{ switchConfig: "no-such-config" }];
+    const runtime = fromSettings();
+    const config = await render(runtime);
+    expect(runtime.drawer.value).toBe("settings");
+    expect(config.dirty.value).toBe(false);
+  });
+});
+
 describe("MeterScreen の配色の管理のつながり", () => {
   beforeEach(() => {
     plan.titleBar = [];
     plan.overlaySettings = false;
     plan.drawerDevice = undefined;
     plan.drawerEditLayout = false;
+    plan.drawerConfig = [];
     plan.gridSelect = null;
     plan.gridUpdate = null;
     plan.gridDirection = null;
@@ -263,6 +324,7 @@ describe("MeterScreen のレイアウト編集のつながり", () => {
     plan.overlaySettings = false;
     plan.drawerDevice = undefined;
     plan.drawerEditLayout = false;
+    plan.drawerConfig = [];
     plan.gridSelect = null;
     plan.gridUpdate = null;
     plan.gridDirection = null;
