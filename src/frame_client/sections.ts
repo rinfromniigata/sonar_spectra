@@ -1,5 +1,6 @@
 // セクションIDと、ペイロードの読み方。送出側の対応表（src-tauri/src/frame_transport/format.rs の冒頭）と、
-// 各解析の並び（src-tauri/src/analysis/level.rs・waveform.rs・spectrum.rs・stereo.rs・loudness.rs）に合わせる。
+// 各解析の並び（src-tauri/src/analysis/level.rs・waveform.rs・spectrum.rs・stereo.rs・loudness.rs・vu.rs・chroma.rs・
+// centroid.rs）に合わせる。
 
 import type { AnalysisFrame } from "./format";
 
@@ -10,6 +11,9 @@ export const SectionId = {
   Spectrum: 3,
   Stereo: 4,
   Loudness: 5,
+  Vu: 6,
+  Chroma: 7,
+  Centroid: 8,
 } as const;
 export type SectionId = (typeof SectionId)[keyof typeof SectionId];
 
@@ -144,4 +148,84 @@ export function readLoudness(frame: AnalysisFrame): LoudnessValues | null {
   const v = frame.sections.get(SectionId.Loudness);
   if (!v || v.length !== LOUDNESS_LEN) return null;
   return { momentary: v[0], shortTerm: v[1], peak: v[2] };
+}
+
+/** VU のペイロードの長さ */
+export const VU_LEN = 2;
+/** 針が振れていないときの値（dB）。目盛りの範囲（−20〜+3）への切り詰めは表示側で行う */
+export const VU_FLOOR_DB = -120;
+
+/** VU。L・R の針の位置（VU。0 が基準で、ピークが −18 dBFS の正弦波。dB の目盛り）。針の動きは解析側でまねてある */
+export interface VuValues {
+  left: number;
+  right: number;
+}
+
+export function readVu(frame: AnalysisFrame): VuValues | null {
+  const v = frame.sections.get(SectionId.Vu);
+  if (!v || v.length !== VU_LEN) return null;
+  return { left: v[0], right: v[1] };
+}
+
+/** 音名の数（C, C♯, D, … , B の順） */
+export const CHROMA_BINS = 12;
+/** クロマのペイロードの長さ（音名ごとの強さ・コードの根音と種類・キーの主音と調） */
+export const CHROMA_LEN = CHROMA_BINS + 4;
+
+/** コードの種類 */
+export const ChordQuality = { Major: 0, Minor: 1 } as const;
+export type ChordQuality = (typeof ChordQuality)[keyof typeof ChordQuality];
+/** キーの調 */
+export const KeyMode = { Major: 0, Minor: 1 } as const;
+export type KeyMode = (typeof KeyMode)[keyof typeof KeyMode];
+
+/** クロマ。近似で、正確な和声分析ではない */
+export interface ChromaValues {
+  /** 音名ごとの強さ（0〜1。C から半音ずつ `CHROMA_BINS` 個。時間方向に平滑化してあり、無音では 0 に戻る） */
+  chroma: Float32Array;
+  /** 今のコード。推定できないときは null */
+  chord: { root: number; quality: ChordQuality } | null;
+  /** 推定したキー。推定できないときは null */
+  key: { tonic: number; mode: KeyMode } | null;
+}
+
+/** 音名の番号（0〜11）。範囲外・整数でなければ null */
+function pitchClass(value: number): number | null {
+  return Number.isInteger(value) && value >= 0 && value < CHROMA_BINS ? value : null;
+}
+
+/** 2種類の選択肢（0・1）。範囲外なら null */
+function binary(value: number): 0 | 1 | null {
+  return value === 0 || value === 1 ? value : null;
+}
+
+export function readChroma(frame: AnalysisFrame): ChromaValues | null {
+  const v = frame.sections.get(SectionId.Chroma);
+  if (!v || v.length !== CHROMA_LEN) return null;
+  const root = pitchClass(v[CHROMA_BINS]);
+  const quality = binary(v[CHROMA_BINS + 1]);
+  const tonic = pitchClass(v[CHROMA_BINS + 2]);
+  const mode = binary(v[CHROMA_BINS + 3]);
+  return {
+    chroma: v.subarray(0, CHROMA_BINS),
+    chord: root !== null && quality !== null ? { root, quality } : null,
+    key: tonic !== null && mode !== null ? { tonic, mode } : null,
+  };
+}
+
+/** 重心と変化量のペイロードの長さ */
+export const CENTROID_LEN = 2;
+
+/** 重心と変化量 */
+export interface CentroidValues {
+  /** スペクトルの重心（Hz。周波数を線形のまま振幅で重み付けした平均）。無音のときは 0 */
+  centroidHz: number;
+  /** フラックス（0〜1。前回の解析から増えた分の割合。0 = 変化なし）。無音のときは 0 */
+  flux: number;
+}
+
+export function readCentroid(frame: AnalysisFrame): CentroidValues | null {
+  const v = frame.sections.get(SectionId.Centroid);
+  if (!v || v.length !== CENTROID_LEN) return null;
+  return { centroidHz: v[0], flux: v[1] };
 }

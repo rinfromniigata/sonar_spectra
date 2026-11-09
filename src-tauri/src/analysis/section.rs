@@ -17,16 +17,25 @@ pub enum SectionId {
     Stereo = 4,
     /// ラウドネス（LOUD）の近似とピーク（`loudness.rs`）
     Loudness = 5,
+    /// VU：L・R の針の振れ（`vu.rs`）
+    Vu = 6,
+    /// クロマ：音名ごとの強さ・コードとキーの推定（`chroma.rs`）
+    Chroma = 7,
+    /// 重心と変化量：スペクトルの重心とフラックス（`centroid.rs`）
+    Centroid = 8,
 }
 
 impl SectionId {
     /// 定義済みのすべてのセクション
-    pub const ALL: [SectionId; 5] = [
+    pub const ALL: [SectionId; 8] = [
         SectionId::Level,
         SectionId::Waveform,
         SectionId::Spectrum,
         SectionId::Stereo,
         SectionId::Loudness,
+        SectionId::Vu,
+        SectionId::Chroma,
+        SectionId::Centroid,
     ];
 
     pub fn as_u8(self) -> u8 {

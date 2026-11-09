@@ -9,16 +9,24 @@
 //! 2. 有効な解析を登録順に回し、それぞれ自分のセクションを `SectionWriter` に書き出す
 
 mod bands;
+mod centroid;
+mod chroma;
 mod context;
 mod level;
 mod loudness;
 mod section;
 mod spectrum;
 mod stereo;
+mod vu;
 mod waveform;
 mod window;
 
 pub use bands::LogBands;
+pub use centroid::{CENTROID_LEN, CENTROID_MAX_HZ, CENTROID_MIN_HZ, CentroidAnalyzer};
+pub use chroma::{
+    CHORD_MAJOR, CHORD_MINOR, CHROMA_BINS, CHROMA_LEN, CHROMA_MAX_HZ, CHROMA_MIN_HZ, CHROMA_NONE,
+    ChromaAnalyzer, KEY_MAJOR, KEY_MINOR,
+};
 pub use context::{AnalysisContext, fft_size_for};
 pub use level::{LEVEL_LEN, LevelAnalyzer};
 pub use loudness::{
@@ -32,6 +40,9 @@ pub use stereo::{
     CORRELATION_SECONDS, LISSAJOUS_POINTS, LISSAJOUS_SECONDS, PAN_BANDS, PAN_MAX_HZ, PAN_MIN_HZ,
     STEREO_CORRELATION, STEREO_LEN, STEREO_LISSAJOUS_X, STEREO_LISSAJOUS_Y, STEREO_PAN,
     STEREO_PAN_LEVEL, StereoAnalyzer,
+};
+pub use vu::{
+    VU_DAMPING, VU_FLOOR_DB, VU_LEN, VU_NATURAL_RAD_PER_SEC, VU_REFERENCE_DBFS, VuAnalyzer,
 };
 pub use waveform::{
     BAND_HIGH_MAX_HZ, BAND_LOW_MAX_HZ, BAND_MID_MAX_HZ, WAVE_LEN, WAVE_NOW_POINTS,
@@ -70,6 +81,9 @@ pub fn default_analyzers() -> Vec<Box<dyn Analyzer>> {
         Box::new(SpectrumAnalyzer::new()),
         Box::new(StereoAnalyzer::new()),
         Box::new(LoudnessAnalyzer::new()),
+        Box::new(VuAnalyzer::new()),
+        Box::new(ChromaAnalyzer::new()),
+        Box::new(CentroidAnalyzer::new()),
     ]
 }
 
@@ -247,6 +261,12 @@ mod tests {
             out.section(SectionId::Loudness).unwrap().len(),
             LOUDNESS_LEN
         );
+        assert_eq!(out.section(SectionId::Vu).unwrap().len(), VU_LEN);
+        assert_eq!(out.section(SectionId::Chroma).unwrap().len(), CHROMA_LEN);
+        assert_eq!(
+            out.section(SectionId::Centroid).unwrap().len(),
+            CENTROID_LEN
+        );
     }
 
     /// `reset` が呼ばれた回数を数える解析
@@ -308,6 +328,12 @@ mod tests {
 
         pipeline.set_active_sections(&[SectionId::Spectrum.as_u8()]);
         assert_eq!(pipeline.window_frames(RATE), 2_048);
+
+        // クロマ・重心は FFT の分だけ、VU はレベルと同じ約0.1秒
+        pipeline.set_active_sections(&[SectionId::Chroma.as_u8(), SectionId::Centroid.as_u8()]);
+        assert_eq!(pipeline.window_frames(RATE), 2_048);
+        pipeline.set_active_sections(&[SectionId::Vu.as_u8()]);
+        assert_eq!(pipeline.window_frames(RATE), 4_800);
 
         pipeline.set_active_sections(&[]);
         assert_eq!(pipeline.window_frames(RATE), 0);

@@ -6,6 +6,10 @@ import fixture from "../../src-tauri/src/frame_transport/fixtures/frame_format_v
 import { FrameClient } from "./client";
 import { FLAG_STALE, FORMAT_VERSION, decodeFrame, type AnalysisFrame } from "./format";
 import {
+  CENTROID_LEN,
+  CHROMA_BINS,
+  CHROMA_LEN,
+  ChordQuality,
   LEVEL_LEN,
   LOUDNESS_LEN,
   PAN_BANDS,
@@ -17,12 +21,16 @@ import {
   SPECTRUM_MIN_HZ,
   STEREO_LEN,
   SectionId,
+  VU_LEN,
   WAVE_LEN,
   WAVE_SUMMARY_LEN,
+  readCentroid,
+  readChroma,
   readLevel,
   readLoudness,
   readSpectrum,
   readStereo,
+  readVu,
   readWaveform,
 } from "./sections";
 
@@ -82,12 +90,18 @@ describe("共有のテスト用データ（受信側）", () => {
     expect(sectionValues(SectionId.Spectrum)).toHaveLength(SPECTRUM_LEN);
     expect(sectionValues(SectionId.Stereo)).toHaveLength(STEREO_LEN);
     expect(sectionValues(SectionId.Loudness)).toHaveLength(LOUDNESS_LEN);
+    expect(sectionValues(SectionId.Vu)).toHaveLength(VU_LEN);
+    expect(sectionValues(SectionId.Chroma)).toHaveLength(CHROMA_LEN);
+    expect(sectionValues(SectionId.Centroid)).toHaveLength(CENTROID_LEN);
     const decoded = decodeOk(fromHex(analysisFrame.bytes_hex));
     expect(readLevel(decoded)).not.toBeNull();
     expect(readWaveform(decoded)).not.toBeNull();
     expect(readSpectrum(decoded)).not.toBeNull();
     expect(readStereo(decoded)).not.toBeNull();
     expect(readLoudness(decoded)).not.toBeNull();
+    expect(readVu(decoded)).not.toBeNull();
+    expect(readChroma(decoded)).not.toBeNull();
+    expect(readCentroid(decoded)).not.toBeNull();
   });
 
   // テスト用データの信号：L に 1 kHz・振幅 0.5、R に 3 kHz・振幅 0.25 の正弦波
@@ -122,11 +136,17 @@ describe("共有のテスト用データ（受信側）", () => {
         [SectionId.Spectrum, new Float32Array(SPECTRUM_LEN - 1)],
         [SectionId.Stereo, new Float32Array(STEREO_LEN + 1)],
         [SectionId.Loudness, new Float32Array(LOUDNESS_LEN - 1)],
+        [SectionId.Vu, new Float32Array(VU_LEN + 1)],
+        [SectionId.Chroma, new Float32Array(CHROMA_LEN - 1)],
+        [SectionId.Centroid, new Float32Array(CENTROID_LEN + 1)],
       ]),
     };
     expect(readSpectrum(frame)).toBeNull();
     expect(readStereo(frame)).toBeNull();
     expect(readLoudness(frame)).toBeNull();
+    expect(readVu(frame)).toBeNull();
+    expect(readChroma(frame)).toBeNull();
+    expect(readCentroid(frame)).toBeNull();
   });
 
   it("ラウドネス：値は dB で、ピークは L の振幅 0.5（約 −6 dBFS）", () => {
@@ -134,6 +154,41 @@ describe("共有のテスト用データ（受信側）", () => {
     const values = sectionValues(SectionId.Loudness).map(Math.fround);
     expect([loudness.momentary, loudness.shortTerm, loudness.peak]).toEqual(values);
     expect(loudness.peak).toBeCloseTo(20 * Math.log10(0.5), 2);
+  });
+
+  it("VU：並びどおりに読め、1回分の解析では針がまだ振れきらない（L の方が大きい）", () => {
+    const vu = readVu(decodeOk(fromHex(analysisFrame.bytes_hex)))!;
+    const values = sectionValues(SectionId.Vu).map(Math.fround);
+    expect([vu.left, vu.right]).toEqual(values);
+    expect(vu.left).toBeLessThan(0);
+    expect(vu.left).toBeGreaterThan(vu.right);
+  });
+
+  it("クロマ：1 kHz は B、3 kHz は F♯ に入り、1回分の解析ではコードとキーはまだ推定できない", () => {
+    const chroma = readChroma(decodeOk(fromHex(analysisFrame.bytes_hex)))!;
+    expect(chroma.chroma).toHaveLength(CHROMA_BINS);
+    expect(loudest(chroma.chroma)).toBe(11);
+    const others = Array.from(chroma.chroma).filter((_, i) => i !== 11 && i !== 6);
+    expect(Math.max(...others)).toBe(0);
+    expect(chroma.chroma[6]).toBeGreaterThan(0);
+    expect(chroma.chord).toBeNull();
+    expect(chroma.key).toBeNull();
+  });
+
+  it("クロマ：コードとキーの値は、範囲内の整数だけを読む", () => {
+    const values = new Float32Array(CHROMA_LEN);
+    values.set([9, ChordQuality.Minor, 0, 0], CHROMA_BINS);
+    const frame = (v: Float32Array): AnalysisFrame => ({ seq: 0, sampleRate: 48_000, flags: 0, stale: false, sections: new Map([[SectionId.Chroma, v]]) });
+    expect(readChroma(frame(values))).toMatchObject({ chord: { root: 9, quality: ChordQuality.Minor }, key: { tonic: 0, mode: 0 } });
+    values.set([-1, -1, 12, 0.5], CHROMA_BINS);
+    expect(readChroma(frame(values))).toMatchObject({ chord: null, key: null });
+  });
+
+  it("重心と変化量：重心は 1 kHz と 3 kHz の間で、振幅の大きい 1 kHz 寄り", () => {
+    const centroid = readCentroid(decodeOk(fromHex(analysisFrame.bytes_hex)))!;
+    expect([centroid.centroidHz, centroid.flux]).toEqual(sectionValues(SectionId.Centroid).map(Math.fround));
+    expect(centroid.centroidHz).toBeGreaterThan(1_000);
+    expect(centroid.centroidHz).toBeLessThan(2_000);
   });
 
   it("4バイト境界にそろったセクション（レベル）はビュー、そろっていないセクション（波形）はコピーで読み、どちらも同じ値になる", () => {

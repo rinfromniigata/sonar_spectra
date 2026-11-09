@@ -26,6 +26,9 @@
 //!   3  Spectrum  f32 × SPECTRUM_LEN(96)                   analysis/spectrum.rs
 //!   4  Stereo    f32 × STEREO_LEN(1 + 256 × 2 + 120 × 2)  analysis/stereo.rs
 //!   5  Loudness  f32 × LOUDNESS_LEN(3)                    analysis/loudness.rs
+//!   6  Vu        f32 × VU_LEN(2)                          analysis/vu.rs
+//!   7  Chroma    f32 × CHROMA_LEN(12 + 4)                 analysis/chroma.rs
+//!   8  Centroid  f32 × CENTROID_LEN(2)                    analysis/centroid.rs
 //! ```
 //!
 //! 受信側は、知らない section_id のセクションを length で読み飛ばす。

@@ -214,7 +214,10 @@ fn run(shared: &Shared, mut ticker: Ticker, mut output: impl FnMut(Vec<u8>)) {
 mod tests {
     use super::format::{DecodedFrame, decode};
     use super::*;
-    use crate::analysis::{LEVEL_LEN, LOUDNESS_LEN, SPECTRUM_LEN, STEREO_LEN, SectionId, WAVE_LEN};
+    use crate::analysis::{
+        CENTROID_LEN, CHROMA_LEN, LEVEL_LEN, LOUDNESS_LEN, SPECTRUM_LEN, STEREO_LEN, SectionId,
+        VU_LEN, WAVE_LEN,
+    };
     use crate::audio_source::{FrameSink, frame_ring};
     use std::sync::mpsc;
 
@@ -261,7 +264,16 @@ mod tests {
         let lens: Vec<usize> = first.sections.iter().map(|(_, v)| v.len()).collect();
         assert_eq!(
             lens,
-            [LEVEL_LEN, WAVE_LEN, SPECTRUM_LEN, STEREO_LEN, LOUDNESS_LEN]
+            [
+                LEVEL_LEN,
+                WAVE_LEN,
+                SPECTRUM_LEN,
+                STEREO_LEN,
+                LOUDNESS_LEN,
+                VU_LEN,
+                CHROMA_LEN,
+                CENTROID_LEN
+            ]
         );
         assert!((first.sections[0].1[0] - 0.5).abs() < 0.01);
 
