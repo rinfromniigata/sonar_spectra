@@ -18,6 +18,7 @@ import { createPaletteActions } from "../components/palette_actions";
 import { moduleRegistry } from "../modules";
 import { CONFIG_FORMAT, buildConfigFile, type ConfigFileIo } from "./config_file";
 import { createConfigStore, type ConfigPersistence, type ConfigStore } from "./config_store";
+import { DEFAULT_PALETTE_ID, resolvePaletteColors } from "./palettes";
 import { createDefaultState, normalizeState } from "./persisted_state";
 import { configOf, configsEqual } from "./saved_configs";
 import { STATE_SCHEMA, type PersistedState, type SavedConfig } from "./types";
@@ -363,5 +364,61 @@ describe("書き出し・読み込みの中身（W7-3）", () => {
     expect(b.manager.requestSwitch(imported.id)).toBe("switched");
     expect(configsEqual(b.config.current.value, original)).toBe(true);
     expect(b.config.state.value.source.deviceId).toBeNull();
+  });
+});
+
+describe("自分で作った配色の削除（W7-4）", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("削除すると、それを使っていたインスタンスだけが既定の配色に戻り、保存して起動し直しても戻ったまま。描画も既定の配色になる", async () => {
+    const pc = await startPc("a", new Map());
+    pc.palettes.create();
+    pc.palettes.create();
+    const [mine, other] = pc.config.current.value.customPalettes.map((p) => p.id);
+    pc.config.updateCurrent((c) => {
+      const [first, second, third, fourth] = c.layout.instances;
+      first.paletteId = mine;
+      second.paletteId = mine;
+      third.paletteId = other;
+      fourth.paletteId = "preset.c";
+    });
+    const before = pc.config.current.value.layout.instances.map((i) => i.paletteId);
+
+    pc.palettes.remove(mine);
+    await vi.runAllTimersAsync();
+
+    const after = pc.config.current.value.layout.instances.map((i) => i.paletteId);
+    expect(after.slice(0, 4)).toEqual([DEFAULT_PALETTE_ID, DEFAULT_PALETTE_ID, other, "preset.c"]);
+    expect(after.slice(4)).toEqual(before.slice(4));
+    expect(pc.config.current.value.customPalettes.map((p) => p.id)).toEqual([other]);
+    expect(pc.config.dirty.value).toBe(true);
+
+    // 起動し直しても戻ったまま
+    const again = await startPc("a2", new Map(), pc.disk);
+    expect(again.config.current.value.layout.instances.slice(0, 2).map((i) => i.paletteId)).toEqual([DEFAULT_PALETTE_ID, DEFAULT_PALETTE_ID]);
+    expect(again.config.current.value.customPalettes.map((p) => p.id)).toEqual([other]);
+
+    // 描画に渡る色は、既定の配色（マゼンタ主）
+    const colors = { bg: "BG", grid: "G", line: "L", text: "T", textMuted: "M", neonA: "A", neonB: "B", neonC: "C", danger: "D", fontNumeric: "N", theme: "dark" } as const;
+    const id = again.config.current.value.layout.instances[0].paletteId;
+    const resolved = resolvePaletteColors(id, colors, again.config.current.value.customPalettes);
+    expect([resolved.main, resolved.sub, resolved.accent]).toEqual(["A", "B", "C"]);
+  });
+
+  it("保存済みの構成に残る配色には触れない（今の構成で消しても、保存済みの構成は変わらない）", async () => {
+    const pc = await startPc("a", new Map());
+    pc.palettes.create();
+    const id = pc.config.current.value.customPalettes[0].id;
+    pc.manager.startSaveAs();
+    pc.manager.submitName("配色あり");
+    pc.palettes.remove(id);
+    expect(pc.config.current.value.customPalettes).toEqual([]);
+    expect(pc.config.activeConfig.value!.customPalettes.map((p) => p.id)).toEqual([id]);
+    expect(pc.config.dirty.value).toBe(true);
   });
 });
