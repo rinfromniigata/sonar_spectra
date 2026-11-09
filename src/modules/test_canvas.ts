@@ -16,6 +16,8 @@ export interface RecordingCanvas {
   texts: { text: string; x: number; y: number; style: string; font: string }[];
   /** drawImage の呼び出し（画像と、続く引数） */
   images: { image: unknown; args: number[] }[];
+  /** arc の呼び出し（パスの点には中心しか残らないので、半径と角度はここに残す） */
+  arcs: { x: number; y: number; radius: number; start: number; end: number; counterClockwise: boolean }[];
   clear(): void;
 }
 
@@ -23,6 +25,7 @@ export function recordingCanvas(): RecordingCanvas {
   const shapes: DrawnShape[] = [];
   const texts: { text: string; x: number; y: number; style: string; font: string }[] = [];
   const images: { image: unknown; args: number[] }[] = [];
+  const arcs: RecordingCanvas["arcs"] = [];
   const state: Record<string, unknown> = {
     fillStyle: "",
     strokeStyle: "",
@@ -59,7 +62,10 @@ export function recordingCanvas(): RecordingCanvas {
     setLineDash: (segments: number[]) => {
       dash = [...segments];
     },
-    arc: (x: number, y: number) => path.push([x, y]),
+    arc: (x: number, y: number, radius: number, start: number, end: number, counterClockwise = false) => {
+      path.push([x, y]);
+      arcs.push({ x, y, radius, start, end, counterClockwise });
+    },
     createLinearGradient: () => ({ addColorStop() {} }),
     createRadialGradient: () => ({ addColorStop() {} }),
     clearRect: () => {},
@@ -80,10 +86,12 @@ export function recordingCanvas(): RecordingCanvas {
     shapes,
     texts,
     images,
+    arcs,
     clear: () => {
       shapes.length = 0;
       texts.length = 0;
       images.length = 0;
+      arcs.length = 0;
     },
   };
 }

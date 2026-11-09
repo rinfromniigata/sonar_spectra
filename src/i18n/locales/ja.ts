@@ -48,6 +48,8 @@ const ja = {
     spectrogram: "スペクトログラム",
     loudness: "ラウドネス",
     chroma_key: "キー {key}",
+    chroma_key_major: "{tonic} major",
+    chroma_key_minor: "{tonic} minor",
     loudness_unit: "LOUD",
     loudness_peak: "ピーク {value} dB",
   },

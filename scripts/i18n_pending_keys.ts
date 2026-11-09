@@ -19,8 +19,5 @@ export const PENDING_KEYS: readonly string[] = [
   // Phase 7：配色と構成（T7-2〜T7-5）
 
   // Phase 8：追加のモジュール（T8-2〜T8-4）
-  "modules.vu",
-  "modules.chroma",
-  "modules.chroma_key",
   "modules.centroid",
 ];
