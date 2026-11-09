@@ -6,6 +6,8 @@
 //! JavaScript からの引数名はキャメルケース（`onFrame`、`deviceId`、`paused`、`ids`）。
 //! 入力源の状態はイベント `source-status`（`audio_engine::SOURCE_STATUS_EVENT`）で届く。
 //! 保存（`load_state`・`save_state`）は `SettingsStore` に渡すだけにする。
+//! 構成ファイルの検証（`validate_config_file`）は `settings_store::config_file` に渡すだけにする
+//! （ファイルの読み書き自体は、UI が `tauri-plugin-dialog` で選んだパスに `tauri-plugin-fs` で行う）。
 
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
@@ -15,6 +17,8 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 use crate::audio_engine::AudioEngine;
 use crate::audio_source::DeviceInfo;
 use crate::frame_transport::channel_output;
+use crate::settings_store::config_file::parse_config_file;
+use crate::settings_store::model::SavedConfig;
 use crate::settings_store::{LoadOutcome, PersistedState, SettingsStore};
 
 /// アプリが管理するエンジン
@@ -102,4 +106,11 @@ pub fn load_state(store: State<'_, StoreState>) -> Result<Option<PersistedState>
 #[tauri::command(async)]
 pub fn save_state(store: State<'_, StoreState>, state: PersistedState) -> Result<(), String> {
     lock_store(&store).save(&state).map_err(|e| e.to_string())
+}
+
+/// 読み込んだ構成ファイルの本文を確かめ（古い `schema` は移行し）、中の保存済み構成を返す。
+/// 形式の違う・壊れたファイルは `Err`（理由）を返す。`state.json` には触れない
+#[tauri::command]
+pub fn validate_config_file(text: String) -> Result<SavedConfig, String> {
+    parse_config_file(&text)
 }

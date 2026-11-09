@@ -28,6 +28,7 @@
 // - 配色の管理（S02a）：実行中の状態のストアのドロワーが palettes のときに重ねる（PaletteDrawer）。作る・複製・削除・編集は
 //   palette_actions で構成に書く。インスタンスの設定の「＋ 配色を作る」は、そのインスタンスの今の配色を写した配色を作って当て、
 //   インスタンスの設定を閉じて配色の管理を開く。自分で作った配色は、格子（各モジュールの描画）とインスタンスの設定に渡す
+// - 構成の管理（S02b）：ドロワーが configs のときに重ねる（ConfigDrawer。操作は中の config_manager が構成のストアに書く）
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from "vue";
 import type { Channel } from "@tauri-apps/api/core";
 import { useRuntimeStore } from "../app/runtime_store";
@@ -45,6 +46,7 @@ import type { AnyModuleDefinition } from "../modules/types";
 import { provideRenderLoop } from "../render/use_render_loop";
 import { useWindowController } from "../window";
 import { createDeviceSelection, useSourceStatus } from "../source";
+import ConfigDrawer from "./ConfigDrawer.vue";
 import CrtOverlay from "./CrtOverlay.vue";
 import InstanceList from "./InstanceList.vue";
 import InstanceSettings from "./InstanceSettings.vue";
@@ -284,6 +286,7 @@ defineExpose({ client, channel: () => channel });
       />
     </UiPopover>
     <SettingsDrawer v-if="drawer === 'settings'" @select-device="devices.choose" @edit-layout="startLayoutEdit" />
+    <ConfigDrawer v-else-if="drawer === 'configs'" />
     <PaletteDrawer
       v-else-if="drawer === 'palettes'"
       @create="paletteActions.create"

@@ -17,12 +17,6 @@ export const PENDING_KEYS: readonly string[] = [
   // Phase 6：インスタンスの設定（T6-1〜T6-4）
 
   // Phase 7：配色と構成（T7-2〜T7-5）
-  "config.title",
-  "config.hint",
-  "config.in_use",
-  "config.export",
-  "config.import",
-  "config.meta",
 
   // Phase 8：追加のモジュール（T8-2〜T8-4）
   "modules.vu",

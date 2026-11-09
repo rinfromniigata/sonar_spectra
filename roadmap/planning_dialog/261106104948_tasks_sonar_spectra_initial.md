@@ -635,10 +635,27 @@ Phaseの推奨: Opus・high以上
     - 判定を改めたため、`instance_settings_flow.test.ts`の準備（波形の2つ目を今の構成にだけ足していた）を、保存済みの「既定」にも同じものを足す形に直した（新しい判定では「変更あり」になるため。試験の意図は変えていない）
     - 書き出し・読み込み（imple 5.2の12・13）は、T7-4で作る
   - 実施メモ（261109）：単体テスト19件（`saved_configs`10・構成のストア9。imple 5.2の9〜11の流れ、上書き・別名で保存・破棄での切り替え、使用中は削除できない、同じ名前を許す、変えて戻すと変更なし、を含む）を加えた。`bun run check`は通った（UI 661件・Rust 114件）
-- [ ] T7-4 【エージェント】構成の管理（S02b）を作る。一覧（名前、配置の種類・モジュール数・保存日を`Intl`で整形）、使用中の表示、切り替え・複製・削除、書き出し・読み込み（`tauri-plugin-dialog`・`tauri-plugin-fs`、権限は選んだパスに限る、`validate_config_file`での検証）
+- [x] T7-4 【エージェント】構成の管理（S02b）を作る。一覧（名前、配置の種類・モジュール数・保存日を`Intl`で整形）、使用中の表示、切り替え・複製・削除、書き出し・読み込み（`tauri-plugin-dialog`・`tauri-plugin-fs`、権限は選んだパスに限る、`validate_config_file`での検証）
   - 推奨: Opus・high以上
   - 依存: T4-1, T7-3
   - 画面: S02b
+  - 実施: Opus
+  - 実施メモ（261109）：作ったもの
+    - `src/components/ConfigDrawer.vue`（S02b）：説明 → 一覧 →「名前を付けて保存」「ファイルから読み込む」→ お知らせ。行は、名前（押すとその構成に切り替える。読み上げは「{name}に切り替える」）、使用中の印、「{配置の種類}・モジュール{有効な数}・{保存日}」（`formatInteger`・`formatDate`）、書き出し・複製・削除。使用中の構成の削除ボタンは押せない
+    - `src/components/config_manager.ts`：切り替えの確認・名前の入力・お知らせの状態と、操作の流れ
+    - `src/config/config_file.ts`：構成ファイルの形（imple 5.2の12の`{ format: "sonar_spectra.config", schema: 1, config }`）、保存ダイアログに出すファイル名（Windowsで使えない文字は`_`）、書き出し・読み込みの流れ。ダイアログとファイルの読み書きと検証は、差し替えられる呼び出し口（`ConfigFileIo`）にした
+    - Rust：`settings_store/config_file.rs`と、コマンド`validate_config_file(text) -> SavedConfig`（imple 3.5）。`format`が違う・JSONでない・`schema`が分からない／新しすぎる・型や決まり（インスタンスのIDの重なり、格子の外）に合わない・名前が空のものを拒否する。古い`schema`は`CONFIG_STEPS`で移行する（`state.json`の`STEPS`と同じ数を持つことをテストで確かめる）
+    - 構成のストアに`importConfig`（新しいIDで末尾に足し、モジュールの設定の既定値を補う。使用中・今の構成は変えない）を足した（imple 5.2の13・5.4の二重読み込み）
+  - 実施メモ（261109）：プラグインと権限
+    - `tauri-plugin-dialog` 2.8.4・`tauri-plugin-fs` 2.7.1（crates.ioの最新は3.0のアルファのため、Tauri 2系に合わせて2系。`Cargo.toml`は`2.8`・`2.7`で系列内に固定）と、JSの`@tauri-apps/plugin-dialog` 2.8.4・`@tauri-apps/plugin-fs` 2.7.1を入れ、`lib.rs`で登録した
+    - 権限は`dialog:allow-open`・`dialog:allow-save`・`fs:allow-read-text-file`・`fs:allow-write-text-file`だけで、fsの範囲（scope）は書いていない。ダイアログで選んだファイルが、その都度fsの範囲に足される（入れた`tauri-plugin-dialog`のソースの`commands.rs`で、`open`・`save`が選んだパスに`allow_file`を呼ぶことを確かめた）。そのため、読み書きできるのはダイアログで選んだファイルだけ
+  - 実施メモ（261109）：委任の範囲で決めたもの
+    - 切り替え：変更があれば、一覧の下に確認（「「{name}」に切り替える前に、今の変更をどうするか選ぶ」と、上書き・別の名前で保存・破棄・キャンセル）を出す。別の名前で保存と「名前を付けて保存」は名前の入力を出す（初めの値は「{使用中の名前}のコピー」、40文字まで、空なら保存ボタンを押せない）。確認と名前の入力の中のEscは、それだけを閉じる
+    - 複製は「{name}のコピー」を確かめずに足す。削除も確かめない（モックに確認がなく、imple 5.4のとおり一覧から消えるだけのため）
+    - 書き出しは、保存済みの構成（使用中なら保存した時点の内容）を書く。今の未保存の変更は含まない。ファイル名の初めの値は構成の名前
+    - お知らせ：書き出した・読み込んだ（「一覧から切り替えて使う」）・書き出せなかった・読み込めなかった。ダイアログで選ばなかったときは何も出さない
+    - 辞書に`common.save`・`common.cancel`・`config.switch_to`・`config.name`・`config.copy_name`・`config.confirm_*`（4つ）・`config.file_filter`・`config.file_fallback_name`・`config.exported`・`config.export_failed`・`config.imported`・`config.import_failed`を足した。使い始めた`config.title`ほか6キーを使用予定から外した
+  - 実施メモ（261109）：設定パネルの「構成を管理」「名前を付けて保存」と、構成のセレクトでの切り替え（確認つき）はT7-5でつなぐ（`openDrawer("configs", "settings")`で開く）。それまで画面からS02bを開く手段はない。単体テストはUI 28件（`config_file`7・`config_manager`10・`ConfigDrawer`のSSR 7・`saved_configs`2・構成のストア1・`MeterScreen`1）とRust 7件（`config_file`）を加えた。`bun run check`は通った（UI 689件・Rust 121件）。`bun run build`も通った。実際のダイアログでの書き出し・読み込み（権限の範囲を含む）は、T7-5でつないでから実機（W7-3）で確かめる
 - [ ] T7-5 【エージェント】設定パネルの「構成を管理」「名前を付けて保存」「配色を管理」をつなぐ
   - 推奨: Sonnet・medium以上
   - 依存: T7-2, T7-4

@@ -10,6 +10,7 @@
 //! - 既定の状態は作らない。既定の構成の名前（辞書）とインスタンスの既定値（モジュールのレジストリ）は
 //!   UI が正本なので、`load` が `None` を返したら UI が既定の状態を作って保存する
 
+pub mod config_file;
 pub mod migrate;
 pub mod model;
 

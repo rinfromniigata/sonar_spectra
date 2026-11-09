@@ -421,3 +421,41 @@ describe("構成の操作（T7-3）", () => {
     expect(s.state.value).toBe(before);
   });
 });
+
+describe("構成の読み込み（T7-4）", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("新しい ID で一覧に足し、モジュールの設定の既定値を補う。使用中・今の構成・変更ありは変えず、自動保存する", async () => {
+    const p = fakePersistence(defaultState());
+    const { store: s } = store(p.persistence);
+    await s.restore();
+    const file = structuredClone(s.state.value.savedConfigs[0]);
+    file.id = "c-from-file";
+    file.name = "別のPCの構成";
+    const spec = file.layout.instances.find((i) => i.kind === "spec")!;
+    spec.options = { mode: "bars" } as typeof spec.options;
+    const current = s.current.value;
+
+    const id = s.importConfig(file)!;
+    expect(id).toBe("saved-1");
+    const added = s.state.value.savedConfigs[1];
+    expect(added.name).toBe("別のPCの構成");
+    expect(added.layout.instances.find((i) => i.kind === "spec")!.options).toEqual({ mode: "bars", ghost: true });
+    expect(s.activeConfig.value?.id).toBe("c-1");
+    expect(s.current.value).toEqual(current);
+    expect(s.dirty.value).toBe(false);
+
+    // 同じものをもう1度読み込むと、別の ID でもう1件
+    expect(s.importConfig(file)).toBe("saved-2");
+    expect(s.state.value.savedConfigs).toHaveLength(3);
+    expect(s.importConfig({ ...file, name: "" })).toBeNull();
+
+    await vi.runAllTimersAsync();
+    expect(p.saved[p.saved.length - 1]?.savedConfigs).toHaveLength(3);
+  });
+});

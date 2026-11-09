@@ -29,6 +29,10 @@ pub fn run() {
                 .with_state_flags(window_state_flags())
                 .build(),
         )
+        // 構成の書き出し・読み込み。fs の権限には場所を書かず、ダイアログで選んだファイルだけが
+        // その都度許可される（tauri-plugin-dialog が選んだパスを fs の範囲に足す）
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             let handle = app.handle().clone();
             let engine = AudioEngine::new(audio_source::default_source(), move |event| {
@@ -49,6 +53,7 @@ pub fn run() {
             commands::set_active_sections,
             commands::load_state,
             commands::save_state,
+            commands::validate_config_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

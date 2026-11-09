@@ -132,6 +132,16 @@ describe("MeterScreen", () => {
     expect(html.indexOf("crt-overlay")).toBeGreaterThan(html.indexOf("palette-drawer"));
   });
 
+  it("構成の管理（S02b）は、ドロワーが configs のときだけ重ねる", async () => {
+    expect(await render()).not.toContain("config-drawer");
+    const runtime = createRuntimeStore();
+    runtime.openDrawer("configs", "settings");
+    const html = await render(undefined, runtime);
+    expect(html).toContain("config-drawer");
+    expect(html).not.toContain("settings-drawer");
+    expect(html).not.toContain("palette-drawer");
+  });
+
   it("自分で作った配色を使うモジュールも、格子に置く（知らない配色IDでも置ける）", async () => {
     const html = await render((config) => {
       config.customPalettes = [{ id: "custom.mine", name: "マイ配色 1", main: "#b7ff3c", sub: "#8b5cff", accent: "#ffb547" }];

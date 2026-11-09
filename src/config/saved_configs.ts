@@ -6,6 +6,7 @@
 //   （変更があるときに上書き・別名で保存・破棄のどれにするかを確かめるのは、ストアの switchConfig）
 // - 複製：保存済み構成の写しを、新しい id・name・savedAt で元のすぐ後ろに足す。使用中は変えない
 // - 削除：使用中の構成は消せない。それ以外は一覧から消すだけで、今の構成は変えない
+// - 読み込み：検証済みの構成を新しい id で末尾に足す。使用中は変えない（一覧から切り替えて使う）
 // - 同じ名前は許し、id で区別する（imple 5.4）
 // - 変更ありの判定：今の構成と、使用中の保存済み構成の中身（配置・モジュールの設定・自分で作った配色・テーマと表示）を比べる。
 //   変えてから元に戻せば、変更なしに戻る
@@ -94,6 +95,17 @@ export function duplicate(state: PersistedState, sourceId: string, name: string,
   const copy: SavedConfig = { ...configOf(state.savedConfigs[index]), id, name: normalized, savedAt: now.toISOString() };
   const savedConfigs = [...state.savedConfigs.slice(0, index + 1), copy, ...state.savedConfigs.slice(index + 1)];
   return { ...state, savedConfigs };
+}
+
+/**
+ * 読み込んだ構成を、新しい id で末尾に足す（imple 5.2 の13）。名前と保存日はファイルのまま。使用中と今の構成は変えない。
+ * 同じファイルを2回読み込めば2件になる（imple 5.4）。名前が空なら null
+ */
+export function importConfig(state: PersistedState, saved: SavedConfig, id: string): PersistedState | null {
+  const name = normalizeConfigName(saved.name);
+  if (name === null) return null;
+  const added: SavedConfig = { ...configOf(saved), id, name, savedAt: saved.savedAt };
+  return { ...state, savedConfigs: [...state.savedConfigs, added] };
 }
 
 /** 削除できるか（使用中でなく、一覧にある） */

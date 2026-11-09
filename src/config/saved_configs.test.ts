@@ -8,6 +8,7 @@ import {
   configOf,
   configsEqual,
   duplicate,
+  importConfig,
   isModified,
   normalizeConfigName,
   overwrite,
@@ -162,5 +163,28 @@ describe("保存済みの構成の操作", () => {
     expect(next.savedConfigs.map((c) => c.id)).toEqual(["c-club"]);
     expect(next.current).toBe(state.current);
     expect(next.activeConfigId).toBe("c-club");
+  });
+});
+
+describe("読み込み（imple 5.2 の13・5.4）", () => {
+  it("新しい ID で末尾に足す。名前と保存日はファイルのまま。使用中と今の構成は変えない", () => {
+    const state = base();
+    const file = { ...saveAs(base(), "クラブ用", "c-other-pc", T1)!.savedConfigs[1], theme: "light" as const };
+    const next = importConfig(state, file, "c-imported")!;
+    expect(next.savedConfigs.map((c) => [c.id, c.name])).toEqual([
+      ["c-default", "既定"],
+      ["c-imported", "クラブ用"],
+    ]);
+    expect(next.savedConfigs[1]).toEqual({ ...configOf(file), id: "c-imported", name: "クラブ用", savedAt: T1.toISOString() });
+    expect(next.activeConfigId).toBe("c-default");
+    expect(next.current).toBe(state.current);
+    expect(next.dirty).toBe(state.dirty);
+  });
+
+  it("同じファイルを2回読み込むと2件になる。名前が空なら足さない", () => {
+    const file = base().savedConfigs[0];
+    const twice = importConfig(importConfig(base(), file, "c-a")!, file, "c-b")!;
+    expect(twice.savedConfigs.map((c) => c.id)).toEqual(["c-default", "c-a", "c-b"]);
+    expect(importConfig(base(), { ...file, name: " " }, "c-x")).toBeNull();
   });
 });

@@ -8,6 +8,10 @@
     "core:window:allow-destroy",
     "core:window:allow-is-fullscreen",
     "core:window:allow-set-fullscreen",
-    "core:window:allow-set-always-on-top"
+    "core:window:allow-set-always-on-top",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file"
   ]
 }

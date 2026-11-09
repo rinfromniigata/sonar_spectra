@@ -15,6 +15,7 @@ import {
   canRemove,
   duplicate,
   findSavedConfig,
+  importConfig as importConfigState,
   isModified,
   overwrite as overwriteState,
   remove,
@@ -91,6 +92,11 @@ export interface ConfigStore {
   canRemoveConfig(id: string): boolean;
   /** 保存済み構成を削除する。使用中・ない構成なら false（何もしない） */
   removeConfig(id: string): boolean;
+  /**
+   * 読み込んで検証した構成を、新しい ID で一覧の末尾に足す（使用中は変えない）。モジュールの設定の既定値を補う。
+   * 足した構成の ID を返す。名前が空なら null
+   */
+  importConfig(saved: SavedConfig): string | null;
   /** 入力源のデバイスを変える。構成には含めないので「保存後に変更あり」にはならない */
   setDeviceId(deviceId: string | null): void;
   /** 間を置いている保存を、すぐに行って終わるまで待つ（ウィンドウを閉じるとき） */
@@ -227,6 +233,14 @@ export function createConfigStore(options: ConfigStoreOptions): ConfigStore {
     return true;
   }
 
+  function importConfig(saved: SavedConfig): string | null {
+    const id = newConfigId();
+    const next = importConfigState(state.value, saved, id);
+    if (!next) return null;
+    commit(normalize(next));
+    return id;
+  }
+
   function setDeviceId(deviceId: string | null): void {
     if (state.value.source.deviceId === deviceId) return;
     commit({ ...state.value, source: { deviceId } });
@@ -251,6 +265,7 @@ export function createConfigStore(options: ConfigStoreOptions): ConfigStore {
     duplicateConfig,
     canRemoveConfig: (id) => canRemove(state.value, id),
     removeConfig,
+    importConfig,
     setDeviceId,
     flush,
     dispose: clearTimer,
