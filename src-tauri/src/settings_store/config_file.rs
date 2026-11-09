@@ -105,8 +105,12 @@ mod tests {
         let text = with(|v| {
             v["extra"] = json!(1);
             v["config"]["window"] = json!({ "x": 10 });
+            v["config"]["source"] = json!({ "deviceId": "dev-1" });
         });
-        assert!(parse_config_file(&text).is_ok());
+        let saved = parse_config_file(&text).unwrap();
+        // ウィンドウの位置と入力源のデバイスは構成に含めない：紛れ込んでいても、UI に返す値には入らない
+        let returned = serde_json::to_string(&saved).unwrap();
+        assert!(!returned.contains("window") && !returned.contains("deviceId") && !returned.contains("dev-1"));
     }
 
     #[test]

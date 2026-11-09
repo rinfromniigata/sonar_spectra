@@ -278,3 +278,90 @@ describe("imple 5.4 の規則（W7-2）", () => {
     expect(pc.disk.saves()).toBe(saves);
   });
 });
+
+describe("書き出し・読み込みの中身（W7-3）", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** JSON の中のキーを、入れ子もたどってすべて集める */
+  function allKeys(value: unknown, keys = new Set<string>()): Set<string> {
+    if (Array.isArray(value)) value.forEach((v) => allKeys(v, keys));
+    else if (value !== null && typeof value === "object") {
+      for (const [k, v] of Object.entries(value)) {
+        keys.add(k);
+        allKeys(v, keys);
+      }
+    }
+    return keys;
+  }
+
+  it("配置・モジュールの設定・自分で作った配色・テーマと表示の設定が、書き出して読み込むと一致し、入力源のデバイスは含まれない", async () => {
+    const files: Files = new Map();
+    const a = await startPc("a", files);
+
+    // 配置（手動配置・方向）、モジュールの設定、自分で作った配色（使用中）、テーマ、表示の設定を、既定から変える
+    a.palettes.create();
+    const paletteId = a.config.current.value.customPalettes[0].id;
+    a.palettes.update(paletteId, { name: "夜明け", main: "#ff3d9a", sub: "#3df0ff", accent: "#ffd23d" });
+    a.config.updateCurrent((c) => {
+      c.layout.mode = "manual";
+      c.layout.instances.forEach((instance, index) => {
+        instance.rect = instance.enabled ? { c: 1 + (index % 6) * 2, r: 1 + Math.floor(index / 6) * 4, cs: 2, rs: 4 } : null;
+      });
+      const wave = c.layout.instances.find((i) => i.kind === "wave")!;
+      wave.direction = "right";
+      wave.paletteId = paletteId;
+      Object.assign(wave.options, { channel: "mono", showNow: false, split: 40, histColor: "bands", speed: 2.5 });
+      const spec = c.layout.instances.find((i) => i.kind === "spec")!;
+      Object.assign(spec.options, { mode: "radial", ghost: false });
+      c.theme = "light";
+      c.display = { scanline: false, alwaysOnTop: true, startFullscreen: true };
+    });
+    // 構成に含めないもの：入力源のデバイス
+    a.config.setDeviceId("{0.0.0.00000000}.{device-a}");
+    a.manager.startSaveAs();
+    a.manager.submitName("クラブ用");
+    const club = a.config.activeConfig.value!;
+    expect(a.config.state.value.source.deviceId).toBe("{0.0.0.00000000}.{device-a}");
+
+    a.pick.path = "E:/club.json";
+    await a.manager.exportConfig(club.id);
+
+    // ファイルの中身：構成の4項目と id・name・savedAt だけ。デバイスもウィンドウの位置もない
+    const written = JSON.parse(files.get("E:/club.json")!) as { config: Record<string, unknown> };
+    expect(Object.keys(written.config).sort()).toEqual(["customPalettes", "display", "id", "layout", "name", "savedAt", "theme"]);
+    const keys = allKeys(written);
+    for (const forbidden of ["source", "deviceId", "window", "position", "x", "y", "width", "height", "monitor"]) {
+      expect(keys.has(forbidden), forbidden).toBe(false);
+    }
+    expect(files.get("E:/club.json")).not.toContain("device-a");
+
+    // 別の PC（入力源は既定の出力デバイス）で読み込むと、4項目が一致する
+    const b = await startPc("b", files);
+    expect(b.config.state.value.source.deviceId).toBeNull();
+    b.pick.path = "E:/club.json";
+    await b.manager.importConfig();
+    const imported = b.config.state.value.savedConfigs[1];
+    const original = configOf(club);
+    expect(imported.layout).toEqual(original.layout);
+    expect(imported.customPalettes).toEqual(original.customPalettes);
+    expect(imported.customPalettes[0].name).toBe("夜明け");
+    expect(imported.theme).toBe("light");
+    expect(imported.display).toEqual({ scanline: false, alwaysOnTop: true, startFullscreen: true });
+    const wave = imported.layout.instances.find((i) => i.kind === "wave")!;
+    expect(wave.options).toEqual({ channel: "mono", showNow: false, split: 40, histColor: "bands", speed: 2.5 });
+    expect(wave.paletteId).toBe(paletteId);
+    expect(wave.direction).toBe("right");
+    expect(imported.layout.mode).toBe("manual");
+
+    // 読み込んでも、b の入力源のデバイスは変わらない。切り替えると構成は a と同じになるが、デバイスは既定のまま
+    expect(b.config.state.value.source.deviceId).toBeNull();
+    expect(b.manager.requestSwitch(imported.id)).toBe("switched");
+    expect(configsEqual(b.config.current.value, original)).toBe(true);
+    expect(b.config.state.value.source.deviceId).toBeNull();
+  });
+});
