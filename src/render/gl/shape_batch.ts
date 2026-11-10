@@ -13,7 +13,7 @@ import { fillBand, fillPoints, fillPolygon, fillRects, strokePolyline, type Mesh
 export const FLOATS_PER_VERTEX = 9;
 
 export type BatchCommand =
-  /** 番号の並びの first から count 個（三角形）を描く。glow は発光の値（発光は T9-6） */
+  /** 番号の並びの first から count 個（三角形）を描く。glow は発光の値（0 より大きければ、描画の層が発光を敷く） */
   | { kind: "shapes"; first: number; count: number; glow: number }
   | { kind: "image"; stream: StreamImage; dest: Rect; alpha: number };
 

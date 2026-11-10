@@ -6,7 +6,9 @@
 // （実測で、縮小した画像の上で標準偏差 b/2 × 縮小率のぼかしをかけると、明るさの広がりがほぼ一致した）。
 // 発光の色は形の色そのもの（shadowColor を形の色にしていた描き方と同じ）。違う色にしたい形は、
 // paint が glow の回で色を変える。
+// 縮小率と標準偏差は、描画の層の発光（render/gl/glow）と同じ関数を使う（T9-8 でこの層を片付けるまで）。
 
+import { glowDeviation, glowScale } from "../render/gl/glow";
 import { createBrowserBuffer, type OffscreenBuffer } from "./types";
 
 /** 形を描く関数。発光の回（縮小した画像）と、そのままの回（画面）の2回呼ぶ */
@@ -20,15 +22,6 @@ export interface GlowLayer {
   dispose(): void;
 }
 
-/** 縮小率：ぼかしが大きいほど小さくできる（縮小した画像の上での標準偏差が 1.5〜3ピクセル程度になるように） */
-export function glowScale(blur: number): number {
-  return blur > 12 ? 0.25 : 0.5;
-}
-
-/** 縮小した画像の上での、ぼかしの標準偏差（px） */
-export function glowDeviation(blur: number): number {
-  return (blur / 2) * glowScale(blur);
-}
 
 interface ScaledBuffers {
   /** 形を描く画像と、それをぼかした画像（同じ大きさ） */

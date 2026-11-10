@@ -3,6 +3,7 @@
 // - begin：まとめを空にし、今の枠の範囲（配置の状態から求めたもの）を受け取る
 // - モジュールの描画：ModuleFrame が sink(枠, 大きさと向き) で受け口を得て、モジュールが図形を出す（その場で三角形に展開して積む）
 // - end：全体を透明にし、枠ごとに、範囲を切り抜きとビューポートにして地の色で塗り、そのモジュールの図形を描く
+//   （発光の値を持つ図形は、先に発光を敷いてから描く。gl_glow）
 // コンテキストの喪失：webglcontextlost で preventDefault して描くのを止め（状態は lost）、webglcontextrestored で
 // シェーダー・バッファ・テクスチャを作り直して再開する。流れる画像の中身は消えたところから描き直す。
 // WebGL2 を作れないときは unavailable にし、描かない（Canvas 2D の描き方へは戻さない）。
@@ -122,7 +123,7 @@ export class ShapeLayer implements RenderLayer {
       if (!record || record.commands.length === 0) continue;
       const matrix = frameClipMatrix(record.turns, record.width, record.height);
       for (const command of record.commands) {
-        if (command.kind === "shapes") renderer.shapes(matrix, command.first, command.count);
+        if (command.kind === "shapes") renderer.shapes(matrix, command.first, command.count, command.glow);
         else renderer.streamImage(matrix, command.stream, command.dest, command.alpha);
       }
     }

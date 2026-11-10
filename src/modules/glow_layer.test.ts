@@ -1,14 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createGlowLayer, glowDeviation, glowScale, type GlowPaint } from "./glow_layer";
+import { createGlowLayer, type GlowPaint } from "./glow_layer";
 import { recordingBuffers, recordingCanvas } from "./test_canvas";
 
-describe("glowScale・glowDeviation", () => {
-  it("発光 12 までは 1/2、それより大きいと 1/4 に縮小し、縮小した画像の上で標準偏差 b/2 × 縮小率のぼかしにする", () => {
-    expect([glowScale(4), glowScale(10), glowScale(12), glowScale(20), glowScale(24)]).toEqual([0.5, 0.5, 0.5, 0.25, 0.25]);
-    expect(glowDeviation(10)).toBe(2.5);
-    expect(glowDeviation(24)).toBe(3);
-  });
-});
+// 縮小率と標準偏差（glowScale・glowDeviation）は render/gl/glow.test.ts で確かめる
 
 describe("createGlowLayer", () => {
   function setup(width = 200, height = 80, dpr = 1.5) {

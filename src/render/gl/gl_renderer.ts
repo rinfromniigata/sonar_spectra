@@ -1,6 +1,7 @@
 // WebGL2 に渡す部分（imple 4.6・4.8：薄く保ち、実機の撮影で確かめる）。
 // - 図形：まとめ（ShapeBatch）の頂点と番号を1回で送り、枠ごとに命令の範囲を描く。色は不透明度で掛けてから重ねる
 //   （キャンバスは premultipliedAlpha）。ふちの覆う割合は頂点の u, v, w からシェーダーで決める（tessellate の説明）
+// - 発光：発光の値を持つ命令は、図形を描く前に発光（ぼかした写し）を枠に敷く（gl_glow）
 // - 流れる画像：StreamImage ごとに輪の形のテクスチャを持ち、足された列だけを書く。描くときは読み始めの位置から1周を読む
 //   （横は REPEAT、最も近いテクセル）。しばらく描かれなかった画像のテクスチャは捨てる
 // - コンテキストを失ったら、この描き手は捨てて、復元したら作り直す（shape_layer）
@@ -12,6 +13,9 @@ import type { DeviceRect } from "./frame_rects";
 import { FLOATS_PER_VERTEX, type ShapeBatch } from "./shape_batch";
 import { imageQuad } from "./tessellate";
 import type { Mat3 } from "./transform";
+import { GlowRenderer, type GlRect } from "./gl_glow";
+import { link, type Program } from "./gl_program";
+import { glowPlan } from "./glow";
 
 const SHAPE_VS = `#version 300 es
 layout(location = 0) in vec2 a_pos;
@@ -66,49 +70,17 @@ void main() {
 /** 描かれなかった流れる画像のテクスチャを捨てるまでの回数（約2秒） */
 const TEXTURE_IDLE_TICKS = 120;
 
-interface Program {
-  program: WebGLProgram;
-  matrix: WebGLUniformLocation | null;
-}
-
 interface StreamTexture {
   texture: WebGLTexture;
   lastUsed: number;
 }
 
-function compile(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader | null {
-  const shader = gl.createShader(type);
-  if (!shader) return null;
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS) && !gl.isContextLost()) {
-    console.error(gl.getShaderInfoLog(shader));
-    gl.deleteShader(shader);
-    return null;
-  }
-  return shader;
-}
-
-function link(gl: WebGL2RenderingContext, vs: string, fs: string): Program | null {
-  const v = compile(gl, gl.VERTEX_SHADER, vs);
-  const f = compile(gl, gl.FRAGMENT_SHADER, fs);
-  const program = gl.createProgram();
-  if (!v || !f || !program) return null;
-  gl.attachShader(program, v);
-  gl.attachShader(program, f);
-  gl.linkProgram(program);
-  gl.deleteShader(v);
-  gl.deleteShader(f);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS) && !gl.isContextLost()) {
-    console.error(gl.getProgramInfoLog(program));
-    gl.deleteProgram(program);
-    return null;
-  }
-  return { program, matrix: gl.getUniformLocation(program, "u_matrix") };
-}
-
 export class GlRenderer {
   private shape: Program | null = null;
+  /** 発光（作れなければ null。そのときは発光なしで図形だけを描く） */
+  private glow: GlowRenderer | null = null;
+  /** 今の枠の範囲（WebGL の座標。frame で決まる） */
+  private frameRect: GlRect | null = null;
   private image: (Program & { alpha: WebGLUniformLocation | null; sampler: WebGLUniformLocation | null }) | null = null;
   private shapeVao: WebGLVertexArrayObject | null = null;
   private imageVao: WebGLVertexArrayObject | null = null;
@@ -155,6 +127,14 @@ export class GlRenderer {
     gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 16, 8);
     gl.bindVertexArray(null);
 
+    const glow = new GlowRenderer(gl);
+    if (glow.init()) {
+      this.glow = glow;
+    } else {
+      glow.dispose();
+      if (!gl.isContextLost()) console.error("glow is unavailable");
+    }
+
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     gl.enable(gl.BLEND);
@@ -168,6 +148,8 @@ export class GlRenderer {
     const gl = this.gl;
     this.tick++;
     this.canvasHeight = canvasHeight;
+    this.frameRect = null;
+    this.glow?.resize(canvasWidth, canvasHeight);
     gl.disable(gl.SCISSOR_TEST);
     gl.viewport(0, 0, canvasWidth, canvasHeight);
     gl.clearColor(0, 0, 0, 0);
@@ -186,6 +168,7 @@ export class GlRenderer {
   frame(rect: DeviceRect, bg: Rgba): void {
     const gl = this.gl;
     const y = this.canvasHeight - rect.y - rect.height;
+    this.frameRect = { x: rect.x, y, width: rect.width, height: rect.height };
     gl.scissor(rect.x, y, rect.width, rect.height);
     gl.viewport(rect.x, y, rect.width, rect.height);
     const a = bg[3];
@@ -193,10 +176,22 @@ export class GlRenderer {
     gl.clear(gl.COLOR_BUFFER_BIT);
   }
 
-  /** まとめた図形のうち、番号の first から count 個を描く */
-  shapes(matrix: Mat3, first: number, count: number): void {
-    const gl = this.gl;
+  /**
+   * まとめた図形のうち、番号の first から count 個を、今の枠に描く。
+   * glow が 0 より大きければ、先に発光（ぼかした写し）を枠に敷いてから、図形を重ねる
+   */
+  shapes(matrix: Mat3, first: number, count: number, glow = 0): void {
     if (!this.shape || count <= 0) return;
+    const plan = this.glow && this.frameRect ? glowPlan(glow, this.frameRect.width, this.frameRect.height) : null;
+    if (plan && this.glow && this.frameRect) {
+      this.glow.draw(plan, this.frameRect, () => this.drawShapes(matrix, first, count));
+    }
+    this.drawShapes(matrix, first, count);
+  }
+
+  private drawShapes(matrix: Mat3, first: number, count: number): void {
+    const gl = this.gl;
+    if (!this.shape) return;
     gl.useProgram(this.shape.program);
     gl.uniformMatrix3fv(this.shape.matrix, false, matrix);
     gl.bindVertexArray(this.shapeVao);
@@ -250,6 +245,7 @@ export class GlRenderer {
     gl.deleteVertexArray(this.imageVao);
     if (this.shape) gl.deleteProgram(this.shape.program);
     if (this.image) gl.deleteProgram(this.image.program);
+    this.glow?.dispose();
   }
 
   private updateTexture(stream: StreamImage): WebGLTexture | null {
