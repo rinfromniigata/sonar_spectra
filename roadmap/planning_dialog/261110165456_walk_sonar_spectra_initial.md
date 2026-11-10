@@ -580,9 +580,11 @@
 
 - W9-1 → W9-7へ移動（v4。W9-4の自動検査とWebGL2への移行のあとで計測するため。中身も、上限60／45／30の計測に改めた）
 - W9-2 → W9-9へ移動（v4。WebGL2への移行と上限の確認のあとで確かめるため）
-- [ ] W9-3 【エージェント】ローカルで`bun run tauri build`が通り、Windows x64のインストーラーができる。`release.yml`の内容が`ci.yml`と同じ検査を含む
+- [x] W9-3 【エージェント】ローカルで`bun run tauri build`が通り、Windows x64のインストーラーができる。`release.yml`の内容が`ci.yml`と同じ検査を含む
   - 推奨: Sonnet・medium以上
   - 依存: T9-2, T9-3
+  - 実施: Sonnet・medium
+  - 実施メモ（261111）：通過した。修正は不要だった。`bun run tauri build --bundles nsis`が成功し（7分39秒）、`src-tauri/target/release/bundle/nsis/sonar_spectra_0.1.0_x64-setup.exe`（11.10 MiB、x64）ができた。`release.yml`は、checkout・setup-bun・rust-toolchain（clippy）・rust-cache・`bun install --frozen-lockfile`・`bun run check`が`ci.yml`と同じで、検査のあとにビルドとドラフト作成へ進む。リンカーの警告1件（`linker_messages`。`.dll.lib`の作成通知）が出るが、ビルドには影響しない
 - [ ] W9-4 【エージェント】`bun run check`が通る（間引きの判定、上限の保存と移行〔schema 1→2〕、構成に含めず`dirty`を変えないこと、線の展開・方向・色の変換・発光の係数、各モジュールの描くもののテスト）
   - 推奨: Sonnet・high以上
   - 依存: T9-8
