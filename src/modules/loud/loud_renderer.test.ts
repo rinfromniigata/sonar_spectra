@@ -6,6 +6,7 @@ import { recordingCanvas, type DrawnShape } from "../test_canvas";
 import type { PaletteColors } from "../types";
 import { loudModule } from "./index";
 import { BAR_COUNT, NEGATIVE_INFINITY_TEXT, loudLayout } from "./loud_math";
+import { testDrawOutput } from "../test_shapes";
 
 const COLORS: PaletteColors = {
   main: "MAIN",
@@ -40,7 +41,7 @@ function setup(withTranslate = true) {
   const draw = (values: [number, number, number] | null, colors: PaletteColors = COLORS, dt = DT) => {
     canvas.clear();
     if (values) client.receive(encodeTestFrame({ seq: seq++, sections: [[SectionId.Loudness, values]] }));
-    renderer.draw(values ? client.latest : null, client.histories, {}, colors, dt);
+    renderer.draw(values ? client.latest : null, client.histories, {}, colors, dt, testDrawOutput(canvas.ctx));
   };
   return { canvas, renderer, draw };
 }
@@ -190,7 +191,7 @@ describe("loud モジュールの共通", () => {
   it("大きさが0のあいだは何も描かない。dispose の後は、次の1回で新しい値を出す", () => {
     const canvas = recordingCanvas();
     const renderer = loudModule.createRenderer({ ctx: canvas.ctx, translate });
-    renderer.draw(null, new FrameClient().histories, {}, COLORS, DT);
+    renderer.draw(null, new FrameClient().histories, {}, COLORS, DT, testDrawOutput(canvas.ctx));
     expect(canvas.shapes).toHaveLength(0);
     expect(canvas.texts).toHaveLength(0);
 

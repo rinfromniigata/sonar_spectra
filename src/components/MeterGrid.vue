@@ -16,6 +16,10 @@
 //   境界線にフォーカスして矢印キーで1マス動かす（縦の線は左右、横の線は上下）
 // - 配置を変えたら update で手動配置の並び（全インスタンス）を知らせる。自動配置のときは、その時点の自動整列の結果を
 //   固定したもの（pinAutoLayout）を基準に操作するので、最初の操作で手動配置に固定される。保存は置く側が行う
+// 描画の層（v4。imple 4.5・4.6）：格子の後ろに、格子と同じ範囲の共有の WebGL2 キャンバスを1枚敷く（ポインターのイベントは通す）。
+// 各枠の範囲は、配置の状態（置いたインスタンスの格子の位置）と、格子の大きさ・余白・すき間（大きさが変わったとき・
+// 編集を始めた・終えたときに測る）から毎回求める（ドラッグに追従する）。枠の地の色は共有キャンバスが塗る。
+// WebGL2 を作れないとき・失っているときは、格子の中央に「描画を開始できません」を1行出す（SPEC 11節の S01）
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import type { GridRect, Instance, Palette } from "../config/types";
 import { useT } from "../i18n/use_t";
@@ -49,6 +53,8 @@ import {
 import type { Direction } from "../modules/options";
 import { moduleRegistry, type ModuleRegistry } from "../modules/registry";
 import type { AnyModuleDefinition } from "../modules/types";
+import { equalTracks, frameDeviceRect, type DeviceRect, type GridMetrics } from "../render/gl/frame_rects";
+import { provideShapeLayer } from "../render/gl/use_shape_layer";
 import EditHead from "./EditHead.vue";
 import ModuleFrame from "./ModuleFrame.vue";
 
@@ -86,11 +92,48 @@ let observer: ResizeObserver | null = null;
 /** 格子の見た目の大きさ（編集中だけ測る。測るまでは null） */
 const box = shallowRef<GridBox | null>(null);
 
+/** 描画の層に渡す、格子の計測値（測るまでは null。毎回の描画で読むので、リアクティブにしない） */
+let metrics: GridMetrics | null = null;
+
 function measure(): void {
   const rect = root.value?.getBoundingClientRect();
   if (rect && rect.width > 0 && rect.height > 0) aspect.value = rect.width / rect.height;
   box.value = props.editing ? gridBox() : null;
+  metrics = gridMetrics();
 }
+
+/**
+ * 格子の要素の位置・余白・すき間と、列・行の大きさ。列・行は等分（minmax(0, 1fr)）なので、要素の大きさから求める
+ * （getComputedStyle の列の大きさは小数3桁に丸められていて、枠の端の丸めが1デバイスピクセルずれることがあるため使わない）
+ */
+function gridMetrics(): GridMetrics | null {
+  const el = root.value;
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  const style = getComputedStyle(el);
+  const px = (value: string) => Number.parseFloat(value) || 0;
+  const paddingLeft = px(style.paddingLeft);
+  const paddingTop = px(style.paddingTop);
+  const columnGap = px(style.columnGap);
+  const rowGap = px(style.rowGap);
+  const columns = equalTracks(rect.width - paddingLeft - px(style.paddingRight), GRID_COLUMNS, columnGap);
+  const rows = equalTracks(rect.height - paddingTop - px(style.paddingBottom), GRID_ROWS, rowGap);
+  return { left: rect.left, top: rect.top, paddingLeft, paddingTop, columns, rows, columnGap, rowGap };
+}
+
+/** 今の枠の範囲（共有キャンバスのデバイスピクセル）。描画の層が毎回の描画の初めに呼ぶ */
+function deviceFrames(): Map<string, DeviceRect> {
+  const frames = new Map<string, DeviceRect>();
+  if (!metrics) return frames;
+  const dpr = window.devicePixelRatio || 1;
+  for (const item of placed.value) frames.set(item.instance.id, frameDeviceRect(metrics, item.rect, dpr));
+  return frames;
+}
+
+const layerCanvas = ref<HTMLCanvasElement | null>(null);
+const shapeLayer = provideShapeLayer({ canvas: layerCanvas, frames: deviceFrames });
+/** 描画を開始できない（WebGL2 を作れない・失って戻っていない） */
+const renderUnavailable = computed(() => shapeLayer.status.value === "unavailable" || shapeLayer.status.value === "lost");
 
 onMounted(() => {
   measure();
@@ -320,6 +363,8 @@ function onModuleFocus(id: string): void {
     @pointercancel="endDrag"
     @lostpointercapture="endDrag"
   >
+    <!-- 描画の層（共有の WebGL2 キャンバス）。枠より先に置き、枠の下に重ねる -->
+    <canvas ref="layerCanvas" class="shape-layer" aria-hidden="true" />
     <ModuleFrame
       v-for="item in placed"
       :key="item.instance.id"
@@ -367,6 +412,7 @@ function onModuleFocus(id: string): void {
       @pointerdown="onSplitterPointerDown($event, splitter)"
       @keydown="onSplitterKeydown($event, splitter)"
     />
+    <p v-if="renderUnavailable" class="render-unavailable" role="status">{{ t("status.render_unavailable") }}</p>
   </div>
 </template>
 
@@ -391,6 +437,31 @@ function onModuleFocus(id: string): void {
 .hole {
   background: var(--color-bg);
   box-shadow: 0 0 0 var(--border-width) var(--color-bg);
+}
+
+/* 描画の層：格子の内側の余白を含めた全体に敷く。地の外は透明（格子の線と、編集中の格子の点が見える） */
+.shape-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* 描画を開始できない：格子の中央に1行（StatusOverlay の本文と同じ文字） */
+.render-unavailable {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: var(--space-5);
+  color: var(--color-text-muted);
+  font-size: clamp(var(--overlay-body-min), 1.4cqi, var(--font-size-md));
+  text-align: center;
+  pointer-events: none;
 }
 
 /* レイアウト編集：すき間を広げ、格子の点を見せる（モックの .stage[data-edit="on"] .grid） */

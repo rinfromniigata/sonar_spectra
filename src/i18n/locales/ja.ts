@@ -36,6 +36,7 @@ const ja = {
     unavailable_body:
       "再生デバイスが取り外されたか、ほかのアプリが占有しています。デバイスをつなぎ直してから再試行してください。",
     open_settings: "設定",
+    render_unavailable: "描画を開始できません",
   },
   modules: {
     level: "レベル",

@@ -2,6 +2,7 @@
 // 受信とは切り離し、毎回その時点の最新のフレームと共有の履歴を渡す（描画が重くても受信・取得は止まらない）。
 // フレームレートの上限（アプリ全体の設定）を超える回は描かずに飛ばす（判定は frame_pacer。上限は毎回読むので、変えるとすぐ効く）。
 // 経過時間（dt）は、描いた回どうしの差（飛ばした回は含めない）。
+// 層（描画の層。render/gl）は、描くものを描く前（begin）と後（end）に呼ぶ。描くものが図形を層に積み、層が end でまとめて描く。
 
 import type { AnalysisFrame, Histories } from "../frame_client";
 import { DEFAULT_FRAME_LIMIT } from "../config/types";
@@ -12,6 +13,14 @@ import { INITIAL_PACER_STATE, stepPacer, type PacerState } from "./frame_pacer";
 /** 描くもの（ModuleFrame） */
 export interface Drawable {
   draw(input: FrameDrawInput): void;
+}
+
+/** 描くものの前後に呼ぶ層（共有の WebGL2 キャンバス） */
+export interface RenderLayer {
+  /** 描くものを描く前 */
+  begin(input: FrameDrawInput): void;
+  /** 描くものを描いた後 */
+  end(input: FrameDrawInput): void;
 }
 
 /** 最新のフレームと履歴の持ち主（FrameClient） */
@@ -36,8 +45,9 @@ export const MAX_FRAME_DT = 0.1;
 
 export class RenderLoop {
   private readonly drawables = new Set<Drawable>();
+  private readonly layers = new Set<RenderLayer>();
   /** 一度でも失敗したもの（同じ失敗を毎フレーム記録しない） */
-  private readonly failed = new WeakSet<Drawable>();
+  private readonly failed = new WeakSet<object>();
   private started = false;
   private paused = false;
   private handle: number | null = null;
@@ -60,6 +70,14 @@ export class RenderLoop {
     this.drawables.add(drawable);
     return () => {
       this.drawables.delete(drawable);
+    };
+  }
+
+  /** 層を加える。返す関数で外す */
+  addLayer(layer: RenderLayer): () => void {
+    this.layers.add(layer);
+    return () => {
+      this.layers.delete(layer);
     };
   }
 
@@ -129,17 +147,22 @@ export class RenderLoop {
       colors: this.colors(),
       dt,
     };
-    for (const drawable of this.drawables) {
-      try {
-        drawable.draw(input);
-      } catch (error) {
-        // 1つのモジュールの失敗で、ほかのモジュールの描画を止めない
-        if (!this.failed.has(drawable)) {
-          this.failed.add(drawable);
-          console.error(error);
-        }
-      }
-    }
+    for (const layer of this.layers) this.guard(layer, () => layer.begin(input));
+    // 1つのモジュールの失敗で、ほかのモジュールの描画を止めない
+    for (const drawable of this.drawables) this.guard(drawable, () => drawable.draw(input));
+    for (const layer of this.layers) this.guard(layer, () => layer.end(input));
     this.handle = this.scheduler.request(this.tick);
   };
+
+  /** 失敗しても先へ進む。同じものの失敗は1度だけ記録する */
+  private guard(owner: object, run: () => void): void {
+    try {
+      run();
+    } catch (error) {
+      if (!this.failed.has(owner)) {
+        this.failed.add(owner);
+        console.error(error);
+      }
+    }
+  }
 }

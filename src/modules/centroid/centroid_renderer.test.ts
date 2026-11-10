@@ -5,6 +5,7 @@ import { joinedView, recordingBuffers, recordingCanvas } from "../test_canvas";
 import type { PaletteColors } from "../types";
 import { centroidModule } from "./index";
 import { READOUT_INTERVAL, axisPosition, centroidLayout, columnStep, fluxLevel, lineY } from "./centroid_math";
+import { testDrawOutput } from "../test_shapes";
 
 const COLORS: PaletteColors = {
   main: "MAIN",
@@ -39,7 +40,7 @@ function setup() {
     client.receive(encodeTestFrame({ seq: seq++, flags, sections: [[SectionId.Centroid, [hz, flux]]] }));
   const draw = (dt = DT) => {
     canvas.clear();
-    renderer.draw(client.latest, client.histories, options, COLORS, dt);
+    renderer.draw(client.latest, client.histories, options, COLORS, dt, testDrawOutput(raw.ctx));
   };
   return { canvas, renderer, client, push, draw, buffers };
 }
@@ -107,7 +108,7 @@ describe("centroid モジュールの描画", () => {
     const { canvas, push, renderer, client } = setup();
     for (let i = 0; i < 200; i++) push(1000, 0);
     canvas.clear();
-    renderer.draw(client.latest, client.histories, { speed: 2 }, COLORS, DT);
+    renderer.draw(client.latest, client.histories, { speed: 2 }, COLORS, DT, testDrawOutput(canvas.raw.ctx));
     const [line] = lines(canvas);
     expect(line.points).toHaveLength(Math.ceil(WIDTH / 6));
     expect(line.points[1][0] - line.points[0][0]).toBe(6);
@@ -176,7 +177,7 @@ describe("centroid モジュールの描画", () => {
 
     renderer.resize({ width: 0, height: 0, devicePixelRatio: 1, quarterTurns: 0 });
     canvas.clear();
-    renderer.draw(client.latest, client.histories, options, COLORS, DT);
+    renderer.draw(client.latest, client.histories, options, COLORS, DT, testDrawOutput(canvas.raw.ctx));
     expect(canvas.shapes).toHaveLength(0);
   });
 });

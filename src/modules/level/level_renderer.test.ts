@@ -4,6 +4,7 @@ import { encodeTestFrame } from "../../frame_client/test_frames";
 import type { PaletteColors } from "../types";
 import { levelModule } from "./index";
 import { barLeft, levelLayout, yOfDb } from "./level_math";
+import { testDrawOutput } from "../test_shapes";
 
 const COLORS: PaletteColors = {
   main: "MAIN",
@@ -74,7 +75,7 @@ function setup() {
   const renderer = levelModule.createRenderer({ ctx: fake.ctx });
   renderer.resize(geometry);
   const draw = (frame: ReturnType<typeof levelFrame> | null, dt = 1 / 60) =>
-    renderer.draw(frame, new FrameClient().histories, {}, COLORS, dt);
+    renderer.draw(frame, new FrameClient().histories, {}, COLORS, dt, testDrawOutput(fake.ctx));
   return { ...fake, renderer, draw };
 }
 
@@ -145,7 +146,7 @@ describe("level モジュールの描画", () => {
   it("大きさが決まる前は何も描かない", () => {
     const fake = fakeContext();
     const renderer = levelModule.createRenderer({ ctx: fake.ctx });
-    renderer.draw(levelFrame(0.5, 0.5), new FrameClient().histories, {}, COLORS, 0.016);
+    renderer.draw(levelFrame(0.5, 0.5), new FrameClient().histories, {}, COLORS, 0.016, testDrawOutput(fake.ctx));
     expect(fake.rects).toHaveLength(0);
   });
 });

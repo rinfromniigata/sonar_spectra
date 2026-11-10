@@ -179,4 +179,52 @@ describe("RenderLoop", () => {
     expect(scheduler.pending.size).toBe(1);
     error.mockRestore();
   });
+
+  describe("層（描画の層）", () => {
+    it("描く回ごとに、描くものの前に begin、後に end を同じ入力で呼ぶ。描かない回は呼ばない", () => {
+      const { scheduler, loop } = setup();
+      const calls: string[] = [];
+      const seen: FrameDrawInput[] = [];
+      loop.register({ draw: () => calls.push("draw") });
+      const remove = loop.addLayer({
+        begin: (input) => {
+          calls.push("begin");
+          seen.push(input);
+        },
+        end: (input) => {
+          calls.push("end");
+          seen.push(input);
+        },
+      });
+      loop.start();
+      scheduler.step(0);
+      expect(calls).toEqual(["begin", "draw", "end"]);
+      expect(seen[0]).toBe(seen[1]);
+      // 上限60fpsで、120 Hz の次の回（8ms後）は描かない
+      scheduler.step(8);
+      expect(calls).toHaveLength(3);
+      remove();
+      scheduler.step(16.7);
+      expect(calls).toEqual(["begin", "draw", "end", "draw"]);
+    });
+
+    it("層やモジュールが失敗しても、残りを呼び、同じ失敗は1度だけ記録する", () => {
+      const { scheduler, loop, inputs } = setup();
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const ends: number[] = [];
+      loop.addLayer({
+        begin: () => {
+          throw new Error("broken layer");
+        },
+        end: () => ends.push(1),
+      });
+      loop.start();
+      scheduler.step(0);
+      scheduler.step(16.7);
+      expect(inputs).toHaveLength(2);
+      expect(ends).toHaveLength(2);
+      expect(error).toHaveBeenCalledTimes(1);
+      error.mockRestore();
+    });
+  });
 });

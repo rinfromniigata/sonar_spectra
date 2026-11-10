@@ -12,6 +12,7 @@ function fakeBuffer(width: number, height: number, ctx: CanvasRenderingContext2D
 }
 import { gramModule } from "./index";
 import { rowRanges } from "./gram_math";
+import { testDrawOutput } from "../test_shapes";
 
 const COLORS: PaletteColors = {
   main: "MAIN",
@@ -61,7 +62,7 @@ function setup(options: Partial<SpeedOptions> = {}, dpr = 1) {
   };
   const draw = (colors: PaletteColors = COLORS, opts: Partial<SpeedOptions> = {}) => {
     main.clear();
-    renderer.draw(client.latest, client.histories, { ...gramModule.defaultOptions, ...options, ...opts }, colors, DT);
+    renderer.draw(client.latest, client.histories, { ...gramModule.defaultOptions, ...options, ...opts }, colors, DT, testDrawOutput(main.ctx));
   };
   const last = () => buffers[buffers.length - 1];
   return { main, buffers, last, renderer, client, push, draw, geometry };
@@ -275,14 +276,14 @@ describe("gram モジュールの描画", () => {
       },
     });
     const client = new FrameClient();
-    renderer.draw(null, client.histories, { speed: 1 }, COLORS, DT);
+    renderer.draw(null, client.histories, { speed: 1 }, COLORS, DT, testDrawOutput(main.ctx));
     expect(created).toBe(0);
     expect(main.images).toHaveLength(0);
 
     renderer.resize({ width: WIDTH, height: HEIGHT, devicePixelRatio: 1, quarterTurns: 0 });
-    renderer.draw(null, client.histories, { speed: 1 }, COLORS, DT);
+    renderer.draw(null, client.histories, { speed: 1 }, COLORS, DT, testDrawOutput(main.ctx));
     renderer.dispose();
-    renderer.draw(null, client.histories, { speed: 1 }, COLORS, DT);
+    renderer.draw(null, client.histories, { speed: 1 }, COLORS, DT, testDrawOutput(main.ctx));
     expect(created).toBe(2);
     expect(main.images).toHaveLength(2);
   });

@@ -7,6 +7,7 @@ import { recordingCanvas, type DrawnShape } from "../test_canvas";
 import type { PaletteColors } from "../types";
 import { vuModule } from "./index";
 import { SCALE_MIN_DB, TRAIL_ALPHA, needleAngle, pointOnArc, scaleTicks, vuLayout } from "./vu_math";
+import { testDrawOutput } from "../test_shapes";
 
 const COLORS: PaletteColors = {
   main: "MAIN",
@@ -38,7 +39,7 @@ function setup(withTranslate = true) {
   const draw = (values: [number, number] | null, dt = DT) => {
     canvas.clear();
     if (values) client.receive(encodeTestFrame({ seq: seq++, sections: [[SectionId.Vu, values]] }));
-    renderer.draw(values ? client.latest : null, client.histories, {}, COLORS, dt);
+    renderer.draw(values ? client.latest : null, client.histories, {}, COLORS, dt, testDrawOutput(canvas.ctx));
   };
   return { canvas, renderer, draw };
 }
@@ -150,7 +151,7 @@ describe("vu モジュールの描画：受信が途切れたとき", () => {
 
     renderer.resize({ width: 0, height: 0, devicePixelRatio: 1, quarterTurns: 0 });
     canvas.clear();
-    renderer.draw(null, new FrameClient().histories, {}, COLORS, DT);
+    renderer.draw(null, new FrameClient().histories, {}, COLORS, DT, testDrawOutput(canvas.ctx));
     expect(canvas.shapes).toHaveLength(0);
   });
 

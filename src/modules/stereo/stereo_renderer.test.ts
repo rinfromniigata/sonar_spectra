@@ -13,6 +13,7 @@ import type { PaletteColors } from "../types";
 import { waveModule } from "../wave";
 import { stereoModule } from "./index";
 import { correlationX, dotStyle, lissajousLayout, panLayout, trailAlpha } from "./stereo_math";
+import { testDrawOutput } from "../test_shapes";
 
 const COLORS: PaletteColors = {
   main: "MAIN",
@@ -65,7 +66,7 @@ function setup(options: Partial<StereoOptions> = {}) {
       const values = Array.isArray(input) ? input : payload(input);
       client.receive(encodeTestFrame({ seq: seq++, sections: [[SectionId.Stereo, values]] }));
     }
-    renderer.draw(input ? client.latest : null, client.histories, { ...DEFAULTS, ...options }, COLORS, dt);
+    renderer.draw(input ? client.latest : null, client.histories, { ...DEFAULTS, ...options }, COLORS, dt, testDrawOutput(raw.ctx));
   };
   return { canvas, draw, buffers };
 }
@@ -174,7 +175,7 @@ describe("stereo モジュールの描画：共通", () => {
   it("大きさが0のあいだは何も描かない", () => {
     const canvas = recordingCanvas();
     const renderer = stereoModule.createRenderer({ ctx: canvas.ctx, createBuffer: recordingBuffers().createBuffer });
-    renderer.draw(null, new FrameClient().histories, DEFAULTS, COLORS, DT);
+    renderer.draw(null, new FrameClient().histories, DEFAULTS, COLORS, DT, testDrawOutput(canvas.ctx));
     expect(canvas.shapes).toHaveLength(0);
   });
 });

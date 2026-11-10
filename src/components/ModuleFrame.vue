@@ -3,6 +3,9 @@
 // 描画側（ModuleRenderer）は常に既定の向きで描けばよく、目盛りや文字も座標系と一緒に回る。
 // 見出しは枠の左上に置いたまま回さない（モックと同じ）。
 // 描画ループ（src/render）が provide されていれば、マウント時に自分を登録し、ループが毎フレーム draw() を呼ぶ。
+// 描画の層（v4。共有の WebGL2 キャンバス。MeterGrid が provide する）があれば、Canvas は文字の層になり、地は透明にする
+// （地の色は描画の層が塗る）。図形は描画の層の受け口（ShapeSink）へ出す。描画の層を作れない・失っているときは描かない
+// （Canvas 2D の描き方へは戻さない）。描画の層がないとき（開発用のギャラリー）は、地をこの枠が塗り、図形は捨てる。
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { findCustomPalette, resolvePaletteColors } from "../config/palettes";
 import type { Instance, Palette } from "../config/types";
@@ -10,6 +13,8 @@ import { useT } from "../i18n/use_t";
 import { directionTransform, logicalSize, quarterTurns } from "../modules/direction";
 import type { ModuleKind, ModuleOptions } from "../modules/options";
 import type { AnyModuleDefinition, FrameDrawInput, Geometry, ModuleRenderer, PaletteColors } from "../modules/types";
+import { DISCARD_SINK } from "../render/gl/shape_batch";
+import { SHAPE_LAYER_KEY } from "../render/gl/use_shape_layer";
 import { RENDER_LOOP_KEY } from "../render/use_render_loop";
 import type { CanvasColors } from "../theme/canvas_colors";
 
@@ -32,6 +37,9 @@ const { t } = useT();
 const label = computed(() => t(props.definition.labelKey));
 
 const loop = inject(RENDER_LOOP_KEY, null);
+const shapeLayer = inject(SHAPE_LAYER_KEY, null);
+/** 描画の層で描いている（地を透明にする） */
+const onSharedLayer = computed(() => shapeLayer?.status.value === "ready");
 let unregister: (() => void) | null = null;
 
 const root = ref<HTMLElement | null>(null);
@@ -97,9 +105,24 @@ function updateGeometry(): void {
 /** 1回分を描く（描画ループから呼ぶ） */
 function draw(input: FrameDrawInput): void {
   if (!renderer || !context || !geometry || !props.instance.enabled) return;
+  // 描画の層があるのに描けない（作れない・失っている）ときは描かない
+  if (shapeLayer && !onSharedLayer.value) return;
   context.setTransform(...directionTransform(geometry.quarterTurns, boxWidth, boxHeight, geometry.devicePixelRatio));
-  renderer.draw(input.frame, input.histories, props.instance.options, paletteColors(input.colors), input.dt);
+  const shapes = shapeLayer ? shapeLayer.sink(props.instance.id, geometry) : DISCARD_SINK;
+  renderer.draw(input.frame, input.histories, props.instance.options, paletteColors(input.colors), input.dt, { shapes, text: context });
 }
+
+/** 文字の層を消す（描画の層を失ったとき、前の絵を残さない） */
+function clearText(): void {
+  const cv = canvas.value;
+  if (!context || !cv) return;
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  context.clearRect(0, 0, cv.width, cv.height);
+}
+
+watch(onSharedLayer, (ready) => {
+  if (!ready) clearText();
+});
 
 defineExpose({ draw });
 
@@ -128,7 +151,7 @@ onBeforeUnmount(() => {
   <section
     ref="root"
     class="module-frame"
-    :class="{ 'is-editing': editing, 'is-selected': editing && selected }"
+    :class="{ 'is-editing': editing, 'is-selected': editing && selected, 'on-shared-layer': onSharedLayer }"
     :data-kind="instance.kind"
     :aria-label="label"
   >
@@ -147,6 +170,11 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background: var(--color-bg);
   container-type: inline-size;
+}
+
+/* 地の色は、後ろの描画の層（共有キャンバス）が塗る */
+.module-frame.on-shared-layer {
+  background: transparent;
 }
 
 .module-frame canvas {

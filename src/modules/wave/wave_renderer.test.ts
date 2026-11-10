@@ -5,6 +5,7 @@ import type { WaveOptions } from "../options";
 import { joinedView, recordingBuffers, recordingCanvas, type DrawnShape } from "../test_canvas";
 import type { PaletteColors } from "../types";
 import { waveModule } from "./index";
+import { testDrawOutput } from "../test_shapes";
 
 const COLORS: PaletteColors = {
   main: "MAIN",
@@ -36,7 +37,7 @@ function setup(options: Partial<WaveOptions> = {}) {
   const renderer = waveModule.createRenderer({ ctx: raw.ctx, createBuffer: buffers.createBuffer });
   renderer.resize({ width: WIDTH, height: HEIGHT, devicePixelRatio: 1, quarterTurns: 0 });
   const client = new FrameClient();
-  const draw = () => renderer.draw(client.latest, client.histories, { ...DEFAULTS, ...options }, COLORS, 1 / 60);
+  const draw = () => renderer.draw(client.latest, client.histories, { ...DEFAULTS, ...options }, COLORS, 1 / 60, testDrawOutput(raw.ctx));
   // 短い区間・帯に分けて描いた線と塗りは、1本・1つにまとめて調べる
   return { canvas: joinedView(raw), client, draw, buffers };
 }

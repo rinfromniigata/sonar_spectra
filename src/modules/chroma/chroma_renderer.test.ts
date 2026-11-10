@@ -6,6 +6,7 @@ import { recordingCanvas } from "../test_canvas";
 import type { PaletteColors } from "../types";
 import { chromaModule } from "./index";
 import { chromaLayout, strengthAlpha, strengthRadius } from "./chroma_math";
+import { testDrawOutput } from "../test_shapes";
 
 const COLORS: PaletteColors = {
   main: "MAIN",
@@ -50,7 +51,7 @@ function setup(theme: "dark" | "light" = "dark", withTranslate = true) {
   const draw = (reading: Reading | null, dt = DT) => {
     canvas.clear();
     if (reading) client.receive(encodeTestFrame({ seq: seq++, sections: [[SectionId.Chroma, payload(reading)]] }));
-    renderer.draw(reading ? client.latest : null, client.histories, {}, colors, dt);
+    renderer.draw(reading ? client.latest : null, client.histories, {}, colors, dt, testDrawOutput(canvas.ctx));
   };
   return { canvas, renderer, draw };
 }
@@ -204,7 +205,7 @@ describe("chroma モジュールの描画：受信が途切れたとき", () => 
 
     renderer.resize({ width: 0, height: 0, devicePixelRatio: 1, quarterTurns: 0 });
     canvas.clear();
-    renderer.draw(null, new FrameClient().histories, {}, COLORS, DT);
+    renderer.draw(null, new FrameClient().histories, {}, COLORS, DT, testDrawOutput(canvas.ctx));
     expect(canvas.shapes).toHaveLength(0);
   });
 });

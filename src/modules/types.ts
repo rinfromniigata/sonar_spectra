@@ -6,6 +6,7 @@ import type { AnalysisFrame, Histories, SectionId } from "../frame_client";
 import type { MessageKey, Translate } from "../i18n/use_t";
 import type { CanvasColors } from "../theme/canvas_colors";
 import type { Direction, ModuleKind, ModuleOptions, Shape } from "./options";
+import type { StreamImage } from "./stream_image";
 
 /** 枠の大きさと向き。描画側は常に既定の向きで描けばよく、width・height はその向きでの大きさ */
 export interface Geometry {
@@ -44,7 +45,62 @@ export interface OffscreenBuffer {
   ctx: CanvasRenderingContext2D;
 }
 
+/** 描画の座標系（既定の向き、CSS ピクセル）の四角 */
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** 塗りの見た目 */
+export interface FillStyle {
+  /** CSS の色（パレットやトークンから読んだ値） */
+  color: string;
+  /** 不透明度（0〜1。省略は 1） */
+  alpha?: number;
+  /** 発光の値（shadowBlur と同じ意味。0 か省略は発光なし）。発光は描画の層がまとめてつける */
+  glow?: number;
+}
+
+/** 線の見た目 */
+export interface StrokeStyle extends FillStyle {
+  /** 太さ（CSS ピクセル） */
+  width: number;
+  /** 終点と始点をつなぐ（閉じた線） */
+  closed?: boolean;
+}
+
+/**
+ * 図形の受け口（imple 4.2）。モジュールは描くもの（形・色・発光）をここへ出すだけで、WebGL を直接触らない。
+ * 座標はすべて描画の座標系（既定の向き、CSS ピクセル）。点の並びは x, y の順に交互に並べる。
+ * 呼んだ順に重なる（後の図形が上）
+ */
+export interface ShapeSink {
+  /** 折れ線（端は切りっぱなし、継ぎ目は角） */
+  polyline(points: ArrayLike<number>, style: StrokeStyle): void;
+  /** 塗りの帯：xs の各位置で top〜bottom を塗り、隣の位置とつなぐ */
+  band(xs: ArrayLike<number>, top: ArrayLike<number>, bottom: ArrayLike<number>, style: FillStyle): void;
+  /** 塗りの多角形（閉じた形）。点の平均から見て星形の形に限る（円形の塗りなど） */
+  polygon(points: ArrayLike<number>, style: FillStyle): void;
+  /** 円い点。radius は全部に同じ値か、点ごとの並び。alphas は点ごとの不透明度（style.alpha に掛ける） */
+  points(points: ArrayLike<number>, radius: number | ArrayLike<number>, style: FillStyle, alphas?: ArrayLike<number>): void;
+  /** 四角。x, y, 幅, 高さ の順に並べる（棒・1ピクセル幅の格子線など） */
+  rects(rects: ArrayLike<number>, style: FillStyle): void;
+  /** 流れる画像を dest に描く（画像の左端がいちばん古い列、右端が最新の列） */
+  image(stream: StreamImage, dest: Rect, style?: { alpha?: number }): void;
+}
+
+/** 1回分の描くものの出し先（imple 4.2） */
+export interface DrawOutput {
+  /** 図形（描画の層が WebGL2 で描く） */
+  shapes: ShapeSink;
+  /** 文字の層（枠ごとの Canvas 2D。図形の上に重なる。座標系は既定の向きに回してある） */
+  text: CanvasRenderingContext2D;
+}
+
 export interface RenderContext {
+  /** 文字の層（DrawOutput.text と同じ Canvas 2D） */
   ctx: CanvasRenderingContext2D;
   /** 画面に出さない画像を作る（幅と高さはデバイスピクセル）。省略すると、ブラウザのキャンバスで作る */
   createBuffer?: (width: number, height: number) => OffscreenBuffer;
@@ -67,9 +123,10 @@ export interface ModuleRenderer<O> {
   resize(geometry: Geometry): void;
   /**
    * 1回分を描く。座標系は既定の向きに回してあり、(0, 0)〜(width, height) に描けばよい。
+   * 図形は out.shapes へ、文字は out.text へ出す（WebGL2 への移行が済むまでは、図形を文字の層に描いてもよい）。
    * frame はまだ届いていなければ null
    */
-  draw(frame: AnalysisFrame | null, histories: Histories, options: O, colors: PaletteColors, dt: number): void;
+  draw(frame: AnalysisFrame | null, histories: Histories, options: O, colors: PaletteColors, dt: number, out: DrawOutput): void;
   dispose(): void;
 }
 

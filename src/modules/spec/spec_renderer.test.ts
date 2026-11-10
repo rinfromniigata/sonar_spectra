@@ -6,6 +6,7 @@ import { joinedView, recordingBuffers, recordingCanvas, type DrawnShape } from "
 import type { PaletteColors } from "../types";
 import { specModule } from "./index";
 import { BAR_COUNT, PEAK_FALL_PER_FRAME, SMOOTH_DECAY_PER_FRAME, radialLayout } from "./spec_math";
+import { testDrawOutput } from "../test_shapes";
 
 const COLORS: PaletteColors = {
   main: "MAIN",
@@ -41,7 +42,7 @@ function setup(options: Partial<SpecOptions> = {}) {
   const draw = (bands: number[] | null = FULL, dt = DT, flags = 0) => {
     canvas.clear();
     if (bands) client.receive(encodeTestFrame({ seq: seq++, flags, sections: [[SectionId.Spectrum, bands]] }));
-    renderer.draw(bands ? client.latest : null, client.histories, { ...DEFAULTS, ...options }, COLORS, dt);
+    renderer.draw(bands ? client.latest : null, client.histories, { ...DEFAULTS, ...options }, COLORS, dt, testDrawOutput(raw.ctx));
   };
   return { canvas, draw, buffers };
 }
@@ -289,12 +290,12 @@ describe("spec モジュールの共通", () => {
   it("大きさが0のあいだは何も描かない。dispose の後も描ける", () => {
     const canvas = recordingCanvas();
     const renderer = specModule.createRenderer({ ctx: canvas.ctx, createBuffer: recordingBuffers().createBuffer });
-    renderer.draw(null, new FrameClient().histories, DEFAULTS, COLORS, DT);
+    renderer.draw(null, new FrameClient().histories, DEFAULTS, COLORS, DT, testDrawOutput(canvas.ctx));
     expect(canvas.shapes).toHaveLength(0);
 
     renderer.resize({ width: WIDTH, height: HEIGHT, devicePixelRatio: 1, quarterTurns: 0 });
     renderer.dispose();
-    renderer.draw(null, new FrameClient().histories, DEFAULTS, COLORS, DT);
+    renderer.draw(null, new FrameClient().histories, DEFAULTS, COLORS, DT, testDrawOutput(canvas.ctx));
     expect(canvas.shapes.length).toBeGreaterThan(0);
   });
 });
