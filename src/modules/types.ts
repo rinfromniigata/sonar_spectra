@@ -38,13 +38,6 @@ export interface PaletteColors {
   theme: "dark" | "light";
 }
 
-/** 描画側が持つ、画面に出さない画像（流れるモジュールが、すでに描いた分をずらして使う） */
-export interface OffscreenBuffer {
-  /** 画面のキャンバスに `drawImage` できるもの。幅と高さは、デバイスピクセルで指定した値 */
-  canvas: CanvasImageSource & { width: number; height: number };
-  ctx: CanvasRenderingContext2D;
-}
-
 /** 描画の座標系（既定の向き、CSS ピクセル）の四角 */
 export interface Rect {
   x: number;
@@ -97,6 +90,25 @@ export interface StrokeStyle extends FillStyle {
 }
 
 /**
+ * 文字の発光の見た目。文字そのものは文字の層（Canvas 2D）に描き、発光だけを描画の層が敷く。
+ * font・align・baseline・maxWidth は、文字の層で同じ文字を描くときの font・textAlign・textBaseline・fillText の maxWidth と同じ値にする
+ */
+export interface TextGlowStyle {
+  /** Canvas 2D の font と同じ書き方（大きさは CSS ピクセル） */
+  font: string;
+  align: CanvasTextAlign;
+  baseline: CanvasTextBaseline;
+  /** fillText の maxWidth（これより広い文字は横に縮める）。省略は縮めない */
+  maxWidth?: number;
+  /** 発光の色（CSS の色） */
+  color: string;
+  /** 不透明度（0〜1。省略は 1） */
+  alpha?: number;
+  /** 発光の値（shadowBlur と同じ意味。0 以下なら何も描かない） */
+  glow: number;
+}
+
+/**
  * 図形の受け口（imple 4.2）。モジュールは描くもの（形・色・発光）をここへ出すだけで、WebGL を直接触らない。
  * 座標はすべて描画の座標系（既定の向き、CSS ピクセル）。点の並びは x, y の順に交互に並べる。
  * 呼んだ順に重なる（後の図形が上）
@@ -125,6 +137,11 @@ export interface ShapeSink {
    * 呼ばない回は、前の絵を残さない
    */
   trail(color: string, alpha: number): void;
+  /**
+   * 文字の発光だけを敷く（文字の層で (x, y) に同じ style で描く文字に shadowBlur でつけていた影と同じ見た目。
+   * 文字そのものは描かないので、モジュールが文字の層に描く）
+   */
+  textGlow(text: string, x: number, y: number, style: TextGlowStyle): void;
 }
 
 /** 1回分の描くものの出し先（imple 4.2） */
@@ -138,20 +155,8 @@ export interface DrawOutput {
 export interface RenderContext {
   /** 文字の層（DrawOutput.text と同じ Canvas 2D） */
   ctx: CanvasRenderingContext2D;
-  /** 画面に出さない画像を作る（幅と高さはデバイスピクセル）。省略すると、ブラウザのキャンバスで作る */
-  createBuffer?: (width: number, height: number) => OffscreenBuffer;
   /** 辞書から文言を引く。Canvas に文言を描くモジュール（LOUD の単位とピーク）が、描画のたびに呼ぶ */
   translate?: Translate;
-}
-
-/** ブラウザのキャンバスで、画面に出さない画像を作る */
-export function createBrowserBuffer(width: number, height: number): OffscreenBuffer {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("2D canvas context is not available");
-  return { canvas, ctx };
 }
 
 export interface ModuleRenderer<O> {
@@ -159,7 +164,7 @@ export interface ModuleRenderer<O> {
   resize(geometry: Geometry): void;
   /**
    * 1回分を描く。座標系は既定の向きに回してあり、(0, 0)〜(width, height) に描けばよい。
-   * 図形は out.shapes へ、文字は out.text へ出す（WebGL2 への移行が済むまでは、図形を文字の層に描いてもよい）。
+   * 図形は out.shapes へ、文字は out.text へ出す。
    * 文字の層は消されないので、文字を描くモジュールは毎回消してから描く。
    * frame はまだ届いていなければ null
    */

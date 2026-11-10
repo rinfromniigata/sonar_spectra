@@ -2,7 +2,7 @@
 // モジュールは作業用の配列を使い回すので、受け取った並びと見た目は写して残す。
 
 import type { StreamImage } from "./stream_image";
-import type { DrawOutput, FillStyle, Rect, ShapeSink, StrokeStyle } from "./types";
+import type { DrawOutput, FillStyle, Rect, ShapeSink, StrokeStyle, TextGlowStyle } from "./types";
 
 export type RecordedShape =
   | { op: "polyline"; points: number[]; style: StrokeStyle; fades?: number[] }
@@ -11,7 +11,8 @@ export type RecordedShape =
   | { op: "points"; points: number[]; radius: number | number[]; style: FillStyle; alphas?: number[] }
   | { op: "rects"; rects: number[]; style: FillStyle; alphas?: number[] }
   | { op: "image"; stream: StreamImage; dest: Rect; alpha: number }
-  | { op: "trail"; color: string; alpha: number };
+  | { op: "trail"; color: string; alpha: number }
+  | { op: "textGlow"; text: string; x: number; y: number; style: TextGlowStyle };
 
 export interface RecordingShapeSink {
   sink: ShapeSink;
@@ -40,6 +41,7 @@ export function recordingShapeSink(): RecordingShapeSink {
       shapes.push({ op: "rects", rects: copy(rects), style: { ...style }, ...(alphas ? { alphas: copy(alphas) } : {}) }),
     image: (stream, dest, style) => shapes.push({ op: "image", stream, dest: { ...dest }, alpha: style?.alpha ?? 1 }),
     trail: (color, alpha) => shapes.push({ op: "trail", color, alpha }),
+    textGlow: (text, x, y, style) => shapes.push({ op: "textGlow", text, x, y, style: { ...style } }),
   };
   return { sink, shapes, clear: () => (shapes.length = 0) };
 }

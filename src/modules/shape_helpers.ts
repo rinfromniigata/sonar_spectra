@@ -34,6 +34,26 @@ export function dashedVerticalRects(x: number, height: number, on: number, off: 
   return out;
 }
 
+/** 弧を折れ線にするときの1区間の角度の上限（既定。2°） */
+export const ARC_STEP = Math.PI / 90;
+
+/**
+ * 中心 (cx, cy)・半径 r の弧を、start から end へ時計回り（角度が増える向き。Canvas 2D の arc と同じで、end が start より
+ * 小さければ1周に満たない分だけ回る）に、点の並び（x, y を交互）にする。区間の角度は step 以下にそろえる
+ */
+export function arcPoints(cx: number, cy: number, r: number, start: number, end: number, step = ARC_STEP): Float32Array<ArrayBuffer> {
+  let span = end - start;
+  if (span < 0) span = (span % (Math.PI * 2)) + Math.PI * 2;
+  const steps = Math.max(1, Math.ceil(span / step));
+  const out = new Float32Array((steps + 1) * 2);
+  for (let i = 0; i <= steps; i++) {
+    const a = start + (span * i) / steps;
+    out[i * 2] = cx + Math.cos(a) * r;
+    out[i * 2 + 1] = cy + Math.sin(a) * r;
+  }
+  return out;
+}
+
 /** 作業用の配列を、長さ n 以上にして返す（足りなければ作り直す。中身は消えてよい） */
 export function ensureLength(array: Float32Array<ArrayBuffer>, n: number): Float32Array<ArrayBuffer> {
   return array.length >= n ? array : new Float32Array(Math.max(n, array.length * 2));

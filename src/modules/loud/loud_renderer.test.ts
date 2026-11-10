@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { FrameClient, LOUDNESS_FLOOR_DB, SectionId } from "../../frame_client";
 import { encodeTestFrame } from "../../frame_client/test_frames";
 import type { Translate } from "../../i18n/use_t";
-import { recordingCanvas, type DrawnShape } from "../test_canvas";
+import { recordingCanvas } from "../test_canvas";
 import type { PaletteColors } from "../types";
 import { loudModule } from "./index";
 import { BAR_COUNT, NEGATIVE_INFINITY_TEXT, loudLayout } from "./loud_math";
-import { testDrawOutput } from "../test_shapes";
+import { recordingShapeSink, splitRects, testDrawOutput, type RecordedShape } from "../test_shapes";
 
 const COLORS: PaletteColors = {
   main: "MAIN",
@@ -33,6 +33,7 @@ const MINUS = "−";
 
 function setup(withTranslate = true) {
   const canvas = recordingCanvas();
+  const recording = recordingShapeSink();
   const renderer = loudModule.createRenderer({ ctx: canvas.ctx, translate: withTranslate ? translate : undefined });
   renderer.resize({ width: WIDTH, height: HEIGHT, devicePixelRatio: 1, quarterTurns: 0 });
   const client = new FrameClient();
@@ -40,14 +41,38 @@ function setup(withTranslate = true) {
   /** values は [モーメンタリ, ショートターム, ピーク]。null なら届かない */
   const draw = (values: [number, number, number] | null, colors: PaletteColors = COLORS, dt = DT) => {
     canvas.clear();
+    recording.clear();
     if (values) client.receive(encodeTestFrame({ seq: seq++, sections: [[SectionId.Loudness, values]] }));
-    renderer.draw(values ? client.latest : null, client.histories, {}, colors, dt, testDrawOutput(canvas.ctx));
+    renderer.draw(values ? client.latest : null, client.histories, {}, colors, dt, testDrawOutput(canvas.ctx, recording));
   };
-  return { canvas, renderer, draw };
+  return { canvas, recording, renderer, draw };
 }
 
-const bars = (shapes: DrawnShape[]) => shapes.filter((s) => s.op === "fillRect");
-const lit = (shapes: DrawnShape[]) => bars(shapes).filter((s) => s.style !== "GRID");
+interface Bar {
+  style: string;
+  alpha: number;
+  /** 左上と右下 */
+  points: [number, number][];
+}
+
+/** 描画の層に出した四角（バー）を、左から順に並べる */
+const bars = (shapes: RecordedShape[]): Bar[] =>
+  shapes
+    .flatMap((shape) =>
+      shape.op === "rects"
+        ? splitRects(shape).map((r) => ({
+            style: String(shape.style.color),
+            alpha: r.alpha,
+            points: [
+              [r.x, r.y],
+              [r.x + r.width, r.y + r.height],
+            ] as [number, number][],
+          }))
+        : [],
+    )
+    .sort((a, b) => a.points[0][0] - b.points[0][0]);
+const lit = (shapes: RecordedShape[]) => bars(shapes).filter((s) => s.style !== "GRID");
+const textGlows = (shapes: RecordedShape[]) => shapes.filter((s): s is Extract<RecordedShape, { op: "textGlow" }> => s.op === "textGlow");
 
 describe("loud モジュールの定義", () => {
   it("ラウドネスのセクションを読み、方向を持たない。設定項目はない", () => {
@@ -107,6 +132,37 @@ describe("loud モジュールの描画：文字", () => {
     }
   });
 
+  it("数値の発光は描画の層に敷かせる：ふだんは副色で 12、−8.6 dB を超えると強調色で 10。文字と同じ書体・位置・揃え方", () => {
+    const { recording, draw } = setup();
+    draw([-20, -23.44, -1.2]);
+    const layout = loudLayout(WIDTH, HEIGHT);
+    expect(textGlows(recording.shapes)).toEqual([
+      {
+        op: "textGlow",
+        text: `${MINUS}23.4`,
+        x: layout.centerX,
+        y: layout.value.y,
+        style: { font: `600 ${layout.value.size}px NUMERIC`, align: "center", baseline: "middle", maxWidth: layout.maxWidth, color: "SUB", glow: 12 },
+      },
+    ]);
+    const hot = setup();
+    hot.draw([-5, -8, -1]);
+    expect(textGlows(hot.recording.shapes).map((g) => [g.style.color, g.style.glow])).toEqual([["ACCENT", 10]]);
+  });
+
+  it("ライトでも、数値の発光は副色・強調色のまま（文字だけ文字色）", () => {
+    const { recording, draw } = setup();
+    draw([-5, -8, -1], LIGHT);
+    expect(textGlows(recording.shapes).map((g) => g.style.color)).toEqual(["ACCENT"]);
+  });
+
+  it("文字の層には文字だけを描き、発光（shadowBlur）を使わない", () => {
+    const { canvas, draw } = setup();
+    draw([0, -5, -1]);
+    expect(canvas.shapes).toHaveLength(0);
+    expect(canvas.ctx.shadowBlur).toBe(0);
+  });
+
   it("届いていない・計算できないときは「−∞」とピークも「−∞」", () => {
     for (const values of [null, [LOUDNESS_FLOOR_DB, LOUDNESS_FLOOR_DB, LOUDNESS_FLOOR_DB]] as ([number, number, number] | null)[]) {
       const { canvas, draw } = setup();
@@ -117,15 +173,15 @@ describe("loud モジュールの描画：文字", () => {
   });
 
   it("数値とピークは 0.25 秒ごとにしか替わらない。バーは毎回動く", () => {
-    const { canvas, draw } = setup();
+    const { canvas, recording, draw } = setup();
     draw([-20, -20, -6]);
     expect(canvas.texts[1].text).toBe(`${MINUS}20.0`);
-    const before = lit(canvas.shapes).length;
+    const before = lit(recording.shapes).length;
 
     draw([0, -10, -1], COLORS, 0.1);
     expect(canvas.texts[1].text).toBe(`${MINUS}20.0`);
     expect(canvas.texts[2].text).toBe(`modules.loudness_peak:${MINUS}6.0`);
-    expect(lit(canvas.shapes).length).toBeGreaterThan(before);
+    expect(lit(recording.shapes).length).toBeGreaterThan(before);
 
     draw([0, -10, -1], COLORS, 0.2);
     expect(canvas.texts[1].text).toBe(`${MINUS}10.0`);
@@ -141,11 +197,11 @@ describe("loud モジュールの描画：文字", () => {
 
 describe("loud モジュールの描画：バー", () => {
   it("24本を下端に並べる。モーメンタリが −30 dB 以下なら、すべて消灯（格子の色）", () => {
-    const { canvas, draw } = setup();
+    const { recording, draw } = setup();
     draw([-30, -20, -6]);
-    const all = bars(canvas.shapes);
+    const all = bars(recording.shapes);
     expect(all).toHaveLength(BAR_COUNT);
-    expect(lit(canvas.shapes)).toHaveLength(0);
+    expect(lit(recording.shapes)).toHaveLength(0);
     const { bars: layout } = loudLayout(WIDTH, HEIGHT);
     expect(all[0].points[0]).toEqual([1, layout.top]);
     expect(all[0].points[1]).toEqual([layout.barWidth - 1, layout.top + layout.height]);
@@ -154,18 +210,18 @@ describe("loud モジュールの描画：バー", () => {
   });
 
   it("−15 dB なら左の12本が点灯（副色）。点灯は少し透かす", () => {
-    const { canvas, draw } = setup();
+    const { recording, draw } = setup();
     draw([-15, -15, -6]);
-    const on = lit(canvas.shapes);
+    const on = lit(recording.shapes);
     expect(on).toHaveLength(12);
     expect(on.every((s) => s.style === "SUB" && s.alpha === 0.9)).toBe(true);
     expect(Math.max(...on.map((s) => s.points[0][0]))).toBeLessThan(WIDTH / 2);
   });
 
   it("0 dB なら全点灯で、右の4本（上の2割）は強調色", () => {
-    const { canvas, draw } = setup();
+    const { recording, draw } = setup();
     draw([0, -5, -1]);
-    const on = lit(canvas.shapes);
+    const on = lit(recording.shapes);
     expect(on).toHaveLength(BAR_COUNT);
     expect(on.filter((s) => s.style === "ACCENT")).toHaveLength(4);
     expect(on.filter((s) => s.style === "SUB")).toHaveLength(BAR_COUNT - 4);
@@ -173,17 +229,17 @@ describe("loud モジュールの描画：バー", () => {
   });
 
   it("バーはモーメンタリで、数値はショートターム：別々の値で動く", () => {
-    const { canvas, draw } = setup();
+    const { canvas, recording, draw } = setup();
     draw([0, -40, -1]);
-    expect(lit(canvas.shapes)).toHaveLength(BAR_COUNT);
+    expect(lit(recording.shapes)).toHaveLength(BAR_COUNT);
     expect(canvas.texts[1].text).toBe(`${MINUS}40.0`);
   });
 
   it("フレームがなければ消灯", () => {
-    const { canvas, draw } = setup();
+    const { recording, draw } = setup();
     draw(null);
-    expect(lit(canvas.shapes)).toHaveLength(0);
-    expect(bars(canvas.shapes)).toHaveLength(BAR_COUNT);
+    expect(lit(recording.shapes)).toHaveLength(0);
+    expect(bars(recording.shapes)).toHaveLength(BAR_COUNT);
   });
 });
 

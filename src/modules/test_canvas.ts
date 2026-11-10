@@ -1,7 +1,5 @@
 // 単体テスト用：描いたものを記録する Canvas の代わり。パスの塗り・線と四角を、そのときの色・不透明度・点線とともに残す。
 
-import type { OffscreenBuffer } from "./types";
-
 export interface DrawnShape {
   op: "fill" | "stroke" | "fillRect";
   style: string;
@@ -100,78 +98,5 @@ export function recordingCanvas(): RecordingCanvas {
       transforms.length = 0;
       arcs.length = 0;
     },
-  };
-}
-
-/** 画面に出さない画像（OffscreenBuffer）の代わり。作られた画像ごとに、描いたものを記録する */
-export function recordingBuffers(): {
-  createBuffer: (width: number, height: number) => OffscreenBuffer;
-  created: { width: number; height: number; rc: RecordingCanvas }[];
-} {
-  const created: { width: number; height: number; rc: RecordingCanvas }[] = [];
-  return {
-    created,
-    createBuffer: (width, height) => {
-      const rc = recordingCanvas();
-      created.push({ width, height, rc });
-      return { canvas: { width, height } as unknown as OffscreenBuffer["canvas"], ctx: rc.ctx };
-    },
-  };
-}
-
-const samePoint = (a: [number, number], b: [number, number]) => Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9;
-const sameLook = (a: DrawnShape, b: DrawnShape) =>
-  a.op === b.op && a.style === b.style && a.alpha === b.alpha && a.lineWidth === b.lineWidth && a.dashed === b.dashed;
-
-/**
- * 短い区間に分けて描いた線（strokePolyline）と、縦の帯に分けて描いた塗り（fillBetween）を、続いているものどうしで
- * 1つにまとめる（テストで、元の1本の線・1つの塗りとして調べるため）。
- * - 線：同じ見た目で、次の線の始まりが前の線の終わりと同じ点なら、つなぐ
- * - 塗り：帯は「上の線（左→右）＋下の線（右→左）」の順の点。次の帯の始まりが前の帯の右上の点なら、上の線どうし・
- *   下の線どうしをつないで、1つの塗り（上の線＋下の線を逆向き）にする
- */
-export function joinRuns(shapes: DrawnShape[]): DrawnShape[] {
-  const out: DrawnShape[] = [];
-  /** まとめている塗りの、上の線と下の線（左→右） */
-  let band: { top: [number, number][]; bottom: [number, number][] } | null = null;
-  for (const shape of shapes) {
-    const prev = out[out.length - 1];
-    if (prev && sameLook(prev, shape) && shape.points.length > 0) {
-      if (shape.op === "stroke" && samePoint(prev.points[prev.points.length - 1], shape.points[0])) {
-        prev.points = [...prev.points, ...shape.points.slice(1)];
-        continue;
-      }
-      if (shape.op === "fill" && band && shape.points.length % 2 === 0 && samePoint(band.top[band.top.length - 1], shape.points[0])) {
-        const half = shape.points.length / 2;
-        band.top.push(...shape.points.slice(1, half));
-        band.bottom.push(...shape.points.slice(half).reverse().slice(1));
-        prev.points = [...band.top, ...[...band.bottom].reverse()];
-        continue;
-      }
-    }
-    const copy: DrawnShape = { ...shape, points: [...shape.points] };
-    out.push(copy);
-    if (shape.op === "fill" && shape.points.length % 2 === 0) {
-      const half = shape.points.length / 2;
-      band = { top: shape.points.slice(0, half), bottom: shape.points.slice(half).reverse() };
-    } else {
-      band = null;
-    }
-  }
-  return out;
-}
-
-/** recordingCanvas の記録を、分けて描いた線と塗りをまとめた形（joinRuns）で見せる。元の記録は raw に残す */
-export function joinedView(raw: RecordingCanvas): Omit<RecordingCanvas, "ctx" | "shapes"> & { readonly shapes: DrawnShape[]; raw: RecordingCanvas } {
-  return {
-    get shapes() {
-      return joinRuns(raw.shapes);
-    },
-    texts: raw.texts,
-    images: raw.images,
-    transforms: raw.transforms,
-    arcs: raw.arcs,
-    clear: () => raw.clear(),
-    raw,
   };
 }

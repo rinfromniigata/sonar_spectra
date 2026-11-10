@@ -1,12 +1,12 @@
 // 図形のまとめ（imple 4.6）：1回の描画で、全モジュールの図形を1つの頂点の並びと1つの番号の並びに積む。
 // モジュールが ShapeSink に出した図形は、その場で三角形に展開して積み、枠ごとに「描く命令」の列を残す。
 // 命令は、続けて描ける図形（同じ発光の値・発光だけかどうかが同じで、色の移り変わりを持たない）を1つにまとめ、
-// 流れる画像のところで区切る。色の移り変わりを持つ図形は、移り変わりの値をシェーダーに渡すので1つずつの命令にする。
+// 流れる画像・文字の発光のところで区切る。色の移り変わりを持つ図形は、移り変わりの値をシェーダーに渡すので1つずつの命令にする。
 // 描画の層は、積んだものを1回だけ GPU に送り、枠ごとに命令の範囲を描く（1つのモジュールは数回の描画命令で済む）。
 // WebGL に頼らないので、展開と命令のまとめ方を単体テストで調べられる。
 
 import type { StreamImage } from "../../modules/stream_image";
-import type { FillStyle, Rect, ShapeSink } from "../../modules/types";
+import type { FillStyle, Rect, ShapeSink, TextGlowStyle } from "../../modules/types";
 import type { Rgba } from "./color";
 import { resolveGradient, type ResolvedGradient } from "./gradient";
 import { fillBand, fillPoints, fillPolygon, fillRects, strokePolyline, type MeshWriter } from "./tessellate";
@@ -23,7 +23,9 @@ export type BatchCommand =
    * glowOnly なら発光だけを敷き、図形は描かない。gradient は色の移り変わり（なければ頂点の色のまま）
    */
   | { kind: "shapes"; first: number; count: number; glow: number; glowOnly: boolean; gradient: ResolvedGradient | null }
-  | { kind: "image"; stream: StreamImage; dest: Rect; alpha: number };
+  | { kind: "image"; stream: StreamImage; dest: Rect; alpha: number }
+  /** 文字の発光だけを敷く（ShapeSink.textGlow）。pixelScale は文字を画像にするときの CSS ピクセルあたりのデバイスピクセル */
+  | { kind: "textGlow"; text: string; x: number; y: number; style: TextGlowStyle; pixelScale: number };
 
 /** 枠1つ分の描くもの：命令の列と、残光（その回に ShapeSink.trail が呼ばれたときだけ） */
 export interface FrameCommands {
@@ -40,6 +42,7 @@ export const DISCARD_SINK: ShapeSink = {
   rects: () => {},
   image: () => {},
   trail: () => {},
+  textGlow: () => {},
 };
 
 const INITIAL_VERTICES = 4096;
@@ -143,6 +146,9 @@ export class ShapeBatch implements MeshWriter {
       },
       trail: (color, alpha) => {
         frame.trail = { color: this.resolveColor(color), alpha: Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 0 };
+      },
+      textGlow: (text, x, y, style) => {
+        if (text.length > 0 && style.glow > 0) commands.push({ kind: "textGlow", text, x, y, style: { ...style }, pixelScale });
       },
     };
   }

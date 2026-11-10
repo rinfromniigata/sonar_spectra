@@ -6,6 +6,8 @@
 // - 枠の画像：残光と、薄くする枠（レイアウト編集中）は、枠の図形を枠の画像に描いてから共有キャンバスに重ねる（gl_frame_image）
 // - 流れる画像：StreamImage ごとに輪の形のテクスチャを持ち、足された列だけを書く。描くときは読み始めの位置から1周を読む
 //   （横は REPEAT、最も近いテクセル）。しばらく描かれなかった画像のテクスチャは捨てる
+// - 文字の発光：文字を発光の色で画像にし（text_glow）、テクスチャにして、発光の命令の図形の代わりに描く。文字そのものは
+//   文字の層が描くので、ここでは発光だけを敷く。同じ文字・見た目の画像は使い回し、しばらく使われなかったものは捨てる
 // - コンテキストを失ったら、この描き手は捨てて、復元したら作り直す（shape_layer）
 
 import type { StreamImage } from "../../modules/stream_image";
@@ -20,6 +22,8 @@ import { GlowRenderer, type GlDestination } from "./gl_glow";
 import { link, type Program } from "./gl_program";
 import { glowPlan } from "./glow";
 import type { ResolvedGradient } from "./gradient";
+import { rasterizeText, textGlowKey } from "./text_glow";
+import type { TextGlowStyle } from "../../modules/types";
 
 const SHAPE_VS = `#version 300 es
 layout(location = 0) in vec2 a_pos;
@@ -113,6 +117,13 @@ interface StreamTexture {
   lastUsed: number;
 }
 
+/** 文字の発光の画像のテクスチャ。dest は基準の点 (0, 0) から見た置き場所（描画の座標系） */
+interface TextTexture extends StreamTexture {
+  dest: Rect;
+  /** 書体を読み込み中に作った（読み込みが済んだら作り直す） */
+  provisional: boolean;
+}
+
 export class GlRenderer {
   private shape: ShapeProgram | null = null;
   /** 発光（作れなければ null。そのときは発光なしで図形だけを描く） */
@@ -132,6 +143,9 @@ export class GlRenderer {
   private indexBuffer: WebGLBuffer | null = null;
   private imageBuffer: WebGLBuffer | null = null;
   private readonly textures = new Map<StreamImage, StreamTexture>();
+  private readonly textTextures = new Map<string, TextTexture>();
+  /** 文字を画像にする Canvas 2D（使い回す） */
+  private textCanvas: HTMLCanvasElement | null = null;
   private tick = 0;
   /** 今の描画の、キャンバスの高さ（WebGL の y は下から） */
   private canvasHeight = 0;
@@ -321,9 +335,29 @@ export class GlRenderer {
 
   /** 流れる画像を描く（足された列を書いてから） */
   streamImage(matrix: Mat3, stream: StreamImage, dest: Rect, alpha: number): void {
-    const gl = this.gl;
     if (!this.imageProgram) return;
     const texture = this.updateTexture(stream);
+    this.drawTexture(matrix, texture, imageQuad(dest, stream.start, stream.width), alpha);
+  }
+
+  /**
+   * 文字の発光だけを、今の描く先に敷く（文字を発光の色で描いた画像を、発光の命令の図形として描く）。
+   * (x, y) は文字の基準の点（描画の座標系）
+   */
+  textGlow(matrix: Mat3, text: string, x: number, y: number, style: TextGlowStyle, pixelScale: number): void {
+    const dest = this.dest;
+    if (!this.glow || !this.imageProgram || !dest) return;
+    const plan = glowPlan(style.glow, dest.rect.width, dest.rect.height);
+    const entry = plan ? this.textTexture(text, style, pixelScale) : null;
+    if (!plan || !entry) return;
+    const rect = { ...entry.dest, x: entry.dest.x + x, y: entry.dest.y + y };
+    const alpha = Math.min(1, Math.max(0, style.alpha ?? 1));
+    this.glow.draw(plan, dest, () => this.drawTexture(matrix, entry.texture, imageQuad(rect, 0, 1), alpha));
+  }
+
+  private drawTexture(matrix: Mat3, texture: WebGLTexture | null, quad: Float32Array, alpha: number): void {
+    const gl = this.gl;
+    if (!this.imageProgram) return;
     gl.useProgram(this.imageProgram.program);
     gl.uniformMatrix3fv(this.imageProgram.matrix, false, matrix);
     gl.uniform1f(this.imageProgram.alpha, alpha);
@@ -332,17 +366,23 @@ export class GlRenderer {
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.bindVertexArray(this.imageVao);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.imageBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, imageQuad(dest, stream.start, stream.width), gl.STREAM_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STREAM_DRAW);
     gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
     gl.bindVertexArray(null);
   }
 
-  /** 1回の描画の終わり：しばらく描かれなかった流れる画像のテクスチャと、残光の画像を捨てる */
+  /** 1回の描画の終わり：しばらく描かれなかった流れる画像・文字の発光のテクスチャと、残光の画像を捨てる */
   end(): void {
     for (const [stream, entry] of this.textures) {
       if (this.tick - entry.lastUsed > TEXTURE_IDLE_TICKS) {
         this.gl.deleteTexture(entry.texture);
         this.textures.delete(stream);
+      }
+    }
+    for (const [key, entry] of this.textTextures) {
+      if (this.tick - entry.lastUsed > TEXTURE_IDLE_TICKS) {
+        this.gl.deleteTexture(entry.texture);
+        this.textTextures.delete(key);
       }
     }
     this.images?.end();
@@ -359,6 +399,8 @@ export class GlRenderer {
     if (gl.isContextLost()) return;
     for (const entry of this.textures.values()) gl.deleteTexture(entry.texture);
     this.textures.clear();
+    for (const entry of this.textTextures.values()) gl.deleteTexture(entry.texture);
+    this.textTextures.clear();
     gl.deleteBuffer(this.vertexBuffer);
     gl.deleteBuffer(this.indexBuffer);
     gl.deleteBuffer(this.imageBuffer);
@@ -368,6 +410,39 @@ export class GlRenderer {
     if (this.imageProgram) gl.deleteProgram(this.imageProgram.program);
     this.glow?.dispose();
     this.images?.dispose();
+  }
+
+  /** 文字の発光の画像のテクスチャ（なければ作る）。文字に大きさがない・作れないときは null */
+  private textTexture(text: string, style: TextGlowStyle, pixelScale: number): TextTexture | null {
+    const gl = this.gl;
+    const key = textGlowKey(text, style, pixelScale);
+    let entry = this.textTextures.get(key) ?? null;
+    const fontsReady = typeof document === "undefined" || !document.fonts || document.fonts.status === "loaded";
+    if (entry && !(entry.provisional && fontsReady)) {
+      entry.lastUsed = this.tick;
+      return entry;
+    }
+    this.textCanvas ??= document.createElement("canvas");
+    const raster = rasterizeText(this.textCanvas, text, style, 0, 0, pixelScale);
+    if (!raster) return null;
+    if (!entry) {
+      const texture = gl.createTexture();
+      if (!texture) return null;
+      entry = { texture, lastUsed: this.tick, dest: raster.dest, provisional: !fontsReady };
+      this.textTextures.set(key, entry);
+    }
+    entry.dest = raster.dest;
+    entry.provisional = !fontsReady;
+    entry.lastUsed = this.tick;
+    gl.bindTexture(gl.TEXTURE_2D, entry.texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    // 画像の色は不透明度で掛けない値で読む（シェーダーが掛ける）
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, raster.canvas);
+    return entry;
   }
 
   private updateTexture(stream: StreamImage): WebGLTexture | null {

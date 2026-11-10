@@ -8,7 +8,7 @@ const batch = () => new ShapeBatch(createColorResolver());
 const frame = (): FrameCommands => ({ commands: [], trail: null });
 const shapesCommand = (first: number, count: number, glow = 0, glowOnly = false) => ({ kind: "shapes", first, count, glow, glowOnly, gradient: null });
 const label = (c: BatchCommand) =>
-  c.kind === "shapes" ? `shapes:${c.first}+${c.count}@${c.glow}${c.glowOnly ? "(glowOnly)" : ""}${c.gradient ? "(gradient)" : ""}` : `image:${c.alpha}`;
+  c.kind === "shapes" ? `shapes:${c.first}+${c.count}@${c.glow}${c.glowOnly ? "(glowOnly)" : ""}${c.gradient ? "(gradient)" : ""}` : c.kind === "image" ? `image:${c.alpha}` : `textGlow:${c.text}@${c.style.glow}`;
 
 const FADE: Gradient = {
   kind: "linear",
@@ -57,6 +57,22 @@ describe("ShapeBatch", () => {
     sink.rects([0, 0, 1, 1], { color: "#fff", glowOnly: true });
     expect(f.commands.map(label)).toEqual(["shapes:0+12@6(glowOnly)", "shapes:12+6@6"]);
     expect(b.vertexCount).toBe(12);
+  });
+
+  it("文字の発光は、文字と見た目と枠の DPR を持つ命令にし、図形の命令とはまとめない。文字が空・発光がなければ積まない", () => {
+    const b = batch();
+    const f = frame();
+    const sink = b.sink(1.5, f);
+    const style = { font: "600 20px NUMERIC", align: "center", baseline: "middle", maxWidth: 80, color: "#00ffff", glow: 12 } as const;
+    sink.rects([0, 0, 1, 1], { color: "#fff", glow: 12 });
+    sink.textGlow("−23.4", 40, 30, style);
+    sink.rects([0, 0, 1, 1], { color: "#fff", glow: 12 });
+    sink.textGlow("", 40, 30, style);
+    sink.textGlow("A", 40, 30, { ...style, glow: 0 });
+    expect(f.commands.map(label)).toEqual(["shapes:0+6@12", "textGlow:−23.4@12", "shapes:6+6@12"]);
+    expect(f.commands[1]).toEqual({ kind: "textGlow", text: "−23.4", x: 40, y: 30, style, pixelScale: 1.5 });
+    // 頂点は積まない
+    expect(b.vertexCount).toBe(8);
   });
 
   it("色の移り変わりを持つ図形は1つずつの命令にし、頂点の色は白（不透明度だけ）にする", () => {
@@ -154,6 +170,7 @@ describe("ShapeBatch", () => {
       DISCARD_SINK.polyline([0, 0, 1, 1], { color: "#fff", width: 1 });
       DISCARD_SINK.image(new StreamImage(1, 1), { x: 0, y: 0, width: 1, height: 1 });
       DISCARD_SINK.trail("#000", 0.5);
+      DISCARD_SINK.textGlow("A", 0, 0, { font: "10px sans-serif", align: "left", baseline: "top", color: "#fff", glow: 4 });
     }).not.toThrow();
   });
 });

@@ -3,7 +3,7 @@
 // - begin：まとめを空にし、今の枠の範囲（配置の状態から求めたもの）を受け取る
 // - モジュールの描画：ModuleFrame が sink(枠, 大きさと向き) で受け口を得て、モジュールが図形を出す（その場で三角形に展開して積む）
 // - end：全体を透明にし、枠ごとに、範囲を切り抜きとビューポートにして地の色で塗り、そのモジュールの図形を描く
-//   （発光の値を持つ図形は、先に発光を敷いてから描く。gl_glow）。残光を使う枠（ShapeSink.trail）と、薄くする枠
+//   （発光の値を持つ図形は、先に発光を敷いてから描く。gl_glow。文字の発光は、文字の画像の発光だけを敷く）。残光を使う枠（ShapeSink.trail）と、薄くする枠
 //   （レイアウト編集中。sink の opacity が 1 未満）は、枠の画像に描いてから重ねる（gl_frame_image）
 // コンテキストの喪失：webglcontextlost で preventDefault して描くのを止め（状態は lost）、webglcontextrestored で
 // シェーダー・バッファ・テクスチャを作り直して再開する。流れる画像の中身は消えたところから描き直す。
@@ -138,7 +138,8 @@ export class ShapeLayer implements RenderLayer {
         const matrix = frameClipMatrix(record.turns, record.width, record.height, record.devicePixelRatio);
         for (const command of record.commands) {
           if (command.kind === "shapes") renderer.shapes(matrix, command.first, command.count, command.glow, command.glowOnly, command.gradient);
-          else renderer.streamImage(matrix, command.stream, command.dest, command.alpha);
+          else if (command.kind === "image") renderer.streamImage(matrix, command.stream, command.dest, command.alpha);
+          else renderer.textGlow(matrix, command.text, command.x, command.y, command.style, command.pixelScale);
         }
       }
       if (useImage) renderer.endFrameImage(record.opacity);

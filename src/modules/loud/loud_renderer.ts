@@ -6,11 +6,11 @@
 //   大きすぎる（−8.6 を超える）と強調色。ライトでは、小さな文字のコントラストが足りないので文字色にする（SPEC 9節）
 // - バー：モーメンタリ（0.4秒）。−30〜0 dB に24本。上の2割は強調色
 // - 単位とピークの文言は辞書から引く（ModuleFrame が渡す translate）
+// - バーは描画の層（ShapeSink）へ出す。文字は文字の層に描き、数値の発光は描画の層に敷かせる（ShapeSink.textGlow）
 
 import { LOUDNESS_FLOOR_DB, readLoudness, type AnalysisFrame } from "../../frame_client";
-import { setGlow } from "../canvas_helpers";
 import type { NoOptions } from "../options";
-import type { Geometry, ModuleRenderer, PaletteColors, RenderContext } from "../types";
+import type { Geometry, ModuleRenderer, PaletteColors, RenderContext, ShapeSink } from "../types";
 import { BAR_COUNT, ReadingThrottle, barHot, barLevel, barLit, formatDb, isHot, loudLayout, type LoudReading } from "./loud_math";
 
 const BAR_ON_ALPHA = 0.9;
@@ -29,26 +29,34 @@ export function createLoudRenderer({ ctx, translate }: RenderContext): ModuleRen
   const unitText = () => (translate ? translate("modules.loudness_unit") : "LOUD");
   const peakText = (value: string) => (translate ? translate("modules.loudness_peak", { value }) : value);
 
-  function drawBars(colors: PaletteColors, momentary: number): void {
+  // バーの四角（消えている・点いている・点いている強調の3つに分ける。バーは重ならないので、描く順は変えてよい）
+  const offRects = new Float32Array(BAR_COUNT * 4);
+  const onRects = new Float32Array(BAR_COUNT * 4);
+  const hotRects = new Float32Array(BAR_COUNT * 4);
+
+  function drawBars(shapes: ShapeSink, colors: PaletteColors, momentary: number): void {
     const { bars } = loudLayout(width, height);
     const level = barLevel(momentary);
-    ctx.shadowBlur = 0;
+    let off = 0;
+    let on = 0;
+    let hot = 0;
     for (let i = 0; i < BAR_COUNT; i++) {
-      const lit = barLit(i, level);
-      ctx.fillStyle = !lit ? colors.grid : barHot(i) ? colors.accent : colors.sub;
-      ctx.globalAlpha = lit ? BAR_ON_ALPHA : 1;
-      ctx.fillRect(i * bars.barWidth + 1, bars.top, bars.barWidth - 2, bars.height);
+      const rect = [i * bars.barWidth + 1, bars.top, bars.barWidth - 2, bars.height];
+      if (!barLit(i, level)) offRects.set(rect, 4 * off++);
+      else if (barHot(i)) hotRects.set(rect, 4 * hot++);
+      else onRects.set(rect, 4 * on++);
     }
-    ctx.globalAlpha = 1;
+    if (off > 0) shapes.rects(offRects.subarray(0, 4 * off), { color: colors.grid });
+    if (on > 0) shapes.rects(onRects.subarray(0, 4 * on), { color: colors.sub, alpha: BAR_ON_ALPHA });
+    if (hot > 0) shapes.rects(hotRects.subarray(0, 4 * hot), { color: colors.accent, alpha: BAR_ON_ALPHA });
   }
 
-  function drawReading(colors: PaletteColors, reading: LoudReading): void {
+  function drawReading(shapes: ShapeSink, colors: PaletteColors, reading: LoudReading): void {
     const layout = loudLayout(width, height);
     const hot = isHot(reading.shortTerm);
     const accent = hot ? colors.accent : colors.sub;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.shadowBlur = 0;
 
     // 単位
     ctx.fillStyle = colors.textMuted;
@@ -56,11 +64,19 @@ export function createLoudRenderer({ ctx, translate }: RenderContext): ModuleRen
     ctx.fillText(unitText(), layout.centerX, layout.unit.y, layout.maxWidth);
 
     // 数値。ライトでは副色・強調色が地の色に対して 4.5:1 に届かないので、文字は文字色にして発光だけ残す
-    ctx.font = `${VALUE_WEIGHT} ${layout.value.size}px ${colors.fontNumeric}`;
+    const value = formatDb(reading.shortTerm);
+    const font = `${VALUE_WEIGHT} ${layout.value.size}px ${colors.fontNumeric}`;
+    shapes.textGlow(value, layout.centerX, layout.value.y, {
+      font,
+      align: "center",
+      baseline: "middle",
+      maxWidth: layout.maxWidth,
+      color: accent,
+      glow: hot ? VALUE_GLOW_HOT : VALUE_GLOW,
+    });
+    ctx.font = font;
     ctx.fillStyle = colors.theme === "light" ? colors.text : accent;
-    setGlow(ctx, accent, hot ? VALUE_GLOW_HOT : VALUE_GLOW);
-    ctx.fillText(formatDb(reading.shortTerm), layout.centerX, layout.value.y, layout.maxWidth);
-    ctx.shadowBlur = 0;
+    ctx.fillText(value, layout.centerX, layout.value.y, layout.maxWidth);
 
     // ピーク
     ctx.fillStyle = colors.textMuted;
@@ -74,7 +90,7 @@ export function createLoudRenderer({ ctx, translate }: RenderContext): ModuleRen
       height = geometry.height;
     },
 
-    draw(frame: AnalysisFrame | null, _histories, _options, colors, dt) {
+    draw(frame: AnalysisFrame | null, _histories, _options, colors, dt, out) {
       if (width <= 0 || height <= 0) return;
       const values = frame ? readLoudness(frame) : null;
       const latest: LoudReading = values
@@ -85,8 +101,8 @@ export function createLoudRenderer({ ctx, translate }: RenderContext): ModuleRen
       ctx.clearRect(0, 0, width, height);
       ctx.save();
       // バーは更新を間引かず、そのときのモーメンタリで動かす。数値とピークだけ間引く
-      drawBars(colors, latest.momentary);
-      drawReading(colors, shown);
+      drawBars(out.shapes, colors, latest.momentary);
+      drawReading(out.shapes, colors, shown);
       ctx.restore();
     },
 

@@ -5,11 +5,14 @@
 //   （受信が途切れて値が読めない間だけ、0 へ時定数 0.14 秒で戻す）
 // - コードとキー：解析の推定をそのまま表記する。推定できない（無音など）ときは、コードを「—」にし、キーは出さない
 // - キーの文言（「キー A minor」）は辞書から引く（ModuleFrame が渡す translate）。音名とコードの記法は辞書に入れない
+// - 扇は描画の層（ShapeSink）へ出す：内半径と外半径の間を、真ん中の半径の弧を太さ（外半径−内半径）の線で描く
+//   （線の端は切りっぱなしで、弧に直角＝中心へ向かう向きに切れるので、扇の形になる）。発光は図形の発光の値で描画の層がつける。
+//   音名・コード・キーは文字の層に描き、コードの発光は描画の層に敷かせる（ShapeSink.textGlow）
 
 import { CHROMA_BINS, KeyMode, readChroma, type AnalysisFrame } from "../../frame_client";
-import { setGlow } from "../canvas_helpers";
+import { arcPoints } from "../shape_helpers";
 import type { NoOptions } from "../options";
-import type { Geometry, ModuleRenderer, PaletteColors, RenderContext } from "../types";
+import type { Geometry, ModuleRenderer, PaletteColors, RenderContext, ShapeSink, StrokeStyle } from "../types";
 import {
   GLOW_GAIN,
   LABEL_BRIGHT_ABOVE,
@@ -53,42 +56,33 @@ export function createChromaRenderer({ ctx, translate }: RenderContext): ModuleR
     return translate("modules.chroma_key", { key: name });
   };
 
-  /** 扇の形（内側の弧と外側の弧で囲む） */
-  function sectorPath(layout: ChromaLayout, n: number, outerRadius: number): void {
+  /** 音名 n の扇（内半径〜outerRadius）を出す */
+  function sector(shapes: ShapeSink, layout: ChromaLayout, n: number, outerRadius: number, style: Omit<StrokeStyle, "width">): void {
     const { start, end } = segmentAngles(n);
-    ctx.beginPath();
-    ctx.arc(layout.centerX, layout.centerY, layout.inner, start, end);
-    ctx.arc(layout.centerX, layout.centerY, outerRadius, end, start, true);
-    ctx.closePath();
+    const width = outerRadius - layout.inner;
+    if (!(width > 0)) return;
+    shapes.polyline(arcPoints(layout.centerX, layout.centerY, layout.inner + width / 2, start, end), { ...style, width });
   }
 
-  function drawRing(layout: ChromaLayout, colors: PaletteColors): void {
+  function drawRing(shapes: ShapeSink, layout: ChromaLayout, colors: PaletteColors): void {
     for (let n = 0; n < CHROMA_BINS; n++) {
       const strength = clampStrength(shown.strengths[n]);
 
       // 土台
-      ctx.shadowBlur = 0;
-      ctx.globalAlpha = 1;
-      sectorPath(layout, n, layout.outer);
-      ctx.fillStyle = colors.grid;
-      ctx.fill();
+      sector(shapes, layout, n, layout.outer, { color: colors.grid });
 
-      // 強さの分（根音は強調色）
+      // 強さの分（根音は強調色）。発光は扇の色
       if (strength > 0) {
-        sectorPath(layout, n, strengthRadius(layout, strength));
-        const color = n === shown.root ? colors.accent : colors.main;
-        ctx.fillStyle = color;
-        ctx.globalAlpha = strengthAlpha(strength);
-        setGlow(ctx, color, GLOW_GAIN * strength);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 0;
+        sector(shapes, layout, n, strengthRadius(layout, strength), {
+          color: n === shown.root ? colors.accent : colors.main,
+          alpha: strengthAlpha(strength),
+          glow: GLOW_GAIN * strength,
+        });
       }
     }
   }
 
   function drawNoteNames(layout: ChromaLayout, colors: PaletteColors): void {
-    ctx.shadowBlur = 0;
     ctx.font = `${layout.noteFont}px ${colors.fontNumeric}`;
     const distance = layout.outer * NOTE_LABEL_DISTANCE;
     for (let n = 0; n < CHROMA_BINS; n++) {
@@ -98,14 +92,16 @@ export function createChromaRenderer({ ctx, translate }: RenderContext): ModuleR
     }
   }
 
-  function drawCenter(layout: ChromaLayout, colors: PaletteColors): void {
+  function drawCenter(shapes: ShapeSink, layout: ChromaLayout, colors: PaletteColors): void {
     // 主表示：今のコード。ライトでは副色が地の色に対して 4.5:1 に届かないので、文字は文字色にして発光だけ残す（LOUD と同じ）
     const known = shown.root !== null;
-    ctx.font = `${CHORD_WEIGHT} ${layout.chordFont}px ${colors.fontNumeric}`;
+    const font = `${CHORD_WEIGHT} ${layout.chordFont}px ${colors.fontNumeric}`;
+    if (known) {
+      shapes.textGlow(shown.chord, layout.centerX, layout.chordY, { font, align: "center", baseline: "middle", color: colors.sub, glow: CHORD_GLOW });
+    }
+    ctx.font = font;
     ctx.fillStyle = !known ? colors.textMuted : colors.theme === "light" ? colors.text : colors.sub;
-    if (known) setGlow(ctx, colors.sub, CHORD_GLOW);
     ctx.fillText(shown.chord, layout.centerX, layout.chordY);
-    ctx.shadowBlur = 0;
 
     // 副表示：推定したキー
     if (shown.key) {
@@ -121,7 +117,7 @@ export function createChromaRenderer({ ctx, translate }: RenderContext): ModuleR
       height = geometry.height;
     },
 
-    draw(frame: AnalysisFrame | null, _histories, _options, colors, dt) {
+    draw(frame: AnalysisFrame | null, _histories, _options, colors, dt, out) {
       if (width <= 0 || height <= 0) return;
       const values = frame ? readChroma(frame) : null;
       if (values) {
@@ -141,9 +137,9 @@ export function createChromaRenderer({ ctx, translate }: RenderContext): ModuleR
       ctx.save();
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      drawRing(layout, colors);
+      drawRing(out.shapes, layout, colors);
       drawNoteNames(layout, colors);
-      drawCenter(layout, colors);
+      drawCenter(out.shapes, layout, colors);
       ctx.restore();
     },
 
