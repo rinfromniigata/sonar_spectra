@@ -26,9 +26,13 @@ export const MITER_LIMIT = 10;
 
 const EPS = 1e-9;
 
-/** x, y の並びから、使える点（有限で、直前の点と重ならないもの）を取り出す */
-function cleanPoints(points: ArrayLike<number>, closed: boolean): number[] {
+/**
+ * x, y の並びから、使える点（有限で、直前の点と重ならないもの）を取り出す。
+ * index は、取り出した点ごとの元の点の番号（点ごとの値〔fades〕を引くのに使う）
+ */
+function cleanPoints(points: ArrayLike<number>, closed: boolean): { p: number[]; index: number[] } {
   const out: number[] = [];
+  const index: number[] = [];
   for (let i = 0; i + 1 < points.length; i += 2) {
     const x = points[i];
     const y = points[i + 1];
@@ -36,13 +40,23 @@ function cleanPoints(points: ArrayLike<number>, closed: boolean): number[] {
     const n = out.length;
     if (n >= 2 && Math.abs(out[n - 2] - x) < EPS && Math.abs(out[n - 1] - y) < EPS) continue;
     out.push(x, y);
+    index.push(i / 2);
   }
   // 閉じた線で、終点が始点と重なっていれば落とす
   if (closed && out.length >= 4) {
     const n = out.length;
-    if (Math.abs(out[n - 2] - out[0]) < EPS && Math.abs(out[n - 1] - out[1]) < EPS) out.length = n - 2;
+    if (Math.abs(out[n - 2] - out[0]) < EPS && Math.abs(out[n - 1] - out[1]) < EPS) {
+      out.length = n - 2;
+      index.length -= 1;
+    }
   }
-  return out;
+  return { p: out, index };
+}
+
+/** 色ごと透明（transparent。透明な黒）へ近づけた色。fade は 1 でそのまま、0 で透明（範囲の外は端に寄せ、有限でない値は 0） */
+export function fadeColor(color: Rgba, fade: number): Rgba {
+  const f = Number.isFinite(fade) ? Math.min(1, Math.max(0, fade)) : 0;
+  return f === 1 ? color : [color[0] * f, color[1] * f, color[2] * f, color[3] * f];
 }
 
 /** 線の太さ（CSS ピクセル）から、デバイスピクセルでの太さの半分と、薄くする割合 */
@@ -53,7 +67,8 @@ export function lineCoverage(widthCss: number, pixelScale: number): { halfWidth:
 }
 
 /**
- * 折れ線を三角形にする。points は x, y の並び（CSS ピクセル）、pixelScale は CSS ピクセルあたりのデバイスピクセル
+ * 折れ線を三角形にする。points は x, y の並び（CSS ピクセル）、pixelScale は CSS ピクセルあたりのデバイスピクセル。
+ * fades は点ごとに、色ごと透明へ近づける割合（fadeColor。点の間は頂点の色の補間でなめらかに移る）
  */
 export function strokePolyline(
   writer: MeshWriter,
@@ -63,9 +78,10 @@ export function strokePolyline(
   color: Rgba,
   alpha: number,
   closed = false,
+  fades?: ArrayLike<number>,
 ): void {
   if (!(widthCss > 0) || !(pixelScale > 0)) return;
-  const p = cleanPoints(points, closed);
+  const { p, index } = cleanPoints(points, closed);
   const n = p.length / 2;
   if (n < 2) return;
   const isClosed = closed && n >= 3;
@@ -94,12 +110,15 @@ export function strokePolyline(
   const inR = new Int32Array(n);
   const outL = new Int32Array(n);
   const outR = new Int32Array(n);
+  /** 今の点の色（点ごとの fades を当てたもの） */
+  let pointColor = color;
   const side = (x: number, y: number, nx: number, ny: number, scale: number, sign: 1 | -1) =>
-    writer.vertex(x + sign * nx * extent * scale, y + sign * ny * extent * scale, color, a, sign * extentPx, halfWidth, 0);
+    writer.vertex(x + sign * nx * extent * scale, y + sign * ny * extent * scale, pointColor, a, sign * extentPx, halfWidth, 0);
 
   for (let i = 0; i < n; i++) {
     const x = p[i * 2];
     const y = p[i * 2 + 1];
+    pointColor = fades ? fadeColor(color, fades[index[i]]) : color;
     const prev = isClosed ? (i - 1 + n) % n : i - 1;
     const next = isClosed ? i : i < n - 1 ? i : -1;
     // 区間の左の法線（向きを左に 90° 回したもの。y が下向きの座標）
@@ -133,7 +152,7 @@ export function strokePolyline(
     inR[i] = side(x, y, n0x, n0y, 1, -1);
     outL[i] = side(x, y, n1x, n1y, 1, 1);
     outR[i] = side(x, y, n1x, n1y, 1, -1);
-    const center = writer.vertex(x, y, color, a, 0, halfWidth, 0);
+    const center = writer.vertex(x, y, pointColor, a, 0, halfWidth, 0);
     // 左（+法線）へ曲がるとき、外側は右
     const cross = dx[prev] * dy[next] - dy[prev] * dx[next];
     if (cross > 0) writer.triangle(center, inR[i], outR[i]);
@@ -148,7 +167,11 @@ export function strokePolyline(
   }
 }
 
-/** 塗りの帯：各位置 xs[i] で top[i]〜bottom[i] を塗り、隣とつなぐ。値が有限でない位置で帯を切る */
+/**
+ * 塗りの帯：各位置 xs[i] で top[i]〜bottom[i] を塗り、隣とつなぐ。値が有限でない位置で帯を切る。
+ * 隣どうしの間で top と bottom が入れ替わるところは、交わる点で2つの三角形に分ける
+ * （Canvas 2D で上の線と下の線を1つのパスにして塗ったときと同じ形。重ねて塗る部分を作らない）
+ */
 export function fillBand(
   writer: MeshWriter,
   xs: ArrayLike<number>,
@@ -158,8 +181,12 @@ export function fillBand(
   alpha: number,
 ): void {
   const n = Math.min(xs.length, top.length, bottom.length);
+  const vertex = (x: number, y: number) => writer.vertex(x, y, color, alpha, 0, FILL_EXTENT, 0);
   let prevTop = -1;
   let prevBottom = -1;
+  let px = 0;
+  let pt = 0;
+  let pb = 0;
   for (let i = 0; i < n; i++) {
     const x = xs[i];
     const t = top[i];
@@ -168,51 +195,75 @@ export function fillBand(
       prevTop = -1;
       continue;
     }
-    const vt = writer.vertex(x, t, color, alpha, 0, FILL_EXTENT, 0);
-    const vb = writer.vertex(x, b, color, alpha, 0, FILL_EXTENT, 0);
+    const vt = vertex(x, t);
+    const vb = vertex(x, b);
     if (prevTop >= 0) {
-      writer.triangle(prevTop, vt, vb);
-      writer.triangle(prevTop, vb, prevBottom);
+      const d0 = pt - pb;
+      const d1 = t - b;
+      if ((d0 < 0 && d1 > 0) || (d0 > 0 && d1 < 0)) {
+        // 交わる点で、左右の三角形に分ける
+        const u = d0 / (d0 - d1);
+        const cross = vertex(px + (x - px) * u, pt + (t - pt) * u);
+        writer.triangle(prevTop, cross, prevBottom);
+        writer.triangle(cross, vt, vb);
+      } else {
+        writer.triangle(prevTop, vt, vb);
+        writer.triangle(prevTop, vb, prevBottom);
+      }
     }
     prevTop = vt;
     prevBottom = vb;
+    px = x;
+    pt = t;
+    pb = b;
   }
 }
 
-/** 塗りの多角形：点の平均を中心に扇形に分ける（中心から見て星形の形に限る） */
-export function fillPolygon(writer: MeshWriter, points: ArrayLike<number>, color: Rgba, alpha: number): void {
-  const p = cleanPoints(points, true);
+/** 塗りの多角形：center（省略は点の平均）を中心に扇形に分ける（中心から見て星形の形に限る） */
+export function fillPolygon(
+  writer: MeshWriter,
+  points: ArrayLike<number>,
+  color: Rgba,
+  alpha: number,
+  center?: readonly [number, number],
+): void {
+  const { p } = cleanPoints(points, true);
   const n = p.length / 2;
   if (n < 3) return;
   let cx = 0;
   let cy = 0;
-  for (let i = 0; i < n; i++) {
-    cx += p[i * 2];
-    cy += p[i * 2 + 1];
+  if (center && Number.isFinite(center[0]) && Number.isFinite(center[1])) {
+    [cx, cy] = center;
+  } else {
+    for (let i = 0; i < n; i++) {
+      cx += p[i * 2] / n;
+      cy += p[i * 2 + 1] / n;
+    }
   }
-  const center = writer.vertex(cx / n, cy / n, color, alpha, 0, FILL_EXTENT, 0);
+  const middle = writer.vertex(cx, cy, color, alpha, 0, FILL_EXTENT, 0);
   const first = writer.vertex(p[0], p[1], color, alpha, 0, FILL_EXTENT, 0);
   let prev = first;
   for (let i = 1; i < n; i++) {
     const v = writer.vertex(p[i * 2], p[i * 2 + 1], color, alpha, 0, FILL_EXTENT, 0);
-    writer.triangle(center, prev, v);
+    writer.triangle(middle, prev, v);
     prev = v;
   }
-  writer.triangle(center, prev, first);
+  writer.triangle(middle, prev, first);
 }
 
-/** 四角：x, y, 幅, 高さ の並び。幅か高さが 0 以下のものは描かない */
-export function fillRects(writer: MeshWriter, rects: ArrayLike<number>, color: Rgba, alpha: number): void {
-  for (let i = 0; i + 3 < rects.length; i += 4) {
+/** 四角：x, y, 幅, 高さ の並び。alphas は四角ごとの不透明度（alpha に掛ける）。幅か高さが 0 以下・透明なものは描かない */
+export function fillRects(writer: MeshWriter, rects: ArrayLike<number>, color: Rgba, alpha: number, alphas?: ArrayLike<number>): void {
+  for (let i = 0, k = 0; i + 3 < rects.length; i += 4, k++) {
     const x = rects[i];
     const y = rects[i + 1];
     const w = rects[i + 2];
     const h = rects[i + 3];
-    if (!(w > 0 && h > 0) || !Number.isFinite(x) || !Number.isFinite(y)) continue;
-    const a = writer.vertex(x, y, color, alpha, 0, FILL_EXTENT, 0);
-    const b = writer.vertex(x + w, y, color, alpha, 0, FILL_EXTENT, 0);
-    const c = writer.vertex(x + w, y + h, color, alpha, 0, FILL_EXTENT, 0);
-    const d = writer.vertex(x, y + h, color, alpha, 0, FILL_EXTENT, 0);
+    const o = alpha * (alphas ? alphas[k] : 1);
+    if (!(w > 0 && h > 0) || !(o > 0) || !Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const a = writer.vertex(x, y, color, o, 0, FILL_EXTENT, 0);
+    const b = writer.vertex(x + w, y, color, o, 0, FILL_EXTENT, 0);
+    const c = writer.vertex(x + w, y + h, color, o, 0, FILL_EXTENT, 0);
+    const d = writer.vertex(x, y + h, color, o, 0, FILL_EXTENT, 0);
     writer.triangle(a, b, c);
     writer.triangle(a, c, d);
   }

@@ -5,6 +5,7 @@ import {
   FILL_EXTENT,
   MITER_LIMIT,
   coverage,
+  fadeColor,
   fillBand,
   fillPoints,
   fillPolygon,
@@ -24,14 +25,17 @@ interface Vertex {
   w: number;
 }
 
-function mesh(): MeshWriter & { vertices: Vertex[]; triangles: [number, number, number][] } {
+function mesh(): MeshWriter & { vertices: Vertex[]; colors: Rgba[]; triangles: [number, number, number][] } {
   const vertices: Vertex[] = [];
+  const colors: Rgba[] = [];
   const triangles: [number, number, number][] = [];
   return {
     vertices,
+    colors,
     triangles,
     vertex(x, y, color, alpha, u, v, w) {
       vertices.push({ x, y, a: color[3] * alpha, u, v, w });
+      colors.push(color);
       return vertices.length - 1;
     },
     triangle(a, b, c) {
@@ -154,6 +158,28 @@ describe("strokePolyline", () => {
     strokePolyline(zero, [0, 0, 10, 0], 0, 1, WHITE, 1);
     expect(zero.vertices).toHaveLength(0);
   });
+
+  it("点ごとの濃さ（fades）：その点の頂点の色を、色ごと透明へ近づける（飛ばした点の分はずらさない）", () => {
+    const red: Rgba = [1, 0, 0, 0.8];
+    const m = mesh();
+    // 2点目は重なるので飛ばす。残る点は元の 0・2・3 番目
+    strokePolyline(m, [0, 0, 0, 0, 10, 0, 20, 0], 2, 1, red, 1, false, [0, 0.9, 0.5, 1]);
+    expect(m.vertices).toHaveLength(6);
+    expect(m.colors[0]).toEqual([0, 0, 0, 0]);
+    expect(m.colors[1]).toEqual([0, 0, 0, 0]);
+    expect(m.colors[2]).toEqual([0.5, 0, 0, 0.4]);
+    expect(m.colors[4]).toBe(red);
+    expect(m.vertices[4].a).toBeCloseTo(0.8, 6);
+  });
+
+  it("fadeColor：1 でそのまま、範囲の外は端に寄せ、有限でない値は透明", () => {
+    const c: Rgba = [0.2, 0.4, 0.6, 1];
+    expect(fadeColor(c, 1)).toBe(c);
+    expect(fadeColor(c, 2)).toBe(c);
+    expect(fadeColor(c, 0.5)).toEqual([0.1, 0.2, 0.3, 0.5]);
+    expect(fadeColor(c, -1)).toEqual([0, 0, 0, 0]);
+    expect(fadeColor(c, Number.NaN)).toEqual([0, 0, 0, 0]);
+  });
 });
 
 describe("fillBand", () => {
@@ -172,6 +198,21 @@ describe("fillBand", () => {
     fillBand(m, [0, 10, 20], [0, Number.NaN, 0], [10, 10, 10], WHITE, 1);
     expect(m.triangles).toHaveLength(0);
   });
+
+  it("上下が入れ替わる区間は、交わる点で左右の三角形に分ける（重ねて塗らず、面積は2つの三角形の合計）", () => {
+    const m = mesh();
+    // x 0→10 で、上の線は 0→10、下の線は 10→0。真ん中 (5, 5) で交わる
+    fillBand(m, [0, 10], [0, 10], [10, 0], WHITE, 1);
+    expect(m.triangles).toHaveLength(2);
+    expect(m.vertices[4]).toMatchObject({ x: 5, y: 5 });
+    // 左の三角形 (0,0)-(5,5)-(0,10) と右の三角形 (5,5)-(10,10)-(10,0)。どちらも面積 25
+    expect(area(m)).toBeCloseTo(50, 6);
+    // 端で触れるだけ（片側が 0）は分けない
+    const touch = mesh();
+    fillBand(touch, [0, 10], [0, 5], [10, 5], WHITE, 1);
+    expect(touch.triangles).toHaveLength(2);
+    expect(area(touch)).toBeCloseTo(50, 6);
+  });
 });
 
 describe("fillPolygon", () => {
@@ -181,6 +222,22 @@ describe("fillPolygon", () => {
     expect(m.triangles).toHaveLength(4);
     expect(m.vertices[0]).toMatchObject({ x: 5, y: 10 });
     expect(area(m)).toBeCloseTo(200, 6);
+  });
+
+  it("中心を渡すと、そこから扇形に分ける（点の平均から見て星形でない形も、中心から見て星形なら重ならない）", () => {
+    // 中心 (0, 0) から見た星形：右へ長く伸びた形。点の平均は (10, 0) 付近にずれる
+    const points = [40, 0, 2, 2, 0, 4, -2, 2, -4, 0, -2, -2, 0, -4, 2, -2];
+    const m = mesh();
+    fillPolygon(m, points, WHITE, 1, [0, 0]);
+    expect(m.vertices[0]).toMatchObject({ x: 0, y: 0 });
+    expect(m.triangles).toHaveLength(8);
+    // 靴ひもの公式で求めた面積と一致する（重なりがない）
+    let shoelace = 0;
+    for (let i = 0; i < points.length; i += 2) {
+      const j = (i + 2) % points.length;
+      shoelace += points[i] * points[j + 1] - points[j] * points[i + 1];
+    }
+    expect(area(m)).toBeCloseTo(Math.abs(shoelace) / 2, 6);
   });
 
   it("3点に満たなければ描かない", () => {
@@ -198,6 +255,14 @@ describe("fillRects", () => {
     expect(m.triangles).toHaveLength(4);
     expect(area(m)).toBeCloseTo(10 + 12, 6);
     for (const v of m.vertices) expect(v.a).toBe(0.5);
+  });
+
+  it("四角ごとの不透明度（alphas）を掛ける。透明なものは描かない", () => {
+    const m = mesh();
+    fillRects(m, [0, 0, 1, 1, 2, 0, 1, 1, 4, 0, 1, 1], WHITE, 0.5, [1, 0, 0.4]);
+    expect(m.vertices).toHaveLength(8);
+    expect(m.vertices[0].a).toBe(0.5);
+    expect(m.vertices[4]).toMatchObject({ x: 4, a: 0.2 });
   });
 });
 

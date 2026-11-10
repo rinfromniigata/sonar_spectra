@@ -3,9 +3,11 @@
 // - スペクトラムの4方式とピークの残像（S05）、波形の履歴の色とチャンネル（S06）、
 //   位相のリサージュの点描と周波数別の定位のモーションブラー（S08）
 // - 追加のモジュール（VU・クロマ・重心と変化量）の見本（S07）。設定項目のないものは、推奨の形を添える
-// - 本物の描画の経路（ModuleFrame と描画ループ）をそのまま使う。入力は音声の取得ではなく合成信号（synthetic_signal.ts）
+// - 本物の描画の経路（ModuleFrame・描画ループ・描画の層）をそのまま使う。入力は音声の取得ではなく合成信号（synthetic_signal.ts）
 //   なので、Tauri の外でも動く。テーマを切り替えて、ダークとライトでも見比べられる
-import { onBeforeUnmount, onMounted, provide } from "vue";
+// - 描画の層（共有の WebGL2 キャンバス）は、画面全体に固定して内容の後ろに敷く。枠の範囲は、毎回の描画で枠の要素を測って
+//   求める（スクロールに追従する。開発用なので、配置の状態から求める MeterGrid の方式は取らない）。画面の外の枠は描かない
+import { onBeforeUnmount, onMounted, provide, ref } from "vue";
 import ModuleFrame from "../components/ModuleFrame.vue";
 import UiSegmented from "../components/ui/UiSegmented.vue";
 import { createInstance } from "../config/default_instances";
@@ -21,6 +23,8 @@ import { stereoModule } from "../modules/stereo";
 import type { AnyModuleDefinition } from "../modules/types";
 import { vuModule } from "../modules/vu";
 import { waveModule } from "../modules/wave";
+import type { DeviceRect } from "../render/gl/frame_rects";
+import { provideShapeLayer } from "../render/gl/use_shape_layer";
 import { RenderLoop } from "../render/render_loop";
 import { RENDER_LOOP_KEY } from "../render/use_render_loop";
 import { readDocumentCanvasColors, watchCanvasColors } from "../theme/canvas_colors";
@@ -35,6 +39,31 @@ const client = new FrameClient();
 let colors = readDocumentCanvasColors();
 const loop = new RenderLoop(client, () => colors);
 provide(RENDER_LOOP_KEY, loop);
+
+// --- 描画の層：画面全体に固定した共有キャンバスと、枠の要素を測った範囲 ---
+const root = ref<HTMLElement | null>(null);
+const layerCanvas = ref<HTMLCanvasElement | null>(null);
+
+/** 今の枠の範囲（共有キャンバスのデバイスピクセル）。端は画面上のデバイスピクセルに丸める。画面の外の枠は入れない */
+function deviceFrames(): Map<string, DeviceRect> {
+  const frames = new Map<string, DeviceRect>();
+  const canvas = layerCanvas.value;
+  if (!canvas || !root.value) return frames;
+  const dpr = window.devicePixelRatio || 1;
+  const origin = canvas.getBoundingClientRect();
+  const snap = (v: number) => Math.round(v * dpr);
+  for (const element of root.value.querySelectorAll<HTMLElement>("[data-instance-id]")) {
+    const rect = element.getBoundingClientRect();
+    if (rect.bottom <= origin.top || rect.top >= origin.bottom || rect.right <= origin.left || rect.left >= origin.right) continue;
+    const x = snap(rect.left) - snap(origin.left);
+    const y = snap(rect.top) - snap(origin.top);
+    const width = snap(rect.right) - snap(origin.left) - x;
+    const height = snap(rect.bottom) - snap(origin.top) - y;
+    if (element.dataset.instanceId) frames.set(element.dataset.instanceId, { x, y, width, height });
+  }
+  return frames;
+}
+provideShapeLayer({ canvas: layerCanvas, frames: deviceFrames, loop });
 
 const FEED_INTERVAL_MS = 1000 / 60;
 let seq = 0;
@@ -171,7 +200,9 @@ const groups = [
 </script>
 
 <template>
-  <main class="gallery">
+  <main ref="root" class="gallery">
+    <!-- 描画の層（画面全体に固定し、内容の後ろに敷く） -->
+    <canvas ref="layerCanvas" class="shape-layer" aria-hidden="true" />
     <header class="gallery-head">
       <div>
         <h1 class="gallery-title">{{ t("dev_gallery.modules_title") }}</h1>
@@ -184,7 +215,9 @@ const groups = [
       <h2>{{ group.heading }}</h2>
       <div class="samples" :class="group.shape">
         <figure v-for="item in group.samples" :key="item.instance.id" class="sample">
-          <div class="frame"><ModuleFrame :instance="item.instance" :definition="item.definition" /></div>
+          <div class="frame">
+            <ModuleFrame :instance="item.instance" :definition="item.definition" :data-instance-id="item.instance.id" />
+          </div>
           <figcaption>
             <span>{{ item.title }}</span>
             <span>{{ item.detail }}</span>
@@ -197,12 +230,23 @@ const groups = [
 
 <style scoped>
 .gallery {
+  /* 描画の層を、内容の後ろ・このページの地の上に重ねる */
+  isolation: isolate;
   height: 100%;
   overflow: auto;
   display: grid;
   align-content: start;
   gap: var(--space-5);
   padding: var(--space-5);
+}
+.shape-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 .gallery-head {
   display: flex;

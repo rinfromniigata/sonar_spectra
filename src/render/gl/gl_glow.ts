@@ -3,9 +3,9 @@
 //   1. 等倍のフレームバッファの左下（枠の大きさ）を透明にし、図形を1回だけ描く（paint）
 //   2. 縮小する（factor × factor のピクセルの平均）→ 縮小した1枚目
 //   3. 横のぼかしで2枚目へ、縦のぼかしで1枚目へ（分離型のガウス。枠の範囲の外は透明として読む）
-//   4. 共有キャンバスの枠の範囲へ、拡大して（線形補間）敷く
-// 等倍の図形は、このあと呼び出し側（GlRenderer）が枠へ直接重ねる。頂点は送ってあるので同じ範囲をもう一度描くだけで、
-// 展開はし直さない。共有キャンバスに直接描くので、塗りのふちはふだんの図形と同じくマルチサンプルでならされる
+//   4. 描く先（共有キャンバス、または残光・薄くするための枠の画像。gl_frame_image）の枠の範囲へ、拡大して（線形補間）敷く
+// 等倍の図形は、このあと呼び出し側（GlRenderer）が描く先へ直接重ねる。頂点は送ってあるので同じ範囲をもう一度描くだけで、
+// 展開はし直さない。描く先に直接描くので、塗りのふちはふだんの図形と同じくマルチサンプルでならされる
 // （等倍の画像を写して重ねると、画像の側にもマルチサンプルの領域と解決の手間が要る）。
 // フレームバッファは共有キャンバスの大きさで作り、全部の枠で使い回す。大きさが変わったときだけ作り直す（GlowTargets）。
 // 色はすべて不透明度を掛けた値（premultiplied）のまま扱う（ぼかしも、重ねるときの合成も）。
@@ -13,12 +13,18 @@
 import { link, type Program } from "./gl_program";
 import { GlowTargets, MAX_GLOW_RADIUS, glowSampling, type GlowPlan } from "./glow";
 
-/** 共有キャンバス（WebGL の座標。y は下から）での枠の範囲 */
+/** 描く先のフレームバッファ（WebGL の座標。y は下から）での範囲 */
 export interface GlRect {
   x: number;
   y: number;
   width: number;
   height: number;
+}
+
+/** 図形を描く先：フレームバッファ（null は共有キャンバス）と、その上の枠の範囲 */
+export interface GlDestination {
+  framebuffer: WebGLFramebuffer | null;
+  rect: GlRect;
 }
 
 interface Target {
@@ -149,9 +155,9 @@ export class GlowRenderer {
 
   /**
    * 発光を枠に敷く。paint は、今のフレームバッファとビューポートに発光する図形を描く関数。
-   * 終わると、共有キャンバス（既定のフレームバッファ）・枠のビューポートと切り抜き・重ね合わせを元に戻す
+   * 終わると、描く先（dest。共有キャンバスか枠の画像）・枠のビューポートと切り抜き・重ね合わせを元に戻す
    */
-  draw(plan: GlowPlan, frame: GlRect, paint: () => void): void {
+  draw(plan: GlowPlan, dest: GlDestination, paint: () => void): void {
     const gl = this.gl;
     const { downsample, blur, composite } = this;
     if (this.failed || !downsample || !blur || !composite) return;
@@ -204,8 +210,9 @@ export class GlowRenderer {
     gl.uniform2i(blur.dir, 0, 1);
     gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
 
-    // 4. 共有キャンバスの枠へ、拡大して敷く
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    // 4. 描く先の枠へ、拡大して敷く
+    const frame = dest.rect;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dest.framebuffer);
     gl.viewport(frame.x, frame.y, frame.width, frame.height);
     gl.scissor(frame.x, frame.y, frame.width, frame.height);
     gl.enable(gl.BLEND);

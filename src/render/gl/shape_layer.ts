@@ -3,7 +3,8 @@
 // - begin：まとめを空にし、今の枠の範囲（配置の状態から求めたもの）を受け取る
 // - モジュールの描画：ModuleFrame が sink(枠, 大きさと向き) で受け口を得て、モジュールが図形を出す（その場で三角形に展開して積む）
 // - end：全体を透明にし、枠ごとに、範囲を切り抜きとビューポートにして地の色で塗り、そのモジュールの図形を描く
-//   （発光の値を持つ図形は、先に発光を敷いてから描く。gl_glow）
+//   （発光の値を持つ図形は、先に発光を敷いてから描く。gl_glow）。残光を使う枠（ShapeSink.trail）と、薄くする枠
+//   （レイアウト編集中。sink の opacity が 1 未満）は、枠の画像に描いてから重ねる（gl_frame_image）
 // コンテキストの喪失：webglcontextlost で preventDefault して描くのを止め（状態は lost）、webglcontextrestored で
 // シェーダー・バッファ・テクスチャを作り直して再開する。流れる画像の中身は消えたところから描き直す。
 // WebGL2 を作れないときは unavailable にし、描かない（Canvas 2D の描き方へは戻さない）。
@@ -13,7 +14,7 @@ import type { RenderLayer } from "../render_loop";
 import { canvasColorFallback, createColorResolver, type Rgba } from "./color";
 import type { DeviceRect } from "./frame_rects";
 import { GlRenderer } from "./gl_renderer";
-import { DISCARD_SINK, ShapeBatch, type BatchCommand } from "./shape_batch";
+import { DISCARD_SINK, ShapeBatch, type FrameCommands } from "./shape_batch";
 import { frameClipMatrix } from "./transform";
 
 /** pending：まだ始めていない／ready：描ける／lost：コンテキストを失っている／unavailable：WebGL2 を作れない */
@@ -36,11 +37,13 @@ const CONTEXT_ATTRIBUTES: WebGLContextAttributes = {
   preserveDrawingBuffer: false,
 };
 
-interface FrameRecord {
+interface FrameRecord extends FrameCommands {
   turns: Geometry["quarterTurns"];
   width: number;
   height: number;
-  commands: BatchCommand[];
+  devicePixelRatio: number;
+  /** 枠の図形の不透明度（1 未満なら、枠の画像にしてから薄くして重ねる） */
+  opacity: number;
 }
 
 export class ShapeLayer implements RenderLayer {
@@ -99,14 +102,22 @@ export class ShapeLayer implements RenderLayer {
   }
 
   /**
-   * 枠1つ分の受け口。geometry は枠の描画の座標系（既定の向きでの大きさ・向き・DPR）。
-   * 描けないとき（使えない・枠が置かれていない）は、何もしない受け口を返す
+   * 枠1つ分の受け口。geometry は枠の描画の座標系（既定の向きでの大きさ・向き・DPR）。opacity は枠の図形の不透明度
+   * （重なった図形をまとめて薄くする）。描けないとき（使えない・枠が置かれていない）は、何もしない受け口を返す
    */
-  sink(id: string, geometry: Geometry): ShapeSink {
+  sink(id: string, geometry: Geometry, opacity = 1): ShapeSink {
     if (this.currentStatus !== "ready" || !this.frames.has(id)) return DISCARD_SINK;
-    const record: FrameRecord = { turns: geometry.quarterTurns, width: geometry.width, height: geometry.height, commands: [] };
+    const record: FrameRecord = {
+      turns: geometry.quarterTurns,
+      width: geometry.width,
+      height: geometry.height,
+      devicePixelRatio: geometry.devicePixelRatio,
+      opacity: Number.isFinite(opacity) ? Math.min(1, Math.max(0, opacity)) : 1,
+      commands: [],
+      trail: null,
+    };
     this.recorded.set(id, record);
-    return this.batch.sink(geometry.devicePixelRatio, record.commands);
+    return this.batch.sink(geometry.devicePixelRatio, record);
   }
 
   end(input: FrameDrawInput): void {
@@ -120,12 +131,17 @@ export class ShapeLayer implements RenderLayer {
       if (rect.width <= 0 || rect.height <= 0) continue;
       renderer.frame(rect, bg);
       const record = this.recorded.get(id);
-      if (!record || record.commands.length === 0) continue;
-      const matrix = frameClipMatrix(record.turns, record.width, record.height);
-      for (const command of record.commands) {
-        if (command.kind === "shapes") renderer.shapes(matrix, command.first, command.count, command.glow);
-        else renderer.streamImage(matrix, command.stream, command.dest, command.alpha);
+      if (!record) continue;
+      // 残光と薄くする枠は、枠の画像に描いてから重ねる（画像を使えなければ、そのまま描く）
+      const useImage = (record.trail !== null || record.opacity < 1) && renderer.beginFrameImage(id, record.trail);
+      if (record.commands.length > 0) {
+        const matrix = frameClipMatrix(record.turns, record.width, record.height, record.devicePixelRatio);
+        for (const command of record.commands) {
+          if (command.kind === "shapes") renderer.shapes(matrix, command.first, command.count, command.glow, command.glowOnly, command.gradient);
+          else renderer.streamImage(matrix, command.stream, command.dest, command.alpha);
+        }
       }
+      if (useImage) renderer.endFrameImage(record.opacity);
     }
     renderer.end();
   }

@@ -1,18 +1,18 @@
 // 重心と変化量の描画：音の明るさ（スペクトルの重心）の推移を線で、音色の変化の激しさ（フラックス）を下の棒で流す。
 // 右端に今の値（モックの drawCentroid に合わせる）。常に既定の向き（履歴が左へ流れ、新しい列が右端）で描く。
-// 向きの回転は ModuleFrame が座標系ごと行う。
+// 向きの回転は描画の層（図形）と ModuleFrame（文字の層）が行う。
 //
 // - 履歴：受信側の履歴（約60行/秒）の1行を columnStep(速さ) px の1列として、右端から並べる
 // - 重心の線：対数の軸（50 Hz〜16 kHz）に写し、時間方向にならす（centroid_math）。無音は下端
 // - 変化量の棒：1行ごとの高さ。大きい（高さの 0.55 を超える）列は強調色
 // - 数値：直近 15 行の平均を 0.25 秒ごとに書き換える（読めなくならないように）。無音は「—」で、変化量は出さない
-// - 負荷（T9-1）：重心の線の発光は発光の層（glow_layer）でつけ、線は短い区間に分けて描く（canvas_helpers）
+// - 図形（格子・棒・線）は描画の層（ShapeSink）へ出し、線の発光は描画の層がつける（imple 4.2）。数値は文字の層に描く。
+//   線と棒は、受信側の履歴から毎回まとめて作り直す（流れる画像にすると、線の発光とふちのならしを付け直せないため）
 
 import { type AnalysisFrame, type Histories } from "../../frame_client";
-import { drawGridLines, strokePolyline } from "../canvas_helpers";
-import { createGlowLayer } from "../glow_layer";
 import type { SpeedOptions } from "../options";
-import type { Geometry, ModuleRenderer, PaletteColors, RenderContext } from "../types";
+import { ensureLength, gridRects } from "../shape_helpers";
+import type { Geometry, ModuleRenderer, PaletteColors, RenderContext, ShapeSink } from "../types";
 import {
   NO_VALUE,
   READOUT_INTERVAL,
@@ -36,44 +36,50 @@ const LINE_WIDTH = 1.6;
 const LINE_GLOW = 10;
 const TEXT_MARGIN = 6;
 
-export function createCentroidRenderer({ ctx, createBuffer }: RenderContext): ModuleRenderer<SpeedOptions> {
+export function createCentroidRenderer({ ctx }: RenderContext): ModuleRenderer<SpeedOptions> {
   let width = 0;
   let height = 0;
-  const glow = createGlowLayer(createBuffer);
+  let grid = new Float32Array(0);
   let positions = new Float32Array(0);
+  let linePoints = new Float32Array(0);
+  // 変化量の棒（副色・強調色）の四角と不透明度
+  const bars = { sub: [] as number[], accent: [] as number[] };
+  const barAlphas = { sub: [] as number[], accent: [] as number[] };
   /** 画面に出している数値と、書き換えてからの経過（秒） */
   let readout: Readout | null = null;
   let sinceReadout = 0;
 
-  function drawBars(history: Histories["centroid"], count: number, step: number, layout: CentroidLayout, colors: PaletteColors): void {
+  function drawBars(shapes: ShapeSink, history: Histories["centroid"], count: number, step: number, layout: CentroidLayout, colors: PaletteColors): void {
     const first = history.length - count;
     const start = width - count * step;
     const barWidth = Math.max(1, step - 1);
-    ctx.shadowBlur = 0;
+    for (const key of ["sub", "accent"] as const) {
+      bars[key].length = 0;
+      barAlphas[key].length = 0;
+    }
     for (let i = 0; i < count; i++) {
       const level = fluxLevel(history.row(first + i)[1]);
       if (level <= 0) continue;
       const style = barStyle(level);
-      ctx.fillStyle = style.hot ? colors.accent : colors.sub;
-      ctx.globalAlpha = style.alpha;
+      const key = style.hot ? "accent" : "sub";
       const barHeight = level * layout.fluxHeight;
-      ctx.fillRect(start + i * step, height - barHeight, barWidth, barHeight);
+      bars[key].push(start + i * step, height - barHeight, barWidth, barHeight);
+      barAlphas[key].push(style.alpha);
     }
-    ctx.globalAlpha = 1;
+    // 棒どうしは重ならないので、色ごとにまとめて出す
+    for (const key of ["sub", "accent"] as const) {
+      if (bars[key].length > 0) shapes.rects(bars[key], { color: colors[key] }, barAlphas[key]);
+    }
   }
 
-  function drawLine(count: number, step: number, layout: CentroidLayout, colors: PaletteColors): void {
+  function drawLine(shapes: ShapeSink, count: number, step: number, layout: CentroidLayout, colors: PaletteColors): void {
     const start = width - count * step;
-    glow.draw(ctx, LINE_GLOW, (c) => {
-      c.strokeStyle = colors.main;
-      c.lineWidth = LINE_WIDTH;
-      strokePolyline(
-        c,
-        count,
-        (i) => start + i * step,
-        (i) => lineY(layout, positions[i]),
-      );
-    });
+    linePoints = ensureLength(linePoints, count * 2);
+    for (let i = 0; i < count; i++) {
+      linePoints[i * 2] = start + i * step;
+      linePoints[i * 2 + 1] = lineY(layout, positions[i]);
+    }
+    shapes.polyline(linePoints.subarray(0, count * 2), { color: colors.main, width: LINE_WIDTH, glow: LINE_GLOW });
   }
 
   function drawReadout(values: Readout, layout: CentroidLayout, colors: PaletteColors): void {
@@ -89,15 +95,15 @@ export function createCentroidRenderer({ ctx, createBuffer }: RenderContext): Mo
     resize(geometry: Geometry) {
       width = geometry.width;
       height = geometry.height;
-      glow.resize(width, height, geometry.devicePixelRatio);
+      grid = gridRects(width, height, GRID_X, GRID_Y);
     },
 
-    draw(_frame: AnalysisFrame | null, histories, options, colors, dt) {
+    draw(_frame: AnalysisFrame | null, histories, options, colors, dt, out) {
       if (width <= 0 || height <= 0) return;
       const history = histories.centroid;
       const step = columnStep(options.speed);
       const count = Math.min(history.length, visibleColumns(width, step));
-      if (positions.length < count) positions = new Float32Array(Math.max(count, positions.length * 2));
+      positions = ensureLength(positions, count);
       smoothedPositions(history, count, positions);
 
       sinceReadout += Math.max(0, dt);
@@ -107,22 +113,23 @@ export function createCentroidRenderer({ ctx, createBuffer }: RenderContext): Mo
       }
 
       const layout = centroidLayout(height);
+      const { shapes } = out;
+      shapes.rects(grid, { color: colors.grid });
+      if (count > 0) {
+        drawBars(shapes, history, count, step, layout, colors);
+        drawLine(shapes, count, step, layout, colors);
+      }
       ctx.clearRect(0, 0, width, height);
       ctx.save();
-      drawGridLines(ctx, width, height, GRID_X, GRID_Y, colors.grid);
-      if (count > 0) {
-        drawBars(history, count, step, layout, colors);
-        drawLine(count, step, layout, colors);
-      }
       drawReadout(readout, layout, colors);
       ctx.restore();
     },
 
     dispose() {
       positions = new Float32Array(0);
+      linePoints = new Float32Array(0);
       readout = null;
       sinceReadout = 0;
-      glow.dispose();
     },
   };
 }

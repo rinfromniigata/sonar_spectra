@@ -53,14 +53,39 @@ export interface Rect {
   height: number;
 }
 
+/** 色の移り変わりの1点：offset（0〜1）の位置で color（CSS の色。"transparent" も使える） */
+export interface GradientStop {
+  offset: number;
+  color: string;
+}
+
+/**
+ * 色の移り変わり（Canvas 2D の createLinearGradient と、中心が同じ2つの円の createRadialGradient と同じ意味）。
+ * 座標は描画の座標系。点と点の間は、不透明度で掛けない値のまま直線で移る（Canvas 2D と同じ。transparent へは黒くなりながら消える）。
+ * 端より外は端の色。点は MAX_GRADIENT_STOPS 個まで
+ */
+export type Gradient =
+  /** (x0, y0) が offset 0、(x1, y1) が offset 1 の直線の向き */
+  | { kind: "linear"; x0: number; y0: number; x1: number; y1: number; stops: readonly GradientStop[] }
+  /** 中心 (x, y) からの距離が r0 で offset 0、r1 で offset 1 */
+  | { kind: "radial"; x: number; y: number; r0: number; r1: number; stops: readonly GradientStop[] };
+
+/** 色の移り変わりに置ける点の数の上限（描画の層のシェーダーの都合） */
+export const MAX_GRADIENT_STOPS = 4;
+
 /** 塗りの見た目 */
 export interface FillStyle {
-  /** CSS の色（パレットやトークンから読んだ値） */
-  color: string;
+  /** CSS の色（パレットやトークンから読んだ値）か、色の移り変わり */
+  color: string | Gradient;
   /** 不透明度（0〜1。省略は 1） */
   alpha?: number;
   /** 発光の値（shadowBlur と同じ意味。0 か省略は発光なし）。発光は描画の層がまとめてつける */
   glow?: number;
+  /**
+   * 発光だけを敷き、図形そのものは描かない（発光の色を図形の色と変えたいときに、発光用の色で同じ図形を先に出す）。
+   * 発光の値が 0 なら何も描かない
+   */
+  glowOnly?: boolean;
 }
 
 /** 線の見た目 */
@@ -77,18 +102,29 @@ export interface StrokeStyle extends FillStyle {
  * 呼んだ順に重なる（後の図形が上）
  */
 export interface ShapeSink {
-  /** 折れ線（端は切りっぱなし、継ぎ目は角） */
-  polyline(points: ArrayLike<number>, style: StrokeStyle): void;
-  /** 塗りの帯：xs の各位置で top〜bottom を塗り、隣の位置とつなぐ */
+  /**
+   * 折れ線（端は切りっぱなし、継ぎ目は角）。fades は点ごとに、色ごと透明（transparent。透明な黒）へ近づける割合
+   * （1 でそのまま、0 で透明。点の間はなめらかに移る。Canvas 2D で transparent との間のグラデーションを当てた線と同じ）
+   */
+  polyline(points: ArrayLike<number>, style: StrokeStyle, fades?: ArrayLike<number>): void;
+  /** 塗りの帯：xs の各位置で top〜bottom を塗り、隣の位置とつなぐ（top と bottom が入れ替わってもよい） */
   band(xs: ArrayLike<number>, top: ArrayLike<number>, bottom: ArrayLike<number>, style: FillStyle): void;
-  /** 塗りの多角形（閉じた形）。点の平均から見て星形の形に限る（円形の塗りなど） */
-  polygon(points: ArrayLike<number>, style: FillStyle): void;
+  /**
+   * 塗りの多角形（閉じた形）。center（省略は点の平均）から見て星形の形に限る（円形の塗りなど）
+   */
+  polygon(points: ArrayLike<number>, style: FillStyle, center?: readonly [number, number]): void;
   /** 円い点。radius は全部に同じ値か、点ごとの並び。alphas は点ごとの不透明度（style.alpha に掛ける） */
   points(points: ArrayLike<number>, radius: number | ArrayLike<number>, style: FillStyle, alphas?: ArrayLike<number>): void;
-  /** 四角。x, y, 幅, 高さ の順に並べる（棒・1ピクセル幅の格子線など） */
-  rects(rects: ArrayLike<number>, style: FillStyle): void;
+  /** 四角。x, y, 幅, 高さ の順に並べる（棒・1ピクセル幅の格子線など）。alphas は四角ごとの不透明度（style.alpha に掛ける） */
+  rects(rects: ArrayLike<number>, style: FillStyle, alphas?: ArrayLike<number>): void;
   /** 流れる画像を dest に描く（画像の左端がいちばん古い列、右端が最新の列） */
   image(stream: StreamImage, dest: Rect, style?: { alpha?: number }): void;
+  /**
+   * 残光：この枠の前の回の絵（図形と発光）を消さずに残し、color を alpha の濃さで全体に重ねてから、この回の図形を描く
+   * （毎回消さずに地の色を薄く重ねる Canvas 2D の描き方と同じ）。1回の描画で、図形より先に1度だけ呼ぶ。
+   * 呼ばない回は、前の絵を残さない
+   */
+  trail(color: string, alpha: number): void;
 }
 
 /** 1回分の描くものの出し先（imple 4.2） */
@@ -124,6 +160,7 @@ export interface ModuleRenderer<O> {
   /**
    * 1回分を描く。座標系は既定の向きに回してあり、(0, 0)〜(width, height) に描けばよい。
    * 図形は out.shapes へ、文字は out.text へ出す（WebGL2 への移行が済むまでは、図形を文字の層に描いてもよい）。
+   * 文字の層は消されないので、文字を描くモジュールは毎回消してから描く。
    * frame はまだ届いていなければ null
    */
   draw(frame: AnalysisFrame | null, histories: Histories, options: O, colors: PaletteColors, dt: number, out: DrawOutput): void;
