@@ -1,8 +1,8 @@
 # sonar_spectra 実装タスク（tasks）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v4.md`、`261110165456_imple_sonar_spectra_architecture.md`
-- 対になる検証：`261110165456_walk_sonar_spectra_initial.md`
-- 改訂：change「261110165301_change_glow_sharp_redraw」を反映し、T9-6の見出しの「等倍の画像を重ねる」を「等倍の図形を重ねる」に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110133636_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にT9-4〜T9-8（T9-3のあと）を足した。T10-1の依存をT9-8に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_tasks_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でT7-6・T7-7を追加）
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v5.md`、`261111033238_imple_sonar_spectra_architecture.md`
+- 対になる検証：`261111033238_walk_sonar_spectra_initial.md`
+- 改訂：change「261111033031_change_render_unavailable_priority」を反映し、Phase 9にT9-9（T9-8のあと）を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110165456_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映し、T9-6の見出しの「等倍の画像を重ねる」を「等倍の図形を重ねる」に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110133636_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にT9-4〜T9-8（T9-3のあと）を足した。T10-1の依存をT9-8に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_tasks_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でT7-6・T7-7を追加））
 - 進め方：Phase nの実装（Tn-\*）→ 検証（Wn-\*）→ 修正と再検証。Wnがすべて通過してからPhase n+1へ進む
 
 ## Phase 1: 基盤（雛形・トークン・i18n・検査・部品・アイコン）
@@ -748,7 +748,7 @@ Phaseの推奨: Opus・high以上
 ## Phase 9: 負荷の対策（フレームレートの上限・WebGL2）とリリースのワークフロー
 
 Phaseの推奨: Opus・xhigh以上
-引き継ぎ: T9-2〜T9-8とW9-3〜W9-6は完了。次はW9-7（walk。計測の方法と注意〔可変リフレッシュレート〕はT9-1の実施メモにある）。W9-6の「未解決」（WebGL2を作れず無音のときに2つの表示が重なる）は、ユーザーの判断を待っている（W9-8までに決める）。撮影と道具は`C:\Users\ofuchirin\code\sonar_spectra_captures\`（`README.md`に手順。発光なしは`capture_probe.js`の`patchGl`、ドラッグは`capture.ts drag`）
+引き継ぎ: T9-2〜T9-8とW9-3〜W9-6は完了。次はT9-9（change「261111033031_change_render_unavailable_priority」で足した、中央の表示の出し分け。W9-6の「未解決」(1)への対応）、そのあとW9-7・W9-10（W9-7の計測の方法と注意〔可変リフレッシュレート〕はT9-1の実施メモにある）。撮影と道具は`C:\Users\ofuchirin\code\sonar_spectra_captures\`（`README.md`に手順。発光なしは`capture_probe.js`の`patchGl`、ドラッグは`capture.ts drag`）
 
 - [x] T9-1 【エージェント】全モジュールを有効にした状態で、CPU・GPUの使用率と1フレームの描画時間を測り、重いモジュールを軽くする（必要ならそのモジュールだけWebGLへ移す案を報告する）
   - 依存: T8-5
@@ -830,6 +830,12 @@ Phaseの推奨: Opus・xhigh以上
     - テスト：5モジュールのテストを記録用の受け口と文字の層で調べる形に書き換え、確かめていたこと（位置・色・不透明度・太さ・強調・ピークの保持・残像の濃さ・受信が途切れたときの戻り・辞書）を引き継いだ。発光の値と色、色の移り変わりの中身、文字の層に図形と`shadowBlur`を出さないこと、扇の内半径・外半径・角度、強調帯の弧、文字の発光の中身、スペクトログラムの列の中身（RGBA）と読み始めの位置を足した。`shape_batch`（文字の発光の命令）・`text_glow`・`arcPoints`のテストを足した
     - 確かめたこと（実機・リリースビルド・全画面 2880×1800・DPR 1.5。T9-5の手順と入力で`base`・`dir_a`・`dir_b`をダーク／ライトで撮った）：`base`をT9-7のあとの撮影と比べると、差は移した5モジュールの範囲だけ。LOUDの数値の発光とクロマのコードの発光は、拡大して見分けがつかない。スペクトログラムはセルの位置が同じで、列の境目が移行前は画像の拡大のぼかしで混ざっていたのが、くっきりした（境目が1ピクセル以内でずれる。差は最大約90/255で、境目のピクセルだけ）。VUは、移行前は文字・目盛りの点・針を残像の上に毎回重ねていたためふちが太っていた分だけ細くなった（T9-7の位相の L・R と同じ）。レベル・クロマの差はふちのならし方。4方向（`dir_a`のレベル、`dir_b`のスペクトログラム）で向き・位置が合う。画像は`sonar_spectra_captures\t9_8_modules\`（範囲ごとの差を出す`tools/region_stats.ts`を足した）。`state.json`は撮影の前後で同じ
     - 気づき（W9-6・W9-7へ）：(1) クロマは強さの分の発光の値が音名ごとに違うため、発光の命令が最大12回になる（枠は小さいので重くない見込み。W9-7で確かめる）。(2) コンテキストの喪失→復元、レイアウト編集中の薄さは、移した5モジュールではまだ確かめていない（W9-6）
+- [ ] T9-9 【エージェント】描画を開始できない表示と、入力源の状態の表示（S01b〜S01d）を、中央に1つだけ出す（SPEC 11節のS01〔v5〕、imple 4.5）
+  - 推奨: Sonnet・medium以上
+  - 依存: T9-8
+  - 出し分け：無音（S01b）のときは描画を開始できない表示を出し、無音の表示は出さない。使えない（S01c）・開いている途中（S01d）のときは`StatusOverlay`を出し、描画を開始できない表示は出さない。タイトル帯のチップは今のまま
+  - `MeterGrid`が描画の層の状態（作れない・失った）を`MeterScreen`へ知らせ、`MeterScreen`が両方の出し方を決める。判定（入力源の状態 × 描画の層の状態 → 出す表示）を純粋関数にしてテストし、`MeterScreen`のテストで、無音・使えない・開いている途中のそれぞれで中央に1つだけ出ることを確かめる
+  - 発端：W9-6の「未解決」(1)（T9-5の気づき(5)）。辞書の文言は増えない。画面: S01
 
 ## Phase 10: 初回リリースの準備（0.1.0）
 

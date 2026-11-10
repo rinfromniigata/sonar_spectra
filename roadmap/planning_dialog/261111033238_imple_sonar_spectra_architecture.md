@@ -1,9 +1,9 @@
 # sonar_spectra 実装設計（imple）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v4.md` と同版のデザインアセット
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v5.md` と同版のデザインアセット
 - 種別：Agentic Coding
-- 対になるドキュメント：`261110165456_tasks_sonar_spectra_initial.md`、`261110165456_walk_sonar_spectra_initial.md`
-- 改訂：change「261110165301_change_glow_sharp_redraw」を反映（4.6の発光：等倍の図形は画像を写さず同じ頂点の範囲をもう一度描いて重ねる）。前の版は`archived/261110133636_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映（1節、2節、3.4、4.2、4.5、4.6、4.8、5.1、5.2の16、5.3）。前の版は`archived/261109115345_imple_sonar_spectra_architecture.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」）
+- 対になるドキュメント：`261111033238_tasks_sonar_spectra_initial.md`、`261111033238_walk_sonar_spectra_initial.md`
+- 改訂：change「261111033031_change_render_unavailable_priority」を反映（4.5：描画を開始できない表示と、入力源の状態の表示〔S01b〜S01d〕の出し分け）。前の版は`archived/261110165456_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映（4.6の発光：等倍の図形は画像を写さず同じ頂点の範囲をもう一度描いて重ねる）。前の版は`archived/261110133636_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映（1節、2節、3.4、4.2、4.5、4.6、4.8、5.1、5.2の16、5.3）。前の版は`archived/261109115345_imple_sonar_spectra_architecture.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」））
 
 ## 1. 方針
 
@@ -215,6 +215,10 @@ interface ShapeSink {
 - ウィンドウ状態：`tauri-plugin-window-state`で位置・大きさ・ディスプレイを記憶する。全画面の状態は記憶しない（StateFlagsから外す）
 - `MeterGrid`（v4）：格子の後ろに、共有のWebGL2キャンバスを1枚敷く（格子と同じ範囲、ポインターのイベントは通す）。`ModuleFrame`のキャンバスは文字の層になり、地は透明にする（地の色は共有キャンバスが塗る）
 - 描画を開始できないとき（v4。SPEC 11節のS01）：WebGL2のコンテキストを作れなければ、メーターの領域の中央に`status.render_unavailable`を1行出す。タイトル帯と操作系はふだんどおり
+- 中央の表示の出し分け（v5。SPEC 11節のS01）：描画を開始できない表示（`MeterGrid`）と、入力源の状態の表示（`StatusOverlay`。S01b〜S01d）は、中央に1つだけ出す。`MeterGrid`は描画の層が使えない（作れない・失った）ことを親の`MeterScreen`へ知らせ、`MeterScreen`が両方の出し方を決める（名前と細部は実装で決めてよい）
+  - 無音（S01b）：描画を開始できない表示を出し、`StatusOverlay`の無音の表示は出さない（無音はタイトル帯のチップで分かる。チップは今のまま）
+  - 使えない（S01c）・開いている途中（S01d）：`StatusOverlay`を出し、描画を開始できない表示は出さない（入力源が開いて live か silent になったら出す）
+  - 判定は純粋関数にしてテストする（入力源の状態 × 描画の層の状態 → 出す表示）
 - 設定パネルの表示の欄（v4。SPEC 11節のS02）：末尾に「フレームレートの上限」のセグメント（60／45／30fps）を置く
 - ライトテーマで小さな文字に`neon-b`・`neon-c`を使う部品（適合判定のバッジ、手動配置のバッジ、LOUDの数値など）は、文字を`--color-text`にし、枠線だけ発光色を残す（SPEC 9節）
 
