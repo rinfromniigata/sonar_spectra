@@ -1,0 +1,75 @@
+# リリース。`v*` のタグを push すると、自動検査（bun run check）を通したうえで、
+# Windows x64 のインストーラー（NSIS）をビルドし、GitHub Releases にドラフトを作る。
+# ドラフトの公開は手動で行う。コード署名はしない（SmartScreen の警告は README に書く）
+# 初版の対象は Windows x64 だけ（出力音声の取得に WASAPI を使うため）
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# リリースの作成とファイルの添付に書き込み権限が要る
+permissions:
+  contents: write
+
+# 同じタグの実行が重なったら、あとのものを待たせる（実行中のビルドは止めない）
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # タグ（v0.1.0）と package.json の version（0.1.0）が食い違ったまま出さない。
+      # tauri.conf.json と Cargo.toml の version も同じ値であること
+      - name: タグとバージョン表記の一致を確かめる
+        shell: pwsh
+        run: |
+          $tagVersion = "${{ github.ref_name }}".TrimStart("v")
+          $pkg = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $tauri = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $cargo = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          Write-Host "tag=$tagVersion package.json=$pkg tauri.conf.json=$tauri Cargo.toml=$cargo"
+          if ($pkg -ne $tagVersion -or $tauri -ne $tagVersion -or $cargo -ne $tagVersion) {
+            Write-Error "タグのバージョン($tagVersion)と、各ファイルのバージョン表記が一致しません。"
+            exit 1
+          }
+
+      # Bun の版は package.json の packageManager に合わせる（ci.yml と同じ）
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: 依存のインストール
+        run: bun install --frozen-lockfile
+
+      # ci.yml と同じ検査。通らなければ、ビルドとリリースの作成に進まない
+      - name: 自動検査
+        run: bun run check
+
+      - name: ビルドとドラフトリリースの作成
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: bun run tauri
+          args: --bundles nsis
+          tagName: ${{ github.ref_name }}
+          releaseName: sonar_spectra ${{ github.ref_name }}
+          releaseBody: 変更点は CHANGELOG.md を参照してください。初回起動時に SmartScreen の警告が出ることがあります（README を参照）。
+          releaseDraft: true
+          prerelease: false
+          # 自動更新は使わないため、updater 用の latest.json は作らない
+          uploadUpdaterJson: false
