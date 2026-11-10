@@ -2,8 +2,10 @@
 
 export {
   SOURCE_STATUS_EVENT,
+  centerNotice,
   chipView,
   overlayMode,
+  type CenterNotice,
   type ChipView,
   type DeviceInfo,
   type OverlayMode,

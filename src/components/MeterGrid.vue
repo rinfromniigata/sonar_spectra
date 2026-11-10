@@ -69,8 +69,10 @@ const props = withDefaults(
     selectedId?: string | null;
     /** 自分で作った配色（今の構成の customPalettes）。各モジュールの枠に渡す */
     customPalettes?: readonly Palette[];
+    /** 「描画を開始できません」を出してよいか（入力源の状態の表示と重ならないよう、MeterScreen が決める） */
+    showRenderUnavailable?: boolean;
   }>(),
-  { registry: () => moduleRegistry, editing: false, selectedId: null, customPalettes: () => [] },
+  { registry: () => moduleRegistry, editing: false, selectedId: null, customPalettes: () => [], showRenderUnavailable: true },
 );
 const emit = defineEmits<{
   /** モジュールを選んだ */
@@ -81,6 +83,8 @@ const emit = defineEmits<{
   direction: [id: string, direction: Direction];
   /** 見出しの歯車：そのインスタンスの設定を開く */
   settings: [id: string];
+  /** 描画を開始できない（作れない・失った）かどうかが変わった */
+  renderUnavailable: [unavailable: boolean];
 }>();
 
 const { t } = useT();
@@ -134,6 +138,7 @@ const layerCanvas = ref<HTMLCanvasElement | null>(null);
 const shapeLayer = provideShapeLayer({ canvas: layerCanvas, frames: deviceFrames });
 /** 描画を開始できない（WebGL2 を作れない・失って戻っていない） */
 const renderUnavailable = computed(() => shapeLayer.status.value === "unavailable" || shapeLayer.status.value === "lost");
+watch(renderUnavailable, (value) => emit("renderUnavailable", value), { immediate: true });
 
 onMounted(() => {
   measure();
@@ -412,7 +417,7 @@ function onModuleFocus(id: string): void {
       @pointerdown="onSplitterPointerDown($event, splitter)"
       @keydown="onSplitterKeydown($event, splitter)"
     />
-    <p v-if="renderUnavailable" class="render-unavailable" role="status">{{ t("status.render_unavailable") }}</p>
+    <p v-if="renderUnavailable && showRenderUnavailable" class="render-unavailable" role="status">{{ t("status.render_unavailable") }}</p>
   </div>
 </template>
 

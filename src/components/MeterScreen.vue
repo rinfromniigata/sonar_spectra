@@ -20,6 +20,8 @@
 //   「自動整列」で自動配置に戻し、「完了」で編集を終える。選んでいるインスタンスは実行中の状態のストアに持つ。
 //   パネルには置いたモジュールの一覧（InstanceList）を入れ、追加・複製・削除・有効／無効は layout_edit_actions で構成に書く。
 //   編集中は状態の表示（StatusOverlay）を出さない（入力源が開けないときの幕で、格子を編集できなくならないように）
+// - 中央の表示：描画を開始できない表示（MeterGrid が描く）と StatusOverlay が重ならないよう、MeterGrid から描画の層の状態を
+//   受けて centerNotice で出し分ける（無音なら描画を開始できない表示だけ、使えない・開いている途中なら StatusOverlay だけ）
 // - インスタンスの設定（S03）：実行中の状態のストアで開いていれば、選んでいるインスタンスの設定（InstanceSettings）を
 //   ポップオーバー（UiPopover）でそのモジュールの横に開く（右は編集パネルの左端まで）。開いたまま別のモジュールを選ぶと、
 //   作り直さずにそちらへ移る（フォーカスを奪わない）。×・Esc で閉じる。選んだものが置かれていなければ（無効・削除）出さない。
@@ -45,7 +47,7 @@ import { moduleRegistry } from "../modules";
 import type { AnyModuleDefinition } from "../modules/types";
 import { provideRenderLoop } from "../render/use_render_loop";
 import { useWindowController } from "../window";
-import { createDeviceSelection, useSourceStatus } from "../source";
+import { centerNotice, createDeviceSelection, useSourceStatus } from "../source";
 import ConfigDrawer from "./ConfigDrawer.vue";
 import CrtOverlay from "./CrtOverlay.vue";
 import InstanceList from "./InstanceList.vue";
@@ -70,6 +72,9 @@ const scanline = computed(() => config.current.value.display.scanline);
 const version = useAppVersion();
 const source = useSourceStatus(runtime.source);
 const devices = createDeviceSelection(config);
+/** 描画の層が使えない（MeterGrid から知らされる）。入力源の状態と合わせて、中央に出す表示を決める */
+const renderUnavailable = ref(false);
+const notice = computed(() => centerNotice(source.event.value, renderUnavailable.value, runtime.layoutEditing.value));
 const listActions = createLayoutEditActions({ config, runtime, registry: moduleRegistry });
 const paletteActions = createPaletteActions({
   config,
@@ -263,10 +268,13 @@ defineExpose({ client, channel: () => channel });
       @select="runtime.selectInstance"
       @update="applyLayout"
       @direction="changeDirection"
+      :show-render-unavailable="notice.renderUnavailable"
       @settings="runtime.openInstanceSettings"
+      @render-unavailable="renderUnavailable = $event"
     />
-    <!-- 編集中は出さない（S01c・S01d の幕が格子をふさがないように。入力源の状態はタイトル帯のチップで分かる） -->
-    <StatusOverlay v-if="!editing" :source="source.event.value" @open-settings="openSettings" />
+    <!-- 編集中は出さない（S01c・S01d の幕が格子をふさがないように。入力源の状態はタイトル帯のチップで分かる）。
+         描画を開始できないときは、中央に1つだけ出す（centerNotice） -->
+    <StatusOverlay v-if="notice.overlay" :source="source.event.value" @open-settings="openSettings" />
     <LayoutEditPanel v-if="editing" ref="panelRef" :mode="layout.mode" @auto-arrange="arrangeAutomatically" @done="finishLayoutEdit">
       <InstanceList
         :instances="layout.instances"

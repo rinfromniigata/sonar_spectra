@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chipView, overlayMode, type DeviceInfo, type SourceStatus, type SourceStatusEvent } from "./source_status";
+import { centerNotice, chipView, overlayMode, type DeviceInfo, type SourceStatus, type SourceStatusEvent } from "./source_status";
 
 const DEVICE: DeviceInfo = { id: "id-1", name: "スピーカー (Realtek)", isDefault: true };
 const event = (status: SourceStatus, device: DeviceInfo | null = DEVICE): SourceStatusEvent => ({ status, device });
@@ -55,6 +55,50 @@ describe("overlayMode", () => {
 
   it("まだ状態が届いていない起動直後は、起動中として扱う", () => {
     expect(overlayMode(null)).toBe("opening");
+  });
+});
+
+describe("centerNotice（入力源の状態 × 描画の層の状態 → 中央の表示）", () => {
+  const states: [string, SourceStatusEvent | null][] = [
+    ["取得中", event({ state: "live" })],
+    ["無音", event({ state: "silent" })],
+    ["起動中", event({ state: "opening" })],
+    ["使えない", event({ state: "unavailable", reason: "inUse" }, null)],
+    ["状態が未着", null],
+  ];
+
+  it("描画の層が使えるときは、今までどおり入力源の状態の表示だけ", () => {
+    expect(centerNotice(event({ state: "live" }), false)).toEqual({ renderUnavailable: false, overlay: false });
+    expect(centerNotice(event({ state: "silent" }), false)).toEqual({ renderUnavailable: false, overlay: true });
+    expect(centerNotice(event({ state: "opening" }), false)).toEqual({ renderUnavailable: false, overlay: true });
+    expect(centerNotice(event({ state: "unavailable", reason: "inUse" }, null), false)).toEqual({ renderUnavailable: false, overlay: true });
+  });
+
+  it("描画を開始できないとき：取得中・無音は描画を開始できない表示だけ（無音の表示は出さない）", () => {
+    expect(centerNotice(event({ state: "live" }), true)).toEqual({ renderUnavailable: true, overlay: false });
+    expect(centerNotice(event({ state: "silent" }), true)).toEqual({ renderUnavailable: true, overlay: false });
+  });
+
+  it("描画を開始できないとき：使えない・開いている途中（未着を含む）は入力源の表示だけ", () => {
+    expect(centerNotice(event({ state: "unavailable", reason: "inUse" }, null), true)).toEqual({ renderUnavailable: false, overlay: true });
+    expect(centerNotice(event({ state: "opening" }), true)).toEqual({ renderUnavailable: false, overlay: true });
+    expect(centerNotice(null, true)).toEqual({ renderUnavailable: false, overlay: true });
+  });
+
+  it("どの組み合わせでも、中央に出すのは多くて1つ", () => {
+    for (const [, state] of states) {
+      for (const unavailable of [false, true]) {
+        for (const editing of [false, true]) {
+          const notice = centerNotice(state, unavailable, editing);
+          expect(notice.renderUnavailable && notice.overlay).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("編集中は入力源の表示を出さないので、描画を開始できないときはその表示を出す", () => {
+    expect(centerNotice(event({ state: "opening" }), true, true)).toEqual({ renderUnavailable: true, overlay: false });
+    expect(centerNotice(event({ state: "silent" }), false, true)).toEqual({ renderUnavailable: false, overlay: false });
   });
 });
 

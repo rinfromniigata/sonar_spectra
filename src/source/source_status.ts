@@ -46,6 +46,27 @@ export function overlayMode(event: SourceStatusEvent | null): OverlayMode {
   }
 }
 
+/** 画面の中央に出す表示（SPEC 11節のS01〔v5〕）。同時に当てはまっても、中央には1つだけ出す */
+export interface CenterNotice {
+  /** 「描画を開始できません」を出す */
+  renderUnavailable: boolean;
+  /** 入力源の状態の表示（StatusOverlay）を出す */
+  overlay: boolean;
+}
+
+/**
+ * 入力源の状態 × 描画の層の状態から、出す表示を決める。
+ * - 描画を開始できないとき：無音（S01b）は描画を開始できない表示だけ。使えない（S01c）・開いている途中（S01d）は
+ *   その表示だけ（描画を開始できない表示は出さない）
+ * - 編集中は StatusOverlay を出さないので、描画を開始できないときはその表示を出す
+ */
+export function centerNotice(event: SourceStatusEvent | null, renderUnavailable: boolean, editing = false): CenterNotice {
+  const mode = overlayMode(event);
+  if (!renderUnavailable) return { renderUnavailable: false, overlay: !editing && mode !== "none" };
+  const overlayWins = !editing && (mode === "unavailable" || mode === "opening");
+  return { renderUnavailable: !overlayWins, overlay: overlayWins };
+}
+
 /** チップの表示：点の色（`status`）と、文言の辞書キー（デバイス名が要るときは `device` も） */
 export interface ChipView {
   status: ChipStatus;
