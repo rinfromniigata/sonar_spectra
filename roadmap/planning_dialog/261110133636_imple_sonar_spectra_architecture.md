@@ -1,15 +1,16 @@
 # sonar_spectra 実装設計（imple）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v3.md` と同版のデザインアセット
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v4.md` と同版のデザインアセット
 - 種別：Agentic Coding
-- 対になるドキュメント：`261109115345_tasks_sonar_spectra_initial.md`、`261109115345_walk_sonar_spectra_initial.md`
-- 改訂：change「261109114953_change_config_name_unique_and_overwrite」を反映（5.2の9・11・13、5.3の設定パネルと配色の管理、5.4の同じ名前・二重読み込み）。前の版は`archived/261106104948_imple_sonar_spectra_architecture.md`
+- 対になるドキュメント：`261110133636_tasks_sonar_spectra_initial.md`、`261110133636_walk_sonar_spectra_initial.md`
+- 改訂：change「261110124814_change_frame_limit_and_webgl」を反映（1節、2節、3.4、4.2、4.5、4.6、4.8、5.1、5.2の16、5.3）。前の版は`archived/261109115345_imple_sonar_spectra_architecture.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」）
 
 ## 1. 方針
 
 - **音の流れに沿って層を分ける**：入力源 → 解析 → 送出 →（Channel）→ 受信 → モジュールの描画。各層は1つ前の層のインターフェースだけを知る。Macの取得方式や入力デバイスは「入力源」の実装を足すだけで済むようにする
 - **モジュールは登録制**：モジュールの種類ごとに「解析結果のどこを読むか・どう描くか・どんな設定を持つか」を1組にまとめ、レジストリに登録する。配置・設定パネル・レイアウト編集は、モジュールの中身を知らない
-- **値はトークン経由のみ**：色・サイズ・余白・角丸・発光・モーションは`src/theme/tokens.css`のカスタムプロパティだけを参照する。Canvasで使う色も、描画時に`getComputedStyle`で読み出したトークンから取る（テーマ切り替えで読み直す）
+- **値はトークン経由のみ**：色・サイズ・余白・角丸・発光・モーションは`src/theme/tokens.css`のカスタムプロパティだけを参照する。描画（WebGL2の図形・Canvas 2Dの文字）で使う色も、描画時に`getComputedStyle`で読み出したトークンから取る（テーマ切り替えで読み直す）
+- **図形はWebGL2、文字はCanvas 2D**（v4）：メーター全体を覆う1枚の共有のWebGL2キャンバスに、各モジュールが自分の枠の範囲だけに図形を描く。文字はモジュールの枠ごとのCanvas 2Dの層に描く。モジュールは「描くもの（図形・色・発光）を作る」だけで、WebGLを直接触らない（作る部分を単体テストで調べられるようにする）
 - **文言は辞書経由のみ**：`vue-i18n`のComposition APIで、`src/i18n/locales/ja.ts`の型からキーの型を作る。直書きと文字列連結をしない
 - **状態は1か所に集める**：UIの状態（構成・設定・編集中かどうか）はストアにまとめ、保存はRust側の`settings_store`に任せる。ルーターは使わない
 
@@ -32,7 +33,8 @@ sonar_spectra/
 │  ├─ modules/                  モジュール（種類ごとにフォルダ）とレジストリ
 │  ├─ layout/                   自動整列・手動配置（12×8の格子）
 │  ├─ config/                   インスタンス設定・配色・構成・永続化の呼び出し
-│  ├─ render/                   描画ループ（requestAnimationFrame）、最小化時の停止
+│  ├─ render/                   描画ループ（requestAnimationFrame、フレームレートの上限による間引き）、最小化時の停止
+│  │  └─ gl/                    WebGL2の描画の層（共有キャンバス、図形の描画、発光、流れる画像、コンテキストの喪失）
 │  ├─ components/               画面と基本部品
 │  │  ├─ ui/                    ボタン、アイコンボタン、スイッチ、セグメント、スライダー、セレクト、配色の見本、チップ、ドロワー、ポップオーバー
 │  │  └─ ...                    TitleBar、MeterGrid、ModuleFrame、StatusOverlay、SettingsDrawer など
@@ -115,6 +117,7 @@ pub trait Analyzer: Send {
 - 保存先：アプリのデータフォルダ（`%APPDATA%\com.rinontech.sonar-spectra\state.json`）
 - 書き込みは一時ファイルに書いてから置き換える（書き込み中に落ちても前の状態が残る）
 - 読み込み時に`schema`を確かめ、古い形式は移行し、読めない場合は既定の状態で起動して元のファイルを`state.broken-{日時}.json`として残す
+- schema 2（v4）：`state.json`に`app`（アプリ全体の設定）を足す。1→2の移行は`app: { frameLimit: 60 }`を足すだけ。構成ファイルの`schema`は`state.json`と同じ版を使うため2になり、その1→2の移行は中身を変えない
 - 構成の書き出し・読み込みは、UIで`tauri-plugin-dialog`で場所を選び、`tauri-plugin-fs`で読み書きする（fsの権限はダイアログで選んだパスに限る）。中身の検証は`settings_store`のコマンドで行う
 
 ### 3.5 コマンドとイベント（UI ⇔ Rust のインターフェース）
@@ -164,7 +167,27 @@ interface ModuleRenderer<O> {
 ```
 
 - レジストリ（`modules/registry.ts`）に登録するだけで、配置・レイアウト編集・インスタンスの設定に現れる
-- 流れる方向は、モジュールの枠（`ModuleFrame`）側でCanvasの座標系を回して実現し、目盛りや文字も枠ごと回す。描画側は常に既定の向きで描けばよい
+- 流れる方向は、モジュールの枠（`ModuleFrame`）側で座標系を回して実現し、目盛りや文字も枠ごと回す。描画側は常に既定の向きで描けばよい（v4：図形は描画の層が同じ回転を頂点の変換で当て、文字は枠のCanvas 2Dの座標系を回す）
+- **描くものの受け渡し**（v4）：`draw`は、図形を`ShapeSink`へ、文字を文字の層（Canvas 2D）へ出す。上の型の`draw`の引数に`out: DrawOutput`を足し、`RenderContext.ctx`（Canvas 2D）は文字の層だけに使う。名前と細部は実装で決めてよい
+
+```ts
+interface DrawOutput {
+  shapes: ShapeSink;                   // 図形（描画の層がWebGL2で描く）
+  text: CanvasRenderingContext2D;      // 文字の層（枠ごと。図形の上に重なる）
+}
+
+interface ShapeSink {
+  polyline(points: Float32Array, style: StrokeStyle): void;          // 線（太さ・色・発光）
+  band(xs: Float32Array, top: Float32Array, bottom: Float32Array, style: FillStyle): void; // 塗りの帯
+  polygon(points: Float32Array, style: FillStyle): void;             // 円形の塗りなど
+  points(points: Float32Array, size: number, style: FillStyle): void;
+  rects(rects: Float32Array, style: FillStyle): void;                // 棒・格子線（1ピクセル幅）
+  image(stream: StreamImage, dest: Rect): void;                      // 流れる画像（履歴・スペクトログラム）
+}
+```
+
+- **流れる画像**（v4）：今の`OffscreenBuffer`（すでに描いた分をずらす）は、WebGL2では輪の形のテクスチャ（新しい列だけを書き、表示するときに読み始めの位置をずらす）に置き換える。モジュールは新しい列の中身だけを作る
+- **発光**（v4）：`style.glow`（発光の値。0は発光なし）を持つ図形を、描画の層がまとめて発光させる（4.6）。モジュールは発光の描き方を知らない
 - 描画の細部（線の太さ、残像の減衰、平滑化の係数）はモックの見え方に近づける（委任事項）
 
 ### 4.3 配置（layout）
@@ -190,13 +213,30 @@ interface ModuleRenderer<O> {
 - `App.vue`：`MeterScreen`（タイトル帯＋格子＋走査線と周辺減光）を常に表示し、その上に`StatusOverlay`（S01b〜S01d）、`SettingsDrawer`（S02）／`PaletteDrawer`（S02a）／`ConfigDrawer`（S02b）、`LayoutEditPanel`と`InstanceInspector`（S03）を状態で重ねる
 - ボーダレスフルスクリーン：`@tauri-apps/api`のウィンドウAPIで全画面にする（Windowsではボーダレスになることを実機で確認する）。タイトル帯と操作系は残し、ボタンは終了のアイコンに変える（S01a）
 - ウィンドウ状態：`tauri-plugin-window-state`で位置・大きさ・ディスプレイを記憶する。全画面の状態は記憶しない（StateFlagsから外す）
+- `MeterGrid`（v4）：格子の後ろに、共有のWebGL2キャンバスを1枚敷く（格子と同じ範囲、ポインターのイベントは通す）。`ModuleFrame`のキャンバスは文字の層になり、地は透明にする（地の色は共有キャンバスが塗る）
+- 描画を開始できないとき（v4。SPEC 11節のS01）：WebGL2のコンテキストを作れなければ、メーターの領域の中央に`status.render_unavailable`を1行出す。タイトル帯と操作系はふだんどおり
+- 設定パネルの表示の欄（v4。SPEC 11節のS02）：末尾に「フレームレートの上限」のセグメント（60／45／30fps）を置く
 - ライトテーマで小さな文字に`neon-b`・`neon-c`を使う部品（適合判定のバッジ、手動配置のバッジ、LOUDの数値など）は、文字を`--color-text`にし、枠線だけ発光色を残す（SPEC 9節）
 
 ### 4.6 描画ループ（render）
 
-- `requestAnimationFrame`を1本だけ回し、表示中のモジュールを順に描く（画面のリフレッシュに合わせる）
+- `requestAnimationFrame`を1本だけ回し、表示中のモジュールを順に描く
+- **フレームレートの上限**（v4）：`requestAnimationFrame`は毎回受け、前回描いた時刻からの経過が上限の周期に満たない回は描かずに飛ばす
+  - 周期は平均で合わせる：描くたびに「次に描いてよい時刻」を周期ぶん進める（遅れが周期を超えたら今の時刻に合わせ直し、まとめて描かない）。画面の1周期の半分を許容の幅にして、60 Hzの画面で上限60fpsのときに1回おきにならないようにする
+  - 画面の周期が上限より低いときは、来た回ごとに描く（上限は引き上げない）
+  - 上限は`app.frameLimit`から読み、変わったらすぐ効かせる。経過時間（`dt`）は描いた回どうしの差のまま（流れる速さは描く回数によらない）
 - ウィンドウが最小化されたら止め、`set_render_paused(true)`を送る。復帰したら再開する
 - 描画が重い場合も受信・取得は止まらない（最新のフレームだけを描く）
+
+#### 描画の層（`render/gl/`。v4）
+
+- **共有キャンバス**：WebGL2のコンテキストは1つ。1回の描画の初めに全体を消し、モジュールごとに、枠の範囲（`MeterGrid`の配置から求めた矩形。デバイスピクセル）をビューポートと切り抜きにして、そのモジュールの図形を描く。枠の地の色もここで塗る。枠の位置はDOMから測らず、配置の状態から毎回求める（レイアウト編集のドラッグに追従する）
+- **図形の描き方**：線は太さを持つ三角形の列に展開する（WebGLの線は1ピクセル固定のため）。端と継ぎ目のアンチエイリアスはシェーダーで付ける。帯・多角形・点・四角も三角形にする。1つのモジュールの図形は、色と発光ごとにまとめて少ない描画命令で描く
+- **方向**：枠の`quarterTurns`を頂点の変換（行列）で当てる
+- **発光**（T9-1の推奨案(a)）：発光する図形を、等倍のオフスクリーンのフレームバッファに1回だけ描き、それを縮小（発光の値が12以下は1/2、超えると1/4）して分離型のガウスでぼかし（標準偏差＝発光の値/2。`shadowBlur`と同じ広がり）、拡大して枠に敷いてから、等倍の画像を重ねる。発光が0のときは、ぼかしを飛ばして等倍の画像だけを重ねる。フレームバッファは大きさが変わったときだけ作り直す
+- **色**：テーマ・配色の色（CSSの色の文字列）は、描画の層でRGBAの数値に直してから使う（同じ文字列は使い回す）
+- **コンテキストの喪失**：`webglcontextlost`で`preventDefault`して描くのを止め、`webglcontextrestored`でシェーダー・バッファ・テクスチャを作り直して再開する。流れる画像の中身は消えたところから描き直す
+- **作れないとき**：WebGL2のコンテキストを作れなければ、描画の層は描かず、`MeterScreen`に描画を開始できない状態を知らせる（4.5）。Canvas 2Dの描き方へは戻さない
 
 ### 4.7 国際化
 
@@ -215,6 +255,7 @@ interface ModuleRenderer<O> {
 - `scripts/token_check.ts`：`src/theme/`以外にある色（`#…`、`rgb(`、`hsl(`、`oklch(`）・px値の直書きを検出
 - `cargo clippy`と`cargo test`、`vitest`
 - CIの`ci.yml`でも同じコマンドを実行する
+- 描画のテスト（v4）：各モジュールの描画は、記録用の`ShapeSink`（受け取った図形をそのまま並べる）と、文字の層だけを記録するテスト用のCanvas（`test_canvas.ts`）で調べる。WebGL2の描画の層は、WebGLに頼らない部分（線の三角形への展開、方向の変換、発光の縮小率とぼかしの係数、色の変換、間引きの判定）を純粋関数にして単体テストで調べ、WebGLに渡す部分は薄く保って実機の撮影で確かめる
 
 ## 5. データモデル
 
@@ -224,12 +265,13 @@ interface ModuleRenderer<O> {
 
 ```ts
 interface PersistedState {
-  schema: 1;
+  schema: 2;                       // v4で2に上げた（3.4）
   current: Config;                 // 今表示している構成（作業中の写し）
   activeConfigId: string;          // 使用中の保存済み構成
   dirty: boolean;                  // 保存後に変更があるか（S02の「保存後に変更あり」）
   savedConfigs: SavedConfig[];
   source: { deviceId: string | null }; // null は既定の出力デバイス。構成には含めない
+  app: { frameLimit: 60 | 45 | 30 };   // アプリ全体の設定（v4）。構成には含めない。既定は60
 }
 
 interface SavedConfig extends Config { id: string; name: string; savedAt: string /* ISO 8601 */ }
@@ -281,15 +323,16 @@ interface Palette { id: string; name: string; main: string; sub: string; accent:
 9. **「名前を付けて保存」で「クラブ用」と付ける** → `savedConfigs`に`current`の写しが新しい`id`・`name`・`savedAt`で1件増え、`activeConfigId`がそれになり、`dirty = false`
 10. **配色を作る（主色・副色・強調色）** → `current.customPalettes`に1件増える。`dirty = true`。どのインスタンスもまだ使っていない
 11. **構成を「既定」に切り替える** → `dirty = true`なので、上書き・別名で保存・破棄を確認する。破棄を選ぶと`current`は「既定」の写しになり、`activeConfigId`が「既定」、`dirty = false`。10で作った配色は「クラブ用」に保存していないので消える
-12. **「クラブ用」を書き出す** → `state.json`は変わらない。選んだ場所に`{ format: "sonar_spectra.config", schema: 1, config: SavedConfig }`のJSONを書く
+12. **「クラブ用」を書き出す** → `state.json`は変わらない。選んだ場所に`{ format: "sonar_spectra.config", schema: 2, config: SavedConfig }`のJSONを書く（v4で`schema`は2。schema 1のファイルも移行して読める）
 13. **別のPCでそのファイルを読み込む** → 検証してから、新しい`id`を振って`savedConfigs`に1件増やす。`activeConfigId`は変えない（読み込んだ構成は一覧から切り替えて使う）。そのPCに「クラブ用」がすでにあれば、「クラブ用_1」として足す（5.4）
 14. **入力源のデバイスを変える** → `source.deviceId`だけが変わる。構成は変わらず、`dirty`も変わらない
 15. **アプリを終了して起動し直す** → `state.json`から`current`をそのまま復元し、`display.startFullscreen`がオンなら全画面で始める。ウィンドウの位置・大きさはwindow-stateから復元する（そのディスプレイがなければOSが置く位置）
+16. **設定でフレームレートの上限を30fpsにする**（v4） → `app.frameLimit = 30`だけが変わり、すぐ描く回数が減る。構成は変わらず、`dirty`も変わらない。構成を切り替えても30fpsのまま
 
 ### 5.3 画面の項目とデータの対応
 
 - タイトル帯の出力系統のチップ（S01、S01b〜S01d）：`source-status`イベント（保存しない）と`source.deviceId`
-- 設定パネル（S02）：構成の欄 → `activeConfigId`の`name`と`dirty`（「上書き保存」は`dirty`のときだけ押せ、使用中の保存済み構成を`current`の写しにして`dirty = false`）／入力源 → `source.deviceId`／テーマ → `current.theme`／表示 → `current.display.*`
+- 設定パネル（S02）：構成の欄 → `activeConfigId`の`name`と`dirty`（「上書き保存」は`dirty`のときだけ押せ、使用中の保存済み構成を`current`の写しにして`dirty = false`）／入力源 → `source.deviceId`／テーマ → `current.theme`／表示 → `current.display.*`／フレームレートの上限 → `app.frameLimit`（v4）
 - 配色の管理（S02a）：標準 → コード上のプリセット／自分で作った配色 → `current.customPalettes`
 - 構成の管理（S02b）：一覧 → `savedConfigs`（名前、配置の種類・モジュール数・保存日は`layout.mode`・有効なインスタンスの数・`savedAt`から作る）／使用中 → `activeConfigId`
 - レイアウト編集（S03）：置いたモジュールの一覧 → `current.layout.instances`（`enabled`はスイッチ）／見出しの矢印 → `direction`／自動配置・手動配置のバッジ → `layout.mode`
