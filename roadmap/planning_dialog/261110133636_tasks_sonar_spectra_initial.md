@@ -748,7 +748,7 @@ Phaseの推奨: Opus・high以上
 ## Phase 9: 負荷の対策（フレームレートの上限・WebGL2）とリリースのワークフロー
 
 Phaseの推奨: Opus・xhigh以上
-引き継ぎ: change「261110124814_change_frame_limit_and_webgl」（承認済み）で計画をv4にした。T9-2は完了。次はT9-3（記載順。T9-2・T9-3はリリースのワークフローで、T9-4〜T9-8とは依存しないため、先にT9-4へ進んでもよい）。T9-3では、`release.yml`の内容（`v*`タグ、バージョン3か所の一致確認、`--bundles nsis`、ドラフト作成）をCONTRIBUTING.mdに書く。T9-1の(a)〜(c)は、(a)をT9-6、(b)をT9-4（上限60fps）、(c)をT9-5〜T9-8として採用した。項目が多いので、T9-6のあとなど項目の境目で引き継ぎメモを書いて`/clear`してよい。計測の方法と注意（可変リフレッシュレート）はT9-1の実施メモにある
+引き継ぎ: change「261110124814_change_frame_limit_and_webgl」（承認済み）で計画をv4にした。T9-2・T9-3は完了。次はT9-4（T9-4〜T9-8はこの順）。T9-1の(a)〜(c)は、(a)をT9-6、(b)をT9-4（上限60fps）、(c)をT9-5〜T9-8として採用した。項目が多いので、T9-6のあとなど項目の境目で引き継ぎメモを書いて`/clear`してよい。計測の方法と注意（可変リフレッシュレート）はT9-1の実施メモにある
 
 - [x] T9-1 【エージェント】全モジュールを有効にした状態で、CPU・GPUの使用率と1フレームの描画時間を測り、重いモジュールを軽くする（必要ならそのモジュールだけWebGLへ移す案を報告する）
   - 依存: T8-5
@@ -767,9 +767,11 @@ Phaseの推奨: Opus・xhigh以上
   - 依存: T1-8
   - 実施: Sonnet
   - 実施メモ（261110）：`.github/workflows/release.yml`を作った。`v*`タグのpushで起動し、`windows-latest`の1つのジョブで、(1) タグと`package.json`・`tauri.conf.json`・`Cargo.toml`のバージョンの一致を確かめる（食い違えば失敗。手元で一致・不一致の両方を実行して確認済み）、(2) `ci.yml`と同じ構成（`setup-bun`・Rust・キャッシュ・`bun install --frozen-lockfile`）で`bun run check`、(3) `tauri-apps/tauri-action@v1`（最新はv1.0.0。入力名は`action.yml`で確認）でビルドし、ドラフトのリリースを作る。権限は`contents: write`のみ。決めたこと：`--bundles nsis`でNSISのインストーラー（setup.exe）だけを作る（`tauri.conf.json`の`targets: "all"`のままではWindowsでMSIも作られるため。SPECの「インストーラー」を1つにした。MSIも要るなら引数を外す）。自動更新は使わないので`uploadUpdaterJson: false`。リリース本文は`CHANGELOG.md`とSmartScreenへの案内の短い文。確かめたこと：YAMLの構文（`yaml`で解析）、バージョン確認のスクリプトの動作。ワークフロー自体の実行はタグをpushするまで確かめられない（W9-3はローカルの`tauri build`と内容の確認まで、実行はT10-5〜W10-3のドラフトで確かめる）
-- [ ] T9-3 【エージェント】`CONTRIBUTING.md`に、ビルドとリリースの手順を追記する
+- [x] T9-3 【エージェント】`CONTRIBUTING.md`に、ビルドとリリースの手順を追記する
   - 推奨: Sonnet・medium以上
   - 依存: T9-2
+  - 実施: Sonnet
+  - 実施メモ（261110）：CONTRIBUTING.mdに「ビルドとリリース」の節を足した（手元のビルド：`bun run tauri build`と出力先、アイコンだけを変えたときの古い実行ファイルへの注意〔W1-12の気づき〕。リリースの手順：バージョン3か所とCHANGELOGをそろえる→`bun run check`→コミット・`v*`タグ・push→ワークフローの動き〔バージョン一致の確認、検査、NSISのビルド、ドラフト作成〕→ドラフトを確かめて公開）。リポジトリ構成の`.github/workflows/`の行にrelease.ymlを足した。`CHANGELOG.md`とREADMEはT10-1・T10-3で作るため、節では先の予定として書いた
 - [ ] T9-4 【エージェント】フレームレートの上限（60／45／30fps、既定60）をアプリ全体の設定として足し、描画ループで間引く。設定パネルの表示の欄の末尾にセグメントを置く
   - 推奨: Sonnet・high以上
   - 依存: T9-1

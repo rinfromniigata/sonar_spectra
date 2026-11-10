@@ -87,6 +87,41 @@ SONAR_UPDATE_FIXTURE=1 cargo test --manifest-path src-tauri/Cargo.toml regenerat
 - `src/theme/tokens.css`は`roadmap/specs/`のトークンの写しです。直接編集しません
 - どうしても直書きが必要な行には、`token-check-ignore: 理由`を書き添えます（理由のない印は無効です）
 
+## ビルドとリリース
+
+### 手元でビルドする
+
+```sh
+bun run tauri build
+```
+
+フロントエンドのビルドのあと、Rust側をリリースビルドし、インストーラーを作ります（初回は数分かかります）。`src-tauri/target/release/bundle/`の下に、NSISのインストーラー（`nsis/*-setup.exe`）とMSI（`msi/`）ができます。インストーラーを作らず実行ファイルだけを確かめるときは、`bun run tauri build --no-bundle`です。
+
+アイコンだけを変えたときは、`cargo build`・`tauri build`が古いアイコンのままの実行ファイルを作ることがあります。手元で確かめるときは、`src-tauri/build.rs`を触って（保存し直して）から作り直してください。
+
+### リリースの手順
+
+リリースは、GitHub Actionsのワークフロー（`.github/workflows/release.yml`）が行います。コード署名はしないため、初回起動時にWindowsのSmartScreenの警告が出ます（開き方はREADMEに書きます）。
+
+1. `package.json`・`src-tauri/tauri.conf.json`・`src-tauri/Cargo.toml`の`version`を、リリースするバージョン（セマンティックバージョニング。初回は`0.1.0`）にそろえ、`CHANGELOG.md`に変更点を書きます
+2. 手元で`bun run check`が通ることを確かめます
+3. 変更をコミットし、`v`を付けたタグ（例：`v0.1.0`）を作って、pushします
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+`v*`のタグをpushすると、ワークフローが次を順に行います。どこかで失敗すると、そこで止まり、リリースは作られません。
+
+- タグ（`v`を除いた値）が、上の3つのファイルの`version`と一致することを確かめる。食い違っていたら失敗します（バージョンを直したら、タグを付け直してpushします）
+- `bun run check`（`ci.yml`と同じ検査）
+- Windows x64のインストーラー（NSISの`setup.exe`のみ。MSIは作りません）をビルドし、GitHub Releasesに**ドラフト**のリリースを作る
+
+4. GitHubのReleasesのページでドラフトを開き、インストーラーが添付されていること、本文を確かめて、公開します。公開するまで、一般の利用者には見えません
+
+自動更新は使わないため、更新用の`latest.json`は作りません。
+
 ## アイコンの生成
 
 ```sh
@@ -115,7 +150,7 @@ sonar_spectra/
 ├─ scripts/              検査（i18n・トークン）とアイコン生成のスクリプト
 ├─ public/               ファビコン（bun run icons で生成）
 ├─ docs/brand/           ブランド方針（brand.md）とマスターSVGの写し
-├─ .github/workflows/    CI
+├─ .github/workflows/    CI（ci.yml）とリリース（release.yml）
 └─ roadmap/              計画と記録（下記）
 ```
 
