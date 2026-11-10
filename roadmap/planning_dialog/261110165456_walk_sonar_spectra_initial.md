@@ -585,9 +585,11 @@
   - 依存: T9-2, T9-3
   - 実施: Sonnet・medium
   - 実施メモ（261111）：通過した。修正は不要だった。`bun run tauri build --bundles nsis`が成功し（7分39秒）、`src-tauri/target/release/bundle/nsis/sonar_spectra_0.1.0_x64-setup.exe`（11.10 MiB、x64）ができた。`release.yml`は、checkout・setup-bun・rust-toolchain（clippy）・rust-cache・`bun install --frozen-lockfile`・`bun run check`が`ci.yml`と同じで、検査のあとにビルドとドラフト作成へ進む。リンカーの警告1件（`linker_messages`。`.dll.lib`の作成通知）が出るが、ビルドには影響しない
-- [ ] W9-4 【エージェント】`bun run check`が通る（間引きの判定、上限の保存と移行〔schema 1→2〕、構成に含めず`dirty`を変えないこと、線の展開・方向・色の変換・発光の係数、各モジュールの描くもののテスト）
+- [x] W9-4 【エージェント】`bun run check`が通る（間引きの判定、上限の保存と移行〔schema 1→2〕、構成に含めず`dirty`を変えないこと、線の展開・方向・色の変換・発光の係数、各モジュールの描くもののテスト）
   - 推奨: Sonnet・high以上
   - 依存: T9-8
+  - 実施: Sonnet・high
+  - 実施メモ（261111）：通過した。修正は不要だった。`bun run check`が全段で通った（vitest 97ファイル944件、cargo test 144件〔無視5件は従来どおり〕、clippy・eslint・型・i18n・トークンも警告0）。観点との対応：間引き=`frame_pacer.test.ts`・`render_loop.test.ts`、上限の保存と移行（schema 1→2）=`settings_store/migrate.rs`・`mod.rs`・`config_file.rs`のテスト、構成に含めず`dirty`を変えない=`config_store.test.ts`、線の展開・方向=`gl/tessellate.test.ts`・`direction.test.ts`、色の変換=`gl/color.test.ts`、発光の係数=`gl/glow.test.ts`、各モジュールの描くもの=`*_renderer.test.ts`
 - [ ] W9-5 【エージェント】設定パネル（S02）の表示の欄が、SPEC 11節のS02のとおりの構造（末尾にフレームレートの上限のセグメント、3つの選択肢）で、疑似ロケールで崩れない
   - 推奨: Sonnet・medium以上
   - 依存: W9-4
