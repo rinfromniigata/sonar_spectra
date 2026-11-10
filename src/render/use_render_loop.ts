@@ -2,6 +2,7 @@
 // provide されたループに自分を登録する。
 // - テーマが変わったら Canvas 用の色を読み直す
 // - 最小化されたら描画を止め、Rust に set_render_paused を送る（戻したら再開）
+// - フレームレートの上限（アプリ全体の設定）は、描画ループが毎回読む（変えるとすぐ効く）
 // - 有効なモジュールが変わったら、必要な解析だけを set_active_sections で伝える
 
 import { onBeforeUnmount, onMounted, provide, watch, type InjectionKey } from "vue";
@@ -19,13 +20,15 @@ export interface RenderLoopOptions {
   source: FrameSource;
   /** 今の構成のインスタンス（変わったら必要な解析を伝え直す） */
   instances: () => readonly Instance[];
+  /** フレームレートの上限（fps。アプリ全体の設定）。省略すると既定 */
+  frameLimit?: () => number;
   registry?: ModuleRegistry;
 }
 
 export function provideRenderLoop(options: RenderLoopOptions): RenderLoop {
   const registry = options.registry ?? moduleRegistry;
   let colors: CanvasColors = readDocumentCanvasColors();
-  const loop = new RenderLoop(options.source, () => colors);
+  const loop = new RenderLoop(options.source, () => colors, undefined, options.frameLimit);
   provide(RENDER_LOOP_KEY, loop);
 
   // 必要な解析：中身が変わったときだけ送る

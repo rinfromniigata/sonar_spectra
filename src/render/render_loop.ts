@@ -1,9 +1,13 @@
 // 描画ループ：requestAnimationFrame を1本だけ回し、表示中のモジュールを順に描く（画面のリフレッシュに合わせる）。
 // 受信とは切り離し、毎回その時点の最新のフレームと共有の履歴を渡す（描画が重くても受信・取得は止まらない）。
+// フレームレートの上限（アプリ全体の設定）を超える回は描かずに飛ばす（判定は frame_pacer。上限は毎回読むので、変えるとすぐ効く）。
+// 経過時間（dt）は、描いた回どうしの差（飛ばした回は含めない）。
 
 import type { AnalysisFrame, Histories } from "../frame_client";
+import { DEFAULT_FRAME_LIMIT } from "../config/types";
 import type { FrameDrawInput } from "../modules/types";
 import type { CanvasColors } from "../theme/canvas_colors";
+import { INITIAL_PACER_STATE, stepPacer, type PacerState } from "./frame_pacer";
 
 /** 描くもの（ModuleFrame） */
 export interface Drawable {
@@ -37,12 +41,18 @@ export class RenderLoop {
   private started = false;
   private paused = false;
   private handle: number | null = null;
+  /** 前に描いた回の時刻 */
   private lastTime: number | null = null;
+  private pacer: PacerState = INITIAL_PACER_STATE;
+  /** 前の回の上限（変わったら間引きの数え直しをする） */
+  private lastLimit: number | null = null;
 
   constructor(
     private readonly source: FrameSource,
     private readonly colors: () => CanvasColors,
     private readonly scheduler: Scheduler = animationFrameScheduler,
+    /** フレームレートの上限（fps）。毎回の受け取りで読む */
+    private readonly frameLimit: () => number = () => DEFAULT_FRAME_LIMIT,
   ) {}
 
   /** 描くものを加える。返す関数で外す */
@@ -80,8 +90,9 @@ export class RenderLoop {
 
   private resume(): void {
     if (!this.running || this.handle !== null) return;
-    // 再開した最初の回は経過時間を0にする（止まっていた時間を流さない）
+    // 再開した最初の回は経過時間を0にし、必ず描く（止まっていた時間を流さない）
     this.lastTime = null;
+    this.pacer = INITIAL_PACER_STATE;
     this.handle = this.scheduler.request(this.tick);
   }
 
@@ -95,6 +106,20 @@ export class RenderLoop {
   private readonly tick = (time: number): void => {
     this.handle = null;
     if (!this.running) return;
+
+    // 上限が変わったら数え直し、変えた直後の回から効かせる
+    const limit = this.frameLimit();
+    if (limit !== this.lastLimit) {
+      this.lastLimit = limit;
+      this.pacer = { ...this.pacer, due: null };
+    }
+    const step = stepPacer(this.pacer, time, limit);
+    this.pacer = step.state;
+    if (!step.draw) {
+      this.handle = this.scheduler.request(this.tick);
+      return;
+    }
+
     const dt = this.lastTime === null ? 0 : Math.min(Math.max(0, (time - this.lastTime) / 1000), MAX_FRAME_DT);
     this.lastTime = time;
 

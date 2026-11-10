@@ -3,7 +3,7 @@
 // - 画面と同じ入口（config_manager・palette_actions）から操作し、保存は JSON にして持つディスクの代役で往復させる
 // - 手順12・13は2台の PC（別々のストアとディスク）と、両方から見えるファイルの代役でつなぐ
 // - ファイルの検証は Rust（validate_config_file）が行う。ここでは format・schema・JSON の確認だけをする代役を使い、
-//   本物の検証は、同じ見本（src-tauri/src/settings_store/fixtures/config_file_v1.json）を Rust のテスト
+//   本物の検証は、同じ見本（src-tauri/src/settings_store/fixtures/config_file_v2.json）を Rust のテスト
 //   （config_file.rs の accepts_the_file_the_ui_writes・returns_the_same_config_the_ui_wrote）が確かめる
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));
 vi.mock("@tauri-apps/plugin-fs", () => ({ readTextFile: vi.fn(), writeTextFile: vi.fn() }));
 
-import fixtureText from "../../src-tauri/src/settings_store/fixtures/config_file_v1.json?raw";
+import fixtureText from "../../src-tauri/src/settings_store/fixtures/config_file_v2.json?raw";
 import { createRuntimeStore } from "../app/runtime_store";
 import { createConfigManager, type ConfigManager } from "../components/config_manager";
 import { createPaletteActions } from "../components/palette_actions";
@@ -176,7 +176,7 @@ describe("imple 5.2 の手順9〜13（W7-2）", () => {
     expect(a.config.dirty.value).toBe(false);
     expect(a.config.state.value.savedConfigs[1].customPalettes).toEqual([]);
 
-    // 12. 「クラブ用」を書き出す → state.json は変わらない。{ format, schema: 1, config: SavedConfig } を書く
+    // 12. 「クラブ用」を書き出す → state.json は変わらない。{ format, schema: 2, config: SavedConfig } を書く
     await vi.runAllTimersAsync();
     const savesBefore = a.disk.saves();
     const stateBefore = a.config.state.value;

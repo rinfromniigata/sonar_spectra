@@ -7,7 +7,7 @@ import type { ModuleKind } from "../modules/options";
 import type { ModuleRegistry } from "../modules/registry";
 import type { ModuleDefinition } from "../modules/types";
 import { createDefaultInstances, createInstanceId } from "./default_instances";
-import { STATE_SCHEMA, type Config, type Instance, type PersistedState, type SavedConfig } from "./types";
+import { DEFAULT_FRAME_LIMIT, STATE_SCHEMA, type Config, type Instance, type PersistedState, type SavedConfig } from "./types";
 
 /** 新しい構成の ID */
 export function createConfigId(): string {
@@ -49,6 +49,7 @@ export function createDefaultState(options: DefaultStateOptions): PersistedState
     dirty: false,
     savedConfigs: [saved],
     source: { deviceId: null },
+    app: { frameLimit: DEFAULT_FRAME_LIMIT },
   };
 }
 

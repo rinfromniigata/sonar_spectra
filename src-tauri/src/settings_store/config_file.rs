@@ -1,6 +1,6 @@
 //! 構成ファイル（書き出し・読み込み。imple 5.2 の12・13）
 //!
-//! 形式は `{ "format": "sonar_spectra.config", "schema": 1, "config": SavedConfig }`。
+//! 形式は `{ "format": "sonar_spectra.config", "schema": 2, "config": SavedConfig }`。
 //! 書き出しは UI が行う（選んだ場所に `tauri-plugin-fs` で書く）。読み込みでは、UI が読んだ本文を
 //! `validate_config_file` で確かめ、保存済み構成として返す。新しい ID を振って一覧に足すのは UI。
 //!
@@ -9,7 +9,7 @@
 //!   （`state.json` の移行 `migrate::STEPS` と同じ数だけ手順を持つ）
 
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use super::migrate::{self, Step};
 use super::model::SavedConfig;
@@ -18,7 +18,12 @@ use super::model::SavedConfig;
 pub const CONFIG_FORMAT: &str = "sonar_spectra.config";
 
 /// `CONFIG_STEPS[i]` は構成ファイルの schema `i + 1` → `i + 2` の移行（対象はファイル全体のオブジェクト）
-pub const CONFIG_STEPS: &[Step] = &[];
+pub const CONFIG_STEPS: &[Step] = &[unchanged];
+
+/// schema 1 → 2：構成ファイルの中身は変わらない（`app` は構成に含めない）
+fn unchanged(map: Map<String, Value>) -> Result<Map<String, Value>, String> {
+    Ok(map)
+}
 
 #[derive(Debug, Deserialize)]
 struct ConfigFile {
@@ -51,7 +56,7 @@ mod tests {
     use super::*;
     use crate::settings_store::model::{LayoutMode, Theme};
     use crate::settings_store::{SCHEMA, migrate::STEPS};
-    use serde_json::{Map, json};
+    use serde_json::json;
 
     fn instance(id: &str, rect: Value) -> Value {
         json!({
@@ -161,9 +166,16 @@ mod tests {
         }
     }
 
-    /// UI と共有する見本（`fixtures/config_file_v1.json`）。UI の `buildConfigFile` が書いたとおりの本文で、
+    /// UI と共有する見本（`fixtures/config_file_v2.json`）。UI の `buildConfigFile` が書いたとおりの本文で、
     /// UI 側（`src/config/config_flow.test.ts`）は「この見本の構成を書き出すと、同じ本文になる」を確かめる
-    const SHARED_FIXTURE: &str = include_str!("fixtures/config_file_v1.json");
+    const SHARED_FIXTURE: &str = include_str!("fixtures/config_file_v2.json");
+
+    /// v3までのアプリが書いた schema 1 の構成ファイル（`fixtures/config_file_v1.json`）も、同じ構成として読める
+    #[test]
+    fn schema_1_file_is_still_readable() {
+        let old = parse_config_file(include_str!("fixtures/config_file_v1.json")).unwrap();
+        assert_eq!(old, parse_config_file(SHARED_FIXTURE).unwrap());
+    }
 
     #[test]
     fn accepts_the_file_the_ui_writes() {

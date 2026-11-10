@@ -155,4 +155,36 @@ describe("SettingsDrawer", () => {
     expect(changed).toMatch(new RegExp(`data-setting="alwaysOnTop"[\\s\\S]*?aria-checked="true"`));
     expect(changed).toMatch(new RegExp(`data-setting="startFullscreen"[\\s\\S]*?aria-checked="true"`));
   });
+
+  /** フレームレートの上限の行（見出しの文言・選択肢・押されている選択肢） */
+  function frameLimitRow(html: string): { label: string; options: string[]; pressed: string[] } {
+    const row = /<div class="row" data-setting="frameLimit"[^>]*>([\s\S]*?<\/div>)\s*<\/div>/.exec(html)![1];
+    const buttons = [...row.matchAll(/<button([^>]*)>([^<]*)<\/button>/g)];
+    return {
+      label: /<span class="row-label"[^>]*>([^<]*)<\/span>/.exec(row)![1],
+      options: buttons.map((m) => m[2].trim()),
+      pressed: buttons.filter((m) => m[1].includes('aria-pressed="true"')).map((m) => m[2].trim()),
+    };
+  }
+
+  it("表示の欄の末尾に「フレームレートの上限」のセグメント（60・45・30 fps）を置く。初期値は60 fps", async () => {
+    const html = await render();
+    const display = html.slice(html.indexOf(`>${ja.settings.display}</legend>`));
+    const keys = [...display.matchAll(/data-setting="(\w+)"/g)].map((m) => m[1]);
+    expect(keys).toEqual(["scanline", "alwaysOnTop", "startFullscreen", "frameLimit"]);
+    expect(frameLimitRow(html)).toEqual({
+      label: ja.settings.frame_limit,
+      options: [ja.settings.frame_limit_60, ja.settings.frame_limit_45, ja.settings.frame_limit_30],
+      pressed: [ja.settings.frame_limit_60],
+    });
+  });
+
+  it("フレームレートの上限は、構成ではなくアプリ全体の設定を映し、選んでも「保存後に変更あり」にならない", async () => {
+    const store = configStore();
+    store.setFrameLimit(30);
+    const html = await render(store);
+    expect(frameLimitRow(html).pressed).toEqual([ja.settings.frame_limit_30]);
+    expect(store.dirty.value).toBe(false);
+    expect(html).not.toContain(ja.config.modified);
+  });
 });

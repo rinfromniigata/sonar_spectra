@@ -18,7 +18,7 @@ describe("loadState・saveState", () => {
   });
 
   it("save_state に state という名前で渡す。失敗は呼び出し元に返す", async () => {
-    const state = { schema: 1 } as PersistedState;
+    const state = { schema: 2 } as unknown as PersistedState;
     invoke.mockResolvedValue(undefined);
     await saveState(state);
     expect(invoke).toHaveBeenCalledWith("save_state", { state });

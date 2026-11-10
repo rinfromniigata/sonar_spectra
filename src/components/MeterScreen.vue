@@ -83,7 +83,12 @@ const paletteActions = createPaletteActions({
 const customPalettes = computed(() => config.current.value.customPalettes);
 const windowController = useWindowController();
 
-provideRenderLoop({ source: client, instances: () => layout.value.instances, registry: moduleRegistry });
+provideRenderLoop({
+  source: client,
+  instances: () => layout.value.instances,
+  frameLimit: () => config.frameLimit.value,
+  registry: moduleRegistry,
+});
 
 /** 受信を続ける間、Channel を持っておく */
 let channel: Channel<ArrayBuffer> | null = null;

@@ -277,12 +277,13 @@ mod tests {
         saved["name"] = json!("既定");
         saved["savedAt"] = json!("2026-11-08T05:15:30.000Z");
         json!({
-            "schema": 1,
+            "schema": 2,
             "current": config("light", "manual", true),
             "activeConfigId": "c-default",
             "dirty": true,
             "savedConfigs": [saved],
-            "source": { "deviceId": "{0.0.0.00000000}.{abc}" }
+            "source": { "deviceId": "{0.0.0.00000000}.{abc}" },
+            "app": { "frameLimit": 45 }
         })
     }
 
@@ -334,6 +335,55 @@ mod tests {
         let text = fs::read_to_string(store.state_path()).unwrap();
         let written: Value = serde_json::from_str(&text).unwrap();
         assert_eq!(written, sample_json());
+    }
+
+    /// v3までのアプリが書いた schema 1 の `state.json` は、移行して読む（フレームレートの上限は60fps）。
+    /// 移行したことは次の保存で書き換わり、退避はしない
+    #[test]
+    fn schema_1_state_is_migrated_with_the_default_frame_limit() {
+        let dir = TestDir::new("v1_state");
+        let mut old = sample_json();
+        old["schema"] = json!(1);
+        old.as_object_mut().unwrap().remove("app");
+        write_state(&dir, &old.to_string());
+
+        let LoadOutcome::Loaded(state) = dir.store().load().unwrap() else {
+            panic!("schema 1 should load");
+        };
+        assert_eq!(state.schema, SCHEMA);
+        assert_eq!(state.app.frame_limit, 60);
+        let mut expected = sample();
+        expected.app.frame_limit = 60;
+        assert_eq!(state, expected);
+        assert_eq!(dir.files(), vec![STATE_FILE.to_string()]);
+    }
+
+    #[test]
+    fn frame_limit_must_be_one_of_the_choices() {
+        for limit in [60, 45, 30] {
+            let mut state = sample();
+            state.app.frame_limit = limit;
+            state.validate().unwrap();
+        }
+        // 読み込み：選べない値は読めないファイルとして退避する
+        let mut bad = sample_json();
+        bad["app"]["frameLimit"] = json!(144);
+        assert_recovered("bad_frame_limit", &bad.to_string());
+        let mut no_app = sample_json();
+        no_app.as_object_mut().unwrap().remove("app");
+        assert_recovered("no_app", &no_app.to_string());
+        // 保存：選べない値は書かない
+        let dir = TestDir::new("bad_frame_limit_save");
+        let store = dir.store();
+        let before = sample();
+        store.save(&before).unwrap();
+        let mut after = before.clone();
+        after.app.frame_limit = 0;
+        assert!(matches!(
+            store.save(&after),
+            Err(StoreError::Invalid(Invalid::FrameLimit(0)))
+        ));
+        assert_eq!(store.load().unwrap(), LoadOutcome::Loaded(before));
     }
 
     #[test]

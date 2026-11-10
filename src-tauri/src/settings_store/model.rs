@@ -11,7 +11,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 /// 今の `state.json` の形式の版
-pub const SCHEMA: u32 = 1;
+pub const SCHEMA: u32 = 2;
+
+/// 選べるフレームレートの上限（fps。`src/config/types.ts` の `FRAME_LIMITS` と同じ）
+pub const FRAME_LIMITS: [u32; 3] = [60, 45, 30];
+
+/// フレームレートの上限の既定（1→2の移行もこの値を足す）
+pub const DEFAULT_FRAME_LIMIT: u32 = 60;
 
 /// 配置の格子（imple 4.3。`src/layout/grid.ts` の `GRID_COLUMNS`・`GRID_ROWS` と同じ）
 pub const GRID_COLUMNS: u32 = 12;
@@ -30,6 +36,15 @@ pub struct PersistedState {
     pub saved_configs: Vec<SavedConfig>,
     /// 入力源。構成には含めない
     pub source: SourceSetting,
+    /// アプリ全体の設定（v4）。構成には含めない
+    pub app: AppSettings,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppSettings {
+    /// フレームレートの上限（fps）。`FRAME_LIMITS` のどれか
+    pub frame_limit: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -169,6 +184,7 @@ pub enum Invalid {
     DuplicateSavedConfigId(String),
     DuplicateInstanceId(String),
     RectOutsideGrid(String),
+    FrameLimit(u32),
 }
 
 impl fmt::Display for Invalid {
@@ -180,6 +196,7 @@ impl fmt::Display for Invalid {
             Self::DuplicateSavedConfigId(id) => write!(f, "duplicate saved config id: {id}"),
             Self::DuplicateInstanceId(id) => write!(f, "duplicate instance id: {id}"),
             Self::RectOutsideGrid(id) => write!(f, "rect outside the grid: {id}"),
+            Self::FrameLimit(value) => write!(f, "unsupported frame limit: {value}"),
         }
     }
 }
@@ -220,11 +237,15 @@ impl PersistedState {
     /// - `schema` が今の版である
     /// - 保存済みの構成が1件以上あり、ID が重ならず、使用中の構成がその中にある（使用中は削除できないため）
     /// - 各構成のインスタンスの ID が重ならず、位置が格子の中にある
+    /// - フレームレートの上限が `FRAME_LIMITS` のどれかである
     ///
     /// 重なり・推奨の形との適合・配色の参照先は、UI 側の配置と配色が扱う（ここでは確かめない）。
     pub fn validate(&self) -> Result<(), Invalid> {
         if self.schema != SCHEMA {
             return Err(Invalid::Schema(self.schema));
+        }
+        if !FRAME_LIMITS.contains(&self.app.frame_limit) {
+            return Err(Invalid::FrameLimit(self.app.frame_limit));
         }
         if self.saved_configs.is_empty() {
             return Err(Invalid::NoSavedConfig);

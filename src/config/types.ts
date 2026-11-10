@@ -64,8 +64,18 @@ export interface SavedConfig extends Config {
   savedAt: string;
 }
 
-/** state.json の形式の版 */
-export const STATE_SCHEMA = 1;
+/** 選べるフレームレートの上限（fps。Rust の settings_store/model.rs の FRAME_LIMITS と同じ）。先頭が既定 */
+export const FRAME_LIMITS = [60, 45, 30] as const;
+export type FrameLimit = (typeof FRAME_LIMITS)[number];
+export const DEFAULT_FRAME_LIMIT: FrameLimit = 60;
+
+/** アプリ全体の設定（構成には含めない） */
+export interface AppSettings {
+  frameLimit: FrameLimit;
+}
+
+/** state.json の形式の版（v4で2。1→2で app を足した） */
+export const STATE_SCHEMA = 2;
 
 /** state.json の中身 */
 export interface PersistedState {
@@ -79,4 +89,6 @@ export interface PersistedState {
   savedConfigs: SavedConfig[];
   /** 入力源。構成には含めない。deviceId が null なら既定の出力デバイス */
   source: { deviceId: string | null };
+  /** アプリ全体の設定。構成には含めない（変えても「保存後に変更あり」にしない） */
+  app: AppSettings;
 }

@@ -22,7 +22,7 @@ import {
   saveAs as saveAsState,
   switchTo,
 } from "./saved_configs";
-import type { Config, PersistedState, SavedConfig } from "./types";
+import type { Config, FrameLimit, PersistedState, SavedConfig } from "./types";
 
 /** 変更から保存までの間（imple 4.4） */
 export const SAVE_DELAY_MS = 300;
@@ -74,6 +74,8 @@ export interface ConfigStore {
   readonly dirty: ComputedRef<boolean>;
   /** 入力源のデバイス。null は既定の出力デバイス */
   readonly deviceId: ComputedRef<string | null>;
+  /** フレームレートの上限（fps）。アプリ全体の設定 */
+  readonly frameLimit: ComputedRef<FrameLimit>;
   /** 起動時に1度呼ぶ */
   restore(): Promise<RestoreResult>;
   /**
@@ -99,6 +101,8 @@ export interface ConfigStore {
   importConfig(saved: SavedConfig): string | null;
   /** 入力源のデバイスを変える。構成には含めないので「保存後に変更あり」にはならない */
   setDeviceId(deviceId: string | null): void;
+  /** フレームレートの上限を変える。構成には含めないので「保存後に変更あり」にはならない */
+  setFrameLimit(frameLimit: FrameLimit): void;
   /** 間を置いている保存を、すぐに行って終わるまで待つ（ウィンドウを閉じるとき） */
   flush(): Promise<void>;
   dispose(): void;
@@ -248,6 +252,11 @@ export function createConfigStore(options: ConfigStoreOptions): ConfigStore {
     commit({ ...state.value, source: { deviceId } });
   }
 
+  function setFrameLimit(frameLimit: FrameLimit): void {
+    if (state.value.app.frameLimit === frameLimit) return;
+    commit({ ...state.value, app: { ...state.value.app, frameLimit } });
+  }
+
   async function flush(): Promise<void> {
     clearTimer();
     await drain();
@@ -259,6 +268,7 @@ export function createConfigStore(options: ConfigStoreOptions): ConfigStore {
     activeConfig: computed(() => state.value.savedConfigs.find((c) => c.id === state.value.activeConfigId) ?? null),
     dirty: computed(() => state.value.dirty),
     deviceId: computed(() => state.value.source.deviceId),
+    frameLimit: computed(() => state.value.app.frameLimit),
     restore,
     updateCurrent,
     saveAs,
@@ -269,6 +279,7 @@ export function createConfigStore(options: ConfigStoreOptions): ConfigStore {
     removeConfig,
     importConfig,
     setDeviceId,
+    setFrameLimit,
     flush,
     dispose: clearTimer,
   };

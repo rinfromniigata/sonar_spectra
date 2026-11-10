@@ -163,6 +163,43 @@ describe("createConfigStore", () => {
     expect(p.saved.map((x) => [x.source.deviceId, x.dirty])).toEqual([["dev-2", false]]);
   });
 
+  it("フレームレートの上限は既定60fps。変えても「保存後に変更あり」にならず構成も変わらないが、保存はする。同じ値なら何もしない", async () => {
+    const p = fakePersistence(defaultState());
+    const { store: s } = store(p.persistence);
+    await s.restore();
+    expect(s.frameLimit.value).toBe(60);
+    const current = s.current.value;
+
+    s.setFrameLimit(60);
+    await vi.runAllTimersAsync();
+    expect(p.saved).toHaveLength(0);
+
+    s.setFrameLimit(30);
+    expect(s.frameLimit.value).toBe(30);
+    expect(s.dirty.value).toBe(false);
+    expect(s.current.value).toBe(current);
+    await vi.runAllTimersAsync();
+    expect(p.saved.map((x) => [x.app.frameLimit, x.dirty])).toEqual([[30, false]]);
+  });
+
+  it("構成を切り替えても、上書き保存・名前を付けて保存・読み込みをしても、フレームレートの上限は変わらない", async () => {
+    const p = fakePersistence(defaultState());
+    const { store: s } = store(p.persistence);
+    await s.restore();
+    s.setFrameLimit(45);
+    const second = s.saveAs("2つ目")!;
+    s.updateCurrent((c) => {
+      c.theme = "light";
+    });
+    expect(s.overwrite()).toBe(true);
+    const first = s.state.value.savedConfigs[0].id;
+    expect(s.switchConfig(first)).toBe("switched");
+    expect(s.switchConfig(second)).toBe("switched");
+    expect(s.duplicateConfig(first, "写し")).not.toBeNull();
+    expect(s.removeConfig(first)).toBe(true);
+    expect(s.frameLimit.value).toBe(45);
+  });
+
   it("保存は重ねない。書いている間の変更は、書き終わってから最後の状態で書く", async () => {
     const p = fakePersistence(defaultState());
     const { store: s } = store(p.persistence);

@@ -1,5 +1,5 @@
 // 構成ファイルの書き出し・読み込み（imple 3.4・5.2 の12・13）。
-// - 形式：{ format: "sonar_spectra.config", schema: 1, config: SavedConfig }（Rust の settings_store/config_file.rs と同じ）
+// - 形式：{ format: "sonar_spectra.config", schema: 2, config: SavedConfig }（Rust の settings_store/config_file.rs と同じ）
 // - 書き出し：保存ダイアログで選んだ場所に、tauri-plugin-fs で書く。state.json は変えない
 // - 読み込み：開くダイアログで選んだファイルを tauri-plugin-fs で読み、Rust の validate_config_file で確かめる
 //   （古い schema の移行も Rust）。一覧に足すのは呼び出し側（構成のストアの importConfig）

@@ -2,19 +2,26 @@
 //!
 //! 形式を変えるときは、`model::SCHEMA` を1つ上げ、旧版から新版へ JSON を書き換える関数を
 //! `STEPS` の末尾に足す。読み込み時に、ファイルの `schema` から今の版まで順に当てる。
-//! schema 1 が最初の形式なので、今は移行の手順がない。
+//! schema 1 が最初の形式。1→2（v4）で、アプリ全体の設定 `app` を足した。
 
 use std::fmt;
 
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 
-use super::model::SCHEMA;
+use super::model::{DEFAULT_FRAME_LIMIT, SCHEMA};
 
 /// 1つの版を次の版へ書き換える。`schema` の書き換えは呼び出し側が行う
 pub type Step = fn(Map<String, Value>) -> Result<Map<String, Value>, String>;
 
 /// `STEPS[i]` は schema `i + 1` → `i + 2` の移行
-pub const STEPS: &[Step] = &[];
+pub const STEPS: &[Step] = &[add_app_settings];
+
+/// schema 1 → 2：アプリ全体の設定 `app`（フレームレートの上限60fps）を足す。すでにあれば残す
+fn add_app_settings(mut map: Map<String, Value>) -> Result<Map<String, Value>, String> {
+    map.entry("app")
+        .or_insert_with(|| json!({ "frameLimit": DEFAULT_FRAME_LIMIT }));
+    Ok(map)
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MigrateError {
@@ -94,7 +101,6 @@ pub fn migrate_with(value: Value, steps: &[Step]) -> Result<Migrated, MigrateErr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     /// 架空の schema 1 → 2：`dirty` がなかった旧版に `dirty: false` を足す
     fn add_dirty(mut map: Map<String, Value>) -> Result<Map<String, Value>, String> {
@@ -111,6 +117,23 @@ mod tests {
             .ok_or("current is missing")?;
         current.insert("theme".into(), theme);
         Ok(map)
+    }
+
+    #[test]
+    fn schema_1_gets_the_default_app_settings() {
+        let out = migrate(json!({ "schema": 1, "dirty": true })).unwrap();
+        assert_eq!(
+            out.value,
+            json!({ "schema": 2, "dirty": true, "app": { "frameLimit": 60 } })
+        );
+        assert!(out.migrated);
+
+        // すでに `app` があれば書き換えない
+        let kept = migrate(json!({ "schema": 1, "app": { "frameLimit": 30 } })).unwrap();
+        assert_eq!(
+            kept.value,
+            json!({ "schema": 2, "app": { "frameLimit": 30 } })
+        );
     }
 
     #[test]

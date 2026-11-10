@@ -8,11 +8,13 @@
 // - 次の操作は、イベントで知らせるだけにする：出力デバイスの選択（selectDevice。MeterScreen が保存して切り替える）、
 //   構成の切り替え・名前を付けて保存・構成を管理（switchConfig・saveAs・manageConfigs。Phase 7）、
 //   配色を管理（managePalettes。Phase 7）、レイアウトを編集（editLayout。MeterScreen がこのパネルを閉じて編集を始める）
+// - 表示の欄の末尾のフレームレートの上限は、アプリ全体の設定（構成には含めない）。選ぶとすぐ描画に効き、
+//   「保存後に変更あり」にはならない（構成のストアの setFrameLimit）
 // - 入力源は、出力音声（ループバック）だけを選べる。入力デバイスは「今後対応」で無効にする
 import { computed, onMounted, shallowRef, useId } from "vue";
 import { useRuntimeStore } from "../app/runtime_store";
 import { useConfigStore } from "../config/config_store";
-import type { DisplaySettings, ThemeSetting } from "../config/types";
+import { FRAME_LIMITS, type DisplaySettings, type FrameLimit, type ThemeSetting } from "../config/types";
 import { useT } from "../i18n/use_t";
 import {
   DEFAULT_DEVICE_VALUE,
@@ -112,6 +114,23 @@ function setDisplay(key: DisplayKey, value: boolean): void {
   });
 }
 
+// フレームレートの上限（セグメントの値は文字列なので、数との往復はここで行う）
+const frameLimitLabels = computed<Record<FrameLimit, string>>(() => ({
+  60: t("settings.frame_limit_60"),
+  45: t("settings.frame_limit_45"),
+  30: t("settings.frame_limit_30"),
+}));
+const frameLimitOptions = computed<ChoiceOption<string>[]>(() =>
+  FRAME_LIMITS.map((limit) => ({ value: String(limit), label: frameLimitLabels.value[limit] })),
+);
+const frameLimit = computed({
+  get: () => String(config.frameLimit.value),
+  set: (value: string) => {
+    const limit = FRAME_LIMITS.find((l) => String(l) === value);
+    if (limit !== undefined) config.setFrameLimit(limit);
+  },
+});
+
 function close(): void {
   runtime.closeDrawer();
 }
@@ -177,6 +196,10 @@ function close(): void {
           :label="row.label"
           @update:model-value="setDisplay(row.key, $event)"
         />
+      </div>
+      <div class="row" data-setting="frameLimit">
+        <span class="row-label">{{ t("settings.frame_limit") }}</span>
+        <UiSegmented v-model="frameLimit" :label="t('settings.frame_limit')" :options="frameLimitOptions" />
       </div>
     </fieldset>
 

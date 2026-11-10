@@ -198,6 +198,10 @@ const ja = {
     scanline: "走査線と周辺減光",
     always_on_top: "常に最前面",
     start_fullscreen: "起動時にボーダレスフルスクリーン",
+    frame_limit: "フレームレートの上限",
+    frame_limit_60: "60 fps",
+    frame_limit_45: "45 fps",
+    frame_limit_30: "30 fps",
   },
   dev_gallery: {
     title: "部品の状態",
