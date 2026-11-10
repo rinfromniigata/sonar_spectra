@@ -748,7 +748,7 @@ Phaseの推奨: Opus・high以上
 ## Phase 9: 負荷の対策（フレームレートの上限・WebGL2）とリリースのワークフロー
 
 Phaseの推奨: Opus・xhigh以上
-引き継ぎ: T9-2〜T9-9とW9-3〜W9-7は完了。次はW9-10（T9-9の中央の表示の実機確認）、そのあとW9-8・W9-9（ユーザー。W9-7の気づき〔GPUの3D使用率、可変リフレッシュレートでの描く間隔〕を伝える）。撮影と道具は`C:\Users\ofuchirin\code\sonar_spectra_captures\`（`README.md`に手順。発光なしは`capture_probe.js`の`patchGl`、ドラッグは`capture.ts drag`、負荷の計測は`meas.ts`）
+引き継ぎ: T9-2〜T9-9とW9-3〜W9-7・W9-10は完了。エージェントの項目はPhase 9で終わり。次はW9-8・W9-9（ユーザー。W9-7の気づき〔GPUの3D使用率、可変リフレッシュレートでの描く間隔〕を伝える）。撮影と道具は`C:\Users\ofuchirin\code\sonar_spectra_captures\`（`README.md`に手順。発光なしは`capture_probe.js`の`patchGl`、ドラッグは`capture.ts drag`、負荷の計測は`meas.ts`）
 
 - [x] T9-1 【エージェント】全モジュールを有効にした状態で、CPU・GPUの使用率と1フレームの描画時間を測り、重いモジュールを軽くする（必要ならそのモジュールだけWebGLへ移す案を報告する）
   - 依存: T8-5
