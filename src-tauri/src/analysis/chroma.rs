@@ -443,6 +443,26 @@ mod tests {
         }
     }
 
+    #[test]
+    fn a_sustained_chord_change_switches_once_within_a_second_without_flicker() {
+        // C メジャーを 1 秒鳴らしてから A マイナーに変える
+        let mut s = tones(&triad(72, 0), 0.2, RATE as usize);
+        s.extend(tones(&triad(69, 1), 0.2, RATE as usize * 2));
+        let results = stream(&mut ChromaAnalyzer::new(), &s);
+        let change = RATE as usize / TICK;
+        let chords: Vec<[f32; 2]> = results.iter().map(|r| [r[12], r[13]]).collect();
+        let c = [0.0, CHORD_MAJOR];
+        let am = [9.0, CHORD_MINOR];
+        // 切り替わる前は C のまま
+        assert!(chords[change - 5..change].iter().all(|v| *v == c));
+        // 切り替えたあとは A マイナーのまま戻らない：C との行き来（ちらつき）がなく、変化は 1 回だけ
+        let first = chords.iter().position(|v| *v == am).expect("never switched");
+        assert!(chords[first..].iter().all(|v| *v == am), "flicker after switching");
+        // 約 1 秒以内に切り替わる（毎フレームではなく、一定時間かけて）
+        let delay = first.saturating_sub(change);
+        assert!(delay >= 5 && delay <= RATE as usize / TICK, "switched after {delay} ticks");
+    }
+
     /// 1小節2秒の進行を `repeats` 回くり返す
     fn progression(chords: &[(i32, usize)], repeats: usize) -> Vec<f32> {
         let mut s = Vec::new();

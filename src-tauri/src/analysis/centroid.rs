@@ -176,6 +176,24 @@ mod tests {
     }
 
     #[test]
+    fn brighter_tones_have_a_higher_centroid() {
+        let mut previous = 0.0;
+        for bins in [10.0, 40.0, 120.0, 400.0] {
+            let s = sine(bins * BIN, 0.5, RATE, 4_096);
+            let v = run_one(&mut CentroidAnalyzer::new(), &s, &s, RATE, TICK);
+            assert!(v[0] > previous, "{bins} bins: {} <= {previous}", v[0]);
+            previous = v[0];
+        }
+        // 低い音に高い音を足すと、低い音だけのときより高くなる
+        let low = sine(40.0 * BIN, 0.5, RATE, 4_096);
+        let high = sine(300.0 * BIN, 0.2, RATE, 4_096);
+        let mixed: Vec<f32> = low.iter().zip(&high).map(|(a, b)| a + b).collect();
+        let base = run_one(&mut CentroidAnalyzer::new(), &low, &low, RATE, TICK)[0];
+        let bright = run_one(&mut CentroidAnalyzer::new(), &mixed, &mixed, RATE, TICK)[0];
+        assert!(bright > base, "{bright} <= {base}");
+    }
+
+    #[test]
     fn centroid_weights_by_amplitude_across_channels() {
         // L に 937.5 Hz・0.5、R に 2812.5 Hz・0.25 → (937.5 × 2 + 2812.5) / 3 = 1562.5 Hz
         let l = sine(40.0 * BIN, 0.5, RATE, 4_096);
