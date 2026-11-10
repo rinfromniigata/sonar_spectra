@@ -748,7 +748,7 @@ Phaseの推奨: Opus・high以上
 ## Phase 9: 負荷の対策（フレームレートの上限・WebGL2）とリリースのワークフロー
 
 Phaseの推奨: Opus・xhigh以上
-引き継ぎ: T9-2〜T9-8は完了。次はW9-3（walk）。全モジュールの図形と発光を描画の層へ移した（仕組みはT9-7・T9-8の実施メモ。文字の発光は`ShapeSink.textGlow`）。移行前の撮影と道具は`C:\Users\ofuchirin\code\sonar_spectra_captures\`（`README.md`に手順。比べるときは`tools/png_stats.ts`でタイトル帯を除く）。T9-5の気づき(4)(5)とT9-7の気づき(1)はW9-6・W9-8で拾う。計測の方法と注意（可変リフレッシュレート）はT9-1の実施メモにある
+引き継ぎ: T9-2〜T9-8とW9-3〜W9-6は完了。次はW9-7（walk。計測の方法と注意〔可変リフレッシュレート〕はT9-1の実施メモにある）。W9-6の「未解決」（WebGL2を作れず無音のときに2つの表示が重なる）は、ユーザーの判断を待っている（W9-8までに決める）。撮影と道具は`C:\Users\ofuchirin\code\sonar_spectra_captures\`（`README.md`に手順。発光なしは`capture_probe.js`の`patchGl`、ドラッグは`capture.ts drag`）
 
 - [x] T9-1 【エージェント】全モジュールを有効にした状態で、CPU・GPUの使用率と1フレームの描画時間を測り、重いモジュールを軽くする（必要ならそのモジュールだけWebGLへ移す案を報告する）
   - 依存: T8-5
