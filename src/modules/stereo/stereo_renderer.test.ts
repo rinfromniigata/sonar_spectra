@@ -8,7 +8,7 @@ import { levelModule } from "../level";
 import type { StereoOptions } from "../options";
 import { ModuleRegistry } from "../registry";
 import { specModule } from "../spec";
-import { recordingCanvas, type DrawnShape } from "../test_canvas";
+import { joinedView, recordingBuffers, recordingCanvas, type DrawnShape } from "../test_canvas";
 import type { PaletteColors } from "../types";
 import { waveModule } from "../wave";
 import { stereoModule } from "./index";
@@ -51,8 +51,11 @@ function payload(input: StereoInput): number[] {
 }
 
 function setup(options: Partial<StereoOptions> = {}) {
-  const canvas = recordingCanvas();
-  const renderer = stereoModule.createRenderer({ ctx: canvas.ctx });
+  const raw = recordingCanvas();
+  const buffers = recordingBuffers();
+  const renderer = stereoModule.createRenderer({ ctx: raw.ctx, createBuffer: buffers.createBuffer });
+  // 短い区間に分けて描いた線は、1本にまとめて調べる
+  const canvas = joinedView(raw);
   renderer.resize({ width: WIDTH, height: HEIGHT, devicePixelRatio: 1, quarterTurns: 0 });
   const client = new FrameClient();
   let seq = 0;
@@ -64,7 +67,7 @@ function setup(options: Partial<StereoOptions> = {}) {
     }
     renderer.draw(input ? client.latest : null, client.histories, { ...DEFAULTS, ...options }, COLORS, dt);
   };
-  return { canvas, draw };
+  return { canvas, draw, buffers };
 }
 
 const strokes = (shapes: DrawnShape[], style: string) => shapes.filter((s) => s.op === "stroke" && s.style === style);
@@ -170,7 +173,7 @@ describe("stereo モジュールの描画：共通", () => {
 
   it("大きさが0のあいだは何も描かない", () => {
     const canvas = recordingCanvas();
-    const renderer = stereoModule.createRenderer({ ctx: canvas.ctx });
+    const renderer = stereoModule.createRenderer({ ctx: canvas.ctx, createBuffer: recordingBuffers().createBuffer });
     renderer.draw(null, new FrameClient().histories, DEFAULTS, COLORS, DT);
     expect(canvas.shapes).toHaveLength(0);
   });
@@ -185,9 +188,10 @@ describe("stereo モジュールの描画：リサージュ", () => {
     expect(circle[0].points).toHaveLength(65);
     const { cx, cy, r } = lissajousLayout(WIDTH, HEIGHT);
     for (const [x, y] of circle[0].points) expect(Math.hypot(x - cx, y - cy)).toBeCloseTo(r, 4);
+    // 軸は1本ずつ（2点の線を3本）
     const axes = strokes(canvas.shapes, "GRID");
-    expect(axes).toHaveLength(1);
-    expect(axes[0].points).toHaveLength(6);
+    expect(axes).toHaveLength(3);
+    expect(axes.every((a) => a.points.length === 2)).toBe(true);
   });
 
   it("モノラルの信号は、縦の線になる。線は強調色で、古い側ほど薄い", () => {
@@ -241,7 +245,14 @@ describe("stereo モジュールの描画：周波数別の定位", () => {
   it("格子と L・R の記号を描く", () => {
     const { canvas, draw } = setup({ mode: "pan" });
     draw(null);
-    expect(strokes(canvas.shapes, "GRID")).toHaveLength(1);
+    // 中央の縦線・周波数の目安の横線3本・左右の端を、太さ1の四角で塗る（ほかに、格子の色は相関のバーの下地が1つ）
+    const grid = rects(canvas.shapes, "GRID");
+    expect(grid).toHaveLength(6 + 1);
+    const layout = panLayout(WIDTH, HEIGHT);
+    expect(grid[0].points).toEqual([
+      [layout.cx, layout.top],
+      [layout.cx + 1, layout.bottom],
+    ]);
     expect(canvas.texts.map((t) => t.text)).toEqual(["L", "R"]);
     expect(canvas.texts[0].x).toBeLessThan(canvas.texts[1].x);
   });

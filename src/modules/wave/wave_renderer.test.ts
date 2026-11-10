@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FLAG_STALE, FrameClient, SectionId, WAVE_NOW_POINTS } from "../../frame_client";
 import { encodeTestFrame } from "../../frame_client/test_frames";
 import type { WaveOptions } from "../options";
-import { recordingCanvas, type DrawnShape } from "../test_canvas";
+import { joinedView, recordingBuffers, recordingCanvas, type DrawnShape } from "../test_canvas";
 import type { PaletteColors } from "../types";
 import { waveModule } from "./index";
 
@@ -31,12 +31,14 @@ function receive(client: FrameClient, env: number, bands: [number, number, numbe
 }
 
 function setup(options: Partial<WaveOptions> = {}) {
-  const canvas = recordingCanvas();
-  const renderer = waveModule.createRenderer({ ctx: canvas.ctx });
+  const raw = recordingCanvas();
+  const buffers = recordingBuffers();
+  const renderer = waveModule.createRenderer({ ctx: raw.ctx, createBuffer: buffers.createBuffer });
   renderer.resize({ width: WIDTH, height: HEIGHT, devicePixelRatio: 1, quarterTurns: 0 });
   const client = new FrameClient();
   const draw = () => renderer.draw(client.latest, client.histories, { ...DEFAULTS, ...options }, COLORS, 1 / 60);
-  return { canvas, client, draw };
+  // 短い区間・帯に分けて描いた線と塗りは、1本・1つにまとめて調べる
+  return { canvas: joinedView(raw), client, draw, buffers };
 }
 
 const fills = (shapes: DrawnShape[], style: string) => shapes.filter((s) => s.op === "fill" && s.style === style);
@@ -75,6 +77,7 @@ describe("wave モジュールの描画", () => {
   it("モノラル：履歴は混ぜた値を主色で上下対称に描き、今の波形も1本", () => {
     const { canvas, client, draw } = setup({ channel: "mono" });
     receive(client, 0.4, [0.1, 0.1, 0.1], 0.5, -0.5, 0);
+    receive(client, 0.4, [0.1, 0.1, 0.1], 0.5, -0.5, 1);
     draw();
     const history = canvas.shapes.filter((s) => s.op === "fill" && s.alpha === 0.9);
     expect(history.map((s) => s.style)).toEqual(["MAIN", "MAIN"]);
@@ -140,11 +143,37 @@ describe("wave モジュールの描画", () => {
   it("届いていない（STALE）フレームは履歴に積まれないので、履歴の長さは変わらない", () => {
     const { canvas, client, draw } = setup();
     receive(client, 0.5, [0.1, 0.1, 0.1], 0, 0, 0);
-    client.receive(encodeTestFrame({ seq: 1, flags: FLAG_STALE, sections: [[SectionId.Waveform, Array(5 + 2 * WAVE_NOW_POINTS).fill(0)]] }));
+    receive(client, 0.5, [0.1, 0.1, 0.1], 0, 0, 1);
+    client.receive(encodeTestFrame({ seq: 2, flags: FLAG_STALE, sections: [[SectionId.Waveform, Array(5 + 2 * WAVE_NOW_POINTS).fill(0)]] }));
     draw();
-    const upper = fills(canvas.shapes, "MAIN")[0];
-    // 1行だけ（境目の点と、閉じるための2点）
-    expect(minX(upper)).toBe(maxX(upper));
+    const upper = canvas.shapes.filter((s) => s.op === "fill" && s.alpha === 0.9 && s.style === "MAIN")[0];
+    // 2行だけ（1行分の幅）
+    expect(maxX(upper) - minX(upper)).toBe(4);
+  });
+
+  it("履歴が1行だけのあいだは、幅のない履歴を描かない", () => {
+    const { canvas, client, draw } = setup();
+    receive(client, 0.5, [0.1, 0.1, 0.1], 0, 0, 0);
+    draw();
+    expect(canvas.shapes.filter((s) => s.op === "fill" && s.alpha === 0.9)).toHaveLength(0);
+  });
+
+  it("発光：履歴・外縁・芯は、縮小した画像に描いてぼかしたものを先に敷く（shadowBlur は使わない）", () => {
+    const { canvas, client, draw, buffers } = setup();
+    for (let i = 0; i < 10; i++) receive(client, 0.5, [0.1, 0.1, 0.1], 0.5, -0.25, i);
+    draw();
+    // 履歴（8）・外縁（8）・芯（4）の3回。どれも 1/2 に縮小した画像（形用とぼかし用の2枚）を使い回す
+    expect(buffers.created.map((b) => [b.width, b.height])).toEqual([
+      [WIDTH / 2, HEIGHT / 2],
+      [WIDTH / 2, HEIGHT / 2],
+    ]);
+    expect(canvas.raw.images.map((i) => i.args)).toEqual([
+      [0, 0, WIDTH, HEIGHT],
+      [0, 0, WIDTH, HEIGHT],
+      [0, 0, WIDTH, HEIGHT],
+    ]);
+    const blurred = buffers.created[1].rc.images.map((i) => i.filter);
+    expect(blurred).toEqual(["blur(2px)", "blur(2px)", "blur(1px)"]);
   });
 
   it("フレームも履歴もまだないときは、格子と平らな今の波形だけを描く", () => {

@@ -6,9 +6,11 @@
 // - 重心の線：対数の軸（50 Hz〜16 kHz）に写し、時間方向にならす（centroid_math）。無音は下端
 // - 変化量の棒：1行ごとの高さ。大きい（高さの 0.55 を超える）列は強調色
 // - 数値：直近 15 行の平均を 0.25 秒ごとに書き換える（読めなくならないように）。無音は「—」で、変化量は出さない
+// - 負荷（T9-1）：重心の線の発光は発光の層（glow_layer）でつけ、線は短い区間に分けて描く（canvas_helpers）
 
 import { type AnalysisFrame, type Histories } from "../../frame_client";
-import { drawGridLines, setGlow } from "../canvas_helpers";
+import { drawGridLines, strokePolyline } from "../canvas_helpers";
+import { createGlowLayer } from "../glow_layer";
 import type { SpeedOptions } from "../options";
 import type { Geometry, ModuleRenderer, PaletteColors, RenderContext } from "../types";
 import {
@@ -34,9 +36,10 @@ const LINE_WIDTH = 1.6;
 const LINE_GLOW = 10;
 const TEXT_MARGIN = 6;
 
-export function createCentroidRenderer({ ctx }: RenderContext): ModuleRenderer<SpeedOptions> {
+export function createCentroidRenderer({ ctx, createBuffer }: RenderContext): ModuleRenderer<SpeedOptions> {
   let width = 0;
   let height = 0;
+  const glow = createGlowLayer(createBuffer);
   let positions = new Float32Array(0);
   /** 画面に出している数値と、書き換えてからの経過（秒） */
   let readout: Readout | null = null;
@@ -61,18 +64,16 @@ export function createCentroidRenderer({ ctx }: RenderContext): ModuleRenderer<S
 
   function drawLine(count: number, step: number, layout: CentroidLayout, colors: PaletteColors): void {
     const start = width - count * step;
-    ctx.beginPath();
-    for (let i = 0; i < count; i++) {
-      const x = start + i * step;
-      const y = lineY(layout, positions[i]);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = colors.main;
-    ctx.lineWidth = LINE_WIDTH;
-    setGlow(ctx, colors.main, LINE_GLOW);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    glow.draw(ctx, LINE_GLOW, (c) => {
+      c.strokeStyle = colors.main;
+      c.lineWidth = LINE_WIDTH;
+      strokePolyline(
+        c,
+        count,
+        (i) => start + i * step,
+        (i) => lineY(layout, positions[i]),
+      );
+    });
   }
 
   function drawReadout(values: Readout, layout: CentroidLayout, colors: PaletteColors): void {
@@ -88,6 +89,7 @@ export function createCentroidRenderer({ ctx }: RenderContext): ModuleRenderer<S
     resize(geometry: Geometry) {
       width = geometry.width;
       height = geometry.height;
+      glow.resize(width, height, geometry.devicePixelRatio);
     },
 
     draw(_frame: AnalysisFrame | null, histories, options, colors, dt) {
@@ -120,6 +122,7 @@ export function createCentroidRenderer({ ctx }: RenderContext): ModuleRenderer<S
       positions = new Float32Array(0);
       readout = null;
       sinceReadout = 0;
+      glow.dispose();
     },
   };
 }

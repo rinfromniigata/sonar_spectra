@@ -3,9 +3,12 @@
 //
 // 平滑化（上がるときは即座に、下がるときは指数で）とピークの残像は、描画の側で持つ。
 // 解析は帯域ごとの振幅（線形）だけを送り、dB への換算と表示の範囲は spec_math.ts で行う。
+// 負荷（T9-1）：発光は発光の層（glow_layer）でまとめてつけ、線・塗りは短い区間に分けて描く（canvas_helpers）。
+// 円形の塗りだけは、帯に分けると継ぎ目が出るので1つのパスのまま描く
 
 import { SPECTRUM_BANDS, readSpectrum, type AnalysisFrame } from "../../frame_client";
-import { drawGridLines, setGlow } from "../canvas_helpers";
+import { drawGridLines, fillBetween, strokePolyline } from "../canvas_helpers";
+import { createGlowLayer } from "../glow_layer";
 import type { SpecOptions } from "../options";
 import type { Geometry, ModuleRenderer, PaletteColors, RenderContext } from "../types";
 import {
@@ -52,61 +55,49 @@ const LABEL_ALPHA = 0.9;
 const LABEL_OFFSET_X = 8;
 const LABEL_BOTTOM = 4;
 
-export function createSpecRenderer({ ctx }: RenderContext): ModuleRenderer<SpecOptions> {
+export function createSpecRenderer({ ctx, createBuffer }: RenderContext): ModuleRenderer<SpecOptions> {
   let width = 0;
   let height = 0;
+  const glow = createGlowLayer(createBuffer);
+  const bandX = (i: number) => xOfBand(i, width);
   // 表示の高さ（0〜1）。raw＝今のフレーム、smooth＝平滑化、peak＝ピークの残像
   const raw = new Float32Array(SPECTRUM_BANDS);
   const smooth = new Float32Array(SPECTRUM_BANDS);
   const peak = new Float32Array(SPECTRUM_BANDS);
 
   function drawFill(colors: PaletteColors, ghost: boolean): void {
-    const w = width;
     const h = height;
     // 輪郭の下を塗りつぶして光量を出し、下端に向けて暗く消して下のメーターとの境目を切る
     const gradient = ctx.createLinearGradient(0, h * 0.1, 0, h);
     gradient.addColorStop(0, colors.main);
     gradient.addColorStop(0.55, colors.main);
     gradient.addColorStop(1, "transparent");
-    ctx.beginPath();
-    ctx.moveTo(0, h);
-    for (let i = 0; i < SPECTRUM_BANDS; i++) ctx.lineTo(xOfBand(i, w), h - smooth[i] * h * FILL_HEIGHT);
-    ctx.lineTo(w, h);
-    ctx.closePath();
-    ctx.globalAlpha = FILL_ALPHA;
-    setGlow(ctx, colors.main, FILL_GLOW);
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
+    glow.draw(ctx, FILL_GLOW, (c) => {
+      c.globalAlpha = FILL_ALPHA;
+      c.fillStyle = gradient;
+      fillBetween(c, SPECTRUM_BANDS, bandX, (i) => h - smooth[i] * h * FILL_HEIGHT, () => h);
+      c.globalAlpha = 1;
+    });
 
     // 平滑化した輪郭（主色）と、今のフレームそのままの細い線（副色）
-    const line = (values: Float32Array, scale: number) => {
-      ctx.beginPath();
-      for (let i = 0; i < SPECTRUM_BANDS; i++) {
-        const y = h - values[i] * h * scale;
-        if (i === 0) ctx.moveTo(xOfBand(i, w), y);
-        else ctx.lineTo(xOfBand(i, w), y);
-      }
-    };
-    line(smooth, FILL_HEIGHT);
-    setGlow(ctx, colors.main, LINE_GLOW);
-    ctx.strokeStyle = colors.main;
-    ctx.lineWidth = LINE_WIDTH;
-    ctx.stroke();
-    line(raw, RAW_LINE_HEIGHT);
-    setGlow(ctx, colors.sub, RAW_LINE_GLOW);
-    ctx.strokeStyle = colors.sub;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    const line = (c: CanvasRenderingContext2D, values: Float32Array, scale: number) =>
+      strokePolyline(c, SPECTRUM_BANDS, bandX, (i) => h - values[i] * h * scale);
+    glow.draw(ctx, LINE_GLOW, (c) => {
+      c.strokeStyle = colors.main;
+      c.lineWidth = LINE_WIDTH;
+      line(c, smooth, FILL_HEIGHT);
+    });
+    glow.draw(ctx, RAW_LINE_GLOW, (c) => {
+      c.strokeStyle = colors.sub;
+      c.lineWidth = 1;
+      line(c, raw, RAW_LINE_HEIGHT);
+    });
 
     if (ghost) {
-      line(peak, FILL_HEIGHT);
       ctx.strokeStyle = colors.accent;
       ctx.globalAlpha = GHOST_ALPHA;
       ctx.lineWidth = 1;
-      ctx.stroke();
+      line(ctx, peak, FILL_HEIGHT);
       ctx.globalAlpha = 1;
     }
   }
@@ -137,66 +128,55 @@ export function createSpecRenderer({ ctx }: RenderContext): ModuleRenderer<SpecO
   }
 
   function drawMirror(colors: PaletteColors, ghost: boolean): void {
-    const w = width;
     const mid = height / 2;
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
     gradient.addColorStop(0, "transparent");
     gradient.addColorStop(0.5, colors.main);
     gradient.addColorStop(1, "transparent");
-    ctx.beginPath();
-    ctx.moveTo(0, mid);
-    for (let i = 0; i < SPECTRUM_BANDS; i++) ctx.lineTo(xOfBand(i, w), mid - smooth[i] * mid * MIRROR_HEIGHT);
-    for (let i = SPECTRUM_BANDS - 1; i >= 0; i--) ctx.lineTo(xOfBand(i, w), mid + smooth[i] * mid * MIRROR_HEIGHT);
-    ctx.closePath();
-    ctx.globalAlpha = MIRROR_FILL_ALPHA;
-    setGlow(ctx, colors.main, MIRROR_FILL_GLOW);
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    ctx.globalAlpha = 1;
+    glow.draw(ctx, MIRROR_FILL_GLOW, (c) => {
+      c.globalAlpha = MIRROR_FILL_ALPHA;
+      c.fillStyle = gradient;
+      fillBetween(c, SPECTRUM_BANDS, bandX, (i) => mid - smooth[i] * mid * MIRROR_HEIGHT, (i) => mid + smooth[i] * mid * MIRROR_HEIGHT);
+      c.globalAlpha = 1;
+    });
 
-    const edge = (values: Float32Array, sign: -1 | 1) => {
-      ctx.beginPath();
-      for (let i = 0; i < SPECTRUM_BANDS; i++) {
-        const y = mid + sign * values[i] * mid * MIRROR_HEIGHT;
-        if (i === 0) ctx.moveTo(xOfBand(i, w), y);
-        else ctx.lineTo(xOfBand(i, w), y);
+    const edges = (c: CanvasRenderingContext2D, values: Float32Array) => {
+      for (const sign of [-1, 1] as const) {
+        strokePolyline(c, SPECTRUM_BANDS, bandX, (i) => mid + sign * values[i] * mid * MIRROR_HEIGHT);
       }
     };
-    for (const sign of [-1, 1] as const) {
-      edge(smooth, sign);
-      setGlow(ctx, colors.main, LINE_GLOW);
-      ctx.strokeStyle = colors.main;
-      ctx.lineWidth = MIRROR_LINE_WIDTH;
-      ctx.stroke();
-    }
-    ctx.shadowBlur = 0;
+    glow.draw(ctx, LINE_GLOW, (c) => {
+      c.strokeStyle = colors.main;
+      c.lineWidth = MIRROR_LINE_WIDTH;
+      edges(c, smooth);
+    });
     if (ghost) {
-      for (const sign of [-1, 1] as const) {
-        edge(peak, sign);
-        ctx.strokeStyle = colors.accent;
-        ctx.globalAlpha = MIRROR_GHOST_ALPHA;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
+      ctx.strokeStyle = colors.accent;
+      ctx.globalAlpha = MIRROR_GHOST_ALPHA;
+      ctx.lineWidth = 1;
+      edges(ctx, peak);
+      ctx.globalAlpha = 1;
     }
   }
 
   function drawRadial(colors: PaletteColors, ghost: boolean): void {
     const { cx, cy, r0, r1 } = radialLayout(width, height);
-    const ring = (values: Float32Array) => {
-      ctx.beginPath();
-      const steps = SPECTRUM_BANDS * 2;
-      for (let k = 0; k <= steps; k++) {
-        const angle = -Math.PI / 2 + (k / steps) * Math.PI * 2;
-        const radius = r0 + values[radialBand(k)] * r1;
-        const x = cx + Math.cos(angle) * radius;
-        const y = cy + Math.sin(angle) * radius;
-        if (k === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
+    const steps = SPECTRUM_BANDS * 2;
+    const angle = (k: number) => -Math.PI / 2 + (k / steps) * Math.PI * 2;
+    const ringX = (values: Float32Array) => (k: number) => cx + Math.cos(angle(k)) * (r0 + values[radialBand(k)] * r1);
+    const ringY = (values: Float32Array) => (k: number) => cy + Math.sin(angle(k)) * (r0 + values[radialBand(k)] * r1);
+    /** 輪の塗り：1つの閉じたパス */
+    const ringPath = (c: CanvasRenderingContext2D, values: Float32Array) => {
+      const x = ringX(values);
+      const y = ringY(values);
+      c.beginPath();
+      c.moveTo(x(0), y(0));
+      for (let k = 1; k <= steps; k++) c.lineTo(x(k), y(k));
+      c.closePath();
     };
+    /** 輪の線：短い区間に分けて描く（最後の点は最初の点と同じ位置なので、輪は閉じる） */
+    const ringStroke = (c: CanvasRenderingContext2D, values: Float32Array) =>
+      strokePolyline(c, steps + 1, ringX(values), ringY(values));
 
     // 内側と外側の目安の円
     ctx.strokeStyle = colors.grid;
@@ -210,23 +190,23 @@ export function createSpecRenderer({ ctx }: RenderContext): ModuleRenderer<SpecO
     const gradient = ctx.createRadialGradient(cx, cy, r0 * 0.6, cx, cy, r0 + r1);
     gradient.addColorStop(0, "transparent");
     gradient.addColorStop(1, colors.main);
-    ring(smooth);
-    ctx.fillStyle = gradient;
-    ctx.globalAlpha = RADIAL_FILL_ALPHA;
-    setGlow(ctx, colors.main, RADIAL_FILL_GLOW);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    setGlow(ctx, colors.main, LINE_GLOW);
-    ctx.strokeStyle = colors.main;
-    ctx.lineWidth = LINE_WIDTH;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    glow.draw(ctx, RADIAL_FILL_GLOW, (c) => {
+      ringPath(c, smooth);
+      c.fillStyle = gradient;
+      c.globalAlpha = RADIAL_FILL_ALPHA;
+      c.fill();
+      c.globalAlpha = 1;
+    });
+    glow.draw(ctx, LINE_GLOW, (c) => {
+      c.strokeStyle = colors.main;
+      c.lineWidth = LINE_WIDTH;
+      ringStroke(c, smooth);
+    });
     if (ghost) {
-      ring(peak);
       ctx.strokeStyle = colors.accent;
       ctx.globalAlpha = GHOST_ALPHA;
       ctx.lineWidth = 1;
-      ctx.stroke();
+      ringStroke(ctx, peak);
       ctx.globalAlpha = 1;
     }
   }
@@ -247,6 +227,7 @@ export function createSpecRenderer({ ctx }: RenderContext): ModuleRenderer<SpecO
     resize(geometry: Geometry) {
       width = geometry.width;
       height = geometry.height;
+      glow.resize(width, height, geometry.devicePixelRatio);
     },
 
     draw(frame: AnalysisFrame | null, _histories, options, colors, dt) {
@@ -274,6 +255,7 @@ export function createSpecRenderer({ ctx }: RenderContext): ModuleRenderer<SpecO
       raw.fill(0);
       smooth.fill(0);
       peak.fill(0);
+      glow.dispose();
     },
   };
 }

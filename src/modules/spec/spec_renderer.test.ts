@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FLAG_STALE, FrameClient, SPECTRUM_BANDS, SectionId } from "../../frame_client";
 import { encodeTestFrame } from "../../frame_client/test_frames";
 import type { SpecOptions } from "../options";
-import { recordingCanvas, type DrawnShape } from "../test_canvas";
+import { joinedView, recordingBuffers, recordingCanvas, type DrawnShape } from "../test_canvas";
 import type { PaletteColors } from "../types";
 import { specModule } from "./index";
 import { BAR_COUNT, PEAK_FALL_PER_FRAME, SMOOTH_DECAY_PER_FRAME, radialLayout } from "./spec_math";
@@ -30,8 +30,11 @@ const FULL = Array<number>(SPECTRUM_BANDS).fill(1);
 const SILENT = Array<number>(SPECTRUM_BANDS).fill(0);
 
 function setup(options: Partial<SpecOptions> = {}) {
-  const canvas = recordingCanvas();
-  const renderer = specModule.createRenderer({ ctx: canvas.ctx });
+  const raw = recordingCanvas();
+  const buffers = recordingBuffers();
+  const renderer = specModule.createRenderer({ ctx: raw.ctx, createBuffer: buffers.createBuffer });
+  // 短い区間・帯に分けて描いた線と塗りは、1本・1つにまとめて調べる
+  const canvas = joinedView(raw);
   renderer.resize({ width: WIDTH, height: HEIGHT, devicePixelRatio: 1, quarterTurns: 0 });
   const client = new FrameClient();
   let seq = 0;
@@ -40,7 +43,7 @@ function setup(options: Partial<SpecOptions> = {}) {
     if (bands) client.receive(encodeTestFrame({ seq: seq++, flags, sections: [[SectionId.Spectrum, bands]] }));
     renderer.draw(bands ? client.latest : null, client.histories, { ...DEFAULTS, ...options }, COLORS, dt);
   };
-  return { canvas, draw };
+  return { canvas, draw, buffers };
 }
 
 const fills = (shapes: DrawnShape[], style = "gradient") => shapes.filter((s) => s.op === "fill" && s.style === style);
@@ -137,12 +140,34 @@ describe("spec モジュールの描画：線＋塗り", () => {
     expect(canvas.texts.every((t) => t.y === HEIGHT - 4)).toBe(true);
   });
 
-  it("格子線（10×6）を描く", () => {
+  it("格子線（10×6）を、太さ1の四角で描く", () => {
     const { canvas, draw } = setup();
     draw();
-    const grid = strokes(canvas.shapes, "GRID");
-    expect(grid).toHaveLength(1);
-    expect(grid[0].points).toHaveLength((10 - 1 + (6 - 1)) * 2);
+    const grid = canvas.shapes.filter((s) => s.op === "fillRect" && s.style === "GRID");
+    expect(grid).toHaveLength(10 - 1 + (6 - 1));
+    const vertical = grid.filter((s) => s.points[1][0] - s.points[0][0] === 1);
+    expect(vertical).toHaveLength(10 - 1);
+    expect(vertical.map((s) => s.points[0][0])).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => Math.round((WIDTH * i) / 10)));
+    expect(vertical.every((s) => s.points[0][1] === 0 && s.points[1][1] === HEIGHT)).toBe(true);
+  });
+
+  it("発光：塗り（24）・輪郭（10）・細い線（6）の3回、縮小した画像でぼかしたものを先に敷く", () => {
+    const { canvas, draw, buffers } = setup();
+    draw();
+    // 発光 24 は 1/4、10 と 6 は 1/2 に縮小した画像（形用とぼかし用の2枚ずつ）
+    expect(buffers.created.map((b) => [b.width, b.height])).toEqual([
+      [WIDTH / 4, HEIGHT / 4],
+      [WIDTH / 4, HEIGHT / 4],
+      [WIDTH / 2, HEIGHT / 2],
+      [WIDTH / 2, HEIGHT / 2],
+    ]);
+    expect(canvas.images.map((i) => i.args)).toEqual([
+      [0, 0, WIDTH, HEIGHT],
+      [0, 0, WIDTH, HEIGHT],
+      [0, 0, WIDTH, HEIGHT],
+    ]);
+    expect(buffers.created[1].rc.images.map((i) => i.filter)).toEqual(["blur(3px)"]);
+    expect(buffers.created[3].rc.images.map((i) => i.filter)).toEqual(["blur(2.5px)", "blur(1.5px)"]);
   });
 });
 
@@ -182,7 +207,7 @@ describe("spec モジュールの描画：バー", () => {
   it("無音では段を描かない", () => {
     const { canvas, draw } = setup({ mode: "bars", ghost: false });
     draw(SILENT);
-    expect(canvas.shapes.filter((s) => s.op === "fillRect")).toHaveLength(0);
+    expect(canvas.shapes.filter((s) => s.op === "fillRect" && s.style !== "GRID")).toHaveLength(0);
   });
 });
 
@@ -263,7 +288,7 @@ describe("spec モジュールの描画：円形", () => {
 describe("spec モジュールの共通", () => {
   it("大きさが0のあいだは何も描かない。dispose の後も描ける", () => {
     const canvas = recordingCanvas();
-    const renderer = specModule.createRenderer({ ctx: canvas.ctx });
+    const renderer = specModule.createRenderer({ ctx: canvas.ctx, createBuffer: recordingBuffers().createBuffer });
     renderer.draw(null, new FrameClient().histories, DEFAULTS, COLORS, DT);
     expect(canvas.shapes).toHaveLength(0);
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FLAG_STALE, FrameClient, SectionId } from "../../frame_client";
 import { encodeTestFrame } from "../../frame_client/test_frames";
-import { recordingCanvas } from "../test_canvas";
+import { joinedView, recordingBuffers, recordingCanvas } from "../test_canvas";
 import type { PaletteColors } from "../types";
 import { centroidModule } from "./index";
 import { READOUT_INTERVAL, axisPosition, centroidLayout, columnStep, fluxLevel, lineY } from "./centroid_math";
@@ -26,8 +26,11 @@ const layout = centroidLayout(HEIGHT);
 const options = { speed: 1 };
 
 function setup() {
-  const canvas = recordingCanvas();
-  const renderer = centroidModule.createRenderer({ ctx: canvas.ctx });
+  const raw = recordingCanvas();
+  const buffers = recordingBuffers();
+  const renderer = centroidModule.createRenderer({ ctx: raw.ctx, createBuffer: buffers.createBuffer });
+  // 短い区間に分けて描いた線は、1本にまとめて調べる
+  const canvas = joinedView(raw);
   renderer.resize({ width: WIDTH, height: HEIGHT, devicePixelRatio: 1, quarterTurns: 0 });
   const client = new FrameClient();
   let seq = 0;
@@ -38,11 +41,12 @@ function setup() {
     canvas.clear();
     renderer.draw(client.latest, client.histories, options, COLORS, dt);
   };
-  return { canvas, renderer, client, push, draw };
+  return { canvas, renderer, client, push, draw, buffers };
 }
 
 const lines = (canvas: ReturnType<typeof setup>["canvas"]) => canvas.shapes.filter((s) => s.op === "stroke" && s.style === "MAIN");
-const bars = (canvas: ReturnType<typeof setup>["canvas"]) => canvas.shapes.filter((s) => s.op === "fillRect");
+/** 変化量の棒（格子線も1pxの四角で描くので、格子の色は除く） */
+const bars = (canvas: ReturnType<typeof setup>["canvas"]) => canvas.shapes.filter((s) => s.op === "fillRect" && s.style !== "GRID");
 
 describe("centroid モジュールの定義", () => {
   it("重心のセクションを読み、細長い枠で、左へ流れる。初期状態は無効", () => {
