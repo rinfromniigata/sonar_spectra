@@ -1,7 +1,7 @@
 # sonar_spectra 検証手順（walk）
 
-- 対象：`261110133636_tasks_sonar_spectra_initial.md`
-- 改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にW9-4〜W9-9を足し、未通過のW9-1をW9-7へ（中身を上限の計測に改めた）、W9-2をW9-9へ移した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_walk_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でW7-7・W7-8を追加し、W7-6をW7-9へ移動）
+- 対象：`261110165456_tasks_sonar_spectra_initial.md`
+- 改訂：change「261110165301_change_glow_sharp_redraw」に合わせて新しいタイムスタンプで引き継いだ（中身の変更なし）。前の版は`archived/261110133636_walk_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にW9-4〜W9-9を足し、未通過のW9-1をW9-7へ（中身を上限の計測に改めた）、W9-2をW9-9へ移した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_walk_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でW7-7・W7-8を追加し、W7-6をW7-9へ移動）
 - 進め方：各Phaseの実装の直後に、そのPhaseの項目を上から行う。不合格のときはその場で修正して同じ項目をやり直し、通過してからチェックを入れる。不合格の内容と、修正を記録したfix・changeのファイル名を実施メモに残す
 
 ## Phase 1: 基盤（雛形・トークン・i18n・検査・部品・アイコン）
