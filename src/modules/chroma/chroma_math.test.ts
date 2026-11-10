@@ -47,6 +47,15 @@ describe("円環の配置（モックの cx・cy・R・r0）", () => {
     expect(layout.keyY).toBeCloseTo(150 + 84 * 0.2, 10);
   });
 
+  it("キーの文言の幅の上限は、文字の下端の高さで内側の円に収まる幅。小さい枠でも 1 以上", () => {
+    const layout = chromaLayout(284, 284);
+    const dy = layout.keyY - layout.centerY + layout.keyFont / 2;
+    expect(layout.keyMaxWidth).toBeCloseTo(2 * Math.sqrt(layout.inner ** 2 - dy ** 2), 10);
+    expect(layout.keyMaxWidth).toBeLessThan(layout.inner * 2);
+    expect(chromaLayout(10, 10).keyMaxWidth).toBeGreaterThanOrEqual(1);
+    expect(chromaLayout(0, 0).keyMaxWidth).toBe(1);
+  });
+
   it("文字の大きさは外半径から決め、それぞれの範囲に収める", () => {
     const small = chromaLayout(40, 40);
     expect([small.noteFont, small.chordFont, small.keyFont]).toEqual([8, 11, 8]);

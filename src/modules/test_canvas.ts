@@ -13,7 +13,7 @@ export interface DrawnShape {
 export interface RecordingCanvas {
   ctx: CanvasRenderingContext2D;
   shapes: DrawnShape[];
-  texts: { text: string; x: number; y: number; style: string; font: string }[];
+  texts: { text: string; x: number; y: number; style: string; font: string; maxWidth?: number }[];
   /** drawImage の呼び出し（画像と、続く引数） */
   images: { image: unknown; args: number[] }[];
   /** arc の呼び出し（パスの点には中心しか残らないので、半径と角度はここに残す） */
@@ -23,7 +23,7 @@ export interface RecordingCanvas {
 
 export function recordingCanvas(): RecordingCanvas {
   const shapes: DrawnShape[] = [];
-  const texts: { text: string; x: number; y: number; style: string; font: string }[] = [];
+  const texts: { text: string; x: number; y: number; style: string; font: string; maxWidth?: number }[] = [];
   const images: { image: unknown; args: number[] }[] = [];
   const arcs: RecordingCanvas["arcs"] = [];
   const state: Record<string, unknown> = {
@@ -55,8 +55,8 @@ export function recordingCanvas(): RecordingCanvas {
         [x, y],
         [x + w, y + h],
       ]),
-    fillText: (text: string, x: number, y: number) =>
-      texts.push({ text, x, y, style: styleOf(state.fillStyle), font: String(state.font) }),
+    fillText: (text: string, x: number, y: number, maxWidth?: number) =>
+      texts.push({ text, x, y, style: styleOf(state.fillStyle), font: String(state.font), ...(maxWidth === undefined ? {} : { maxWidth }) }),
     drawImage: (image: unknown, ...args: number[]) => images.push({ image, args }),
     setTransform: () => {},
     setLineDash: (segments: number[]) => {

@@ -76,22 +76,29 @@ export interface ChromaLayout {
   keyFont: number;
   chordY: number;
   keyY: number;
+  /** キーの文言の幅の上限：文字の下端の高さで、内側の円に収まる幅（文言が伸びても円環にかからないよう、縮めて描く） */
+  keyMaxWidth: number;
 }
 
 export function chromaLayout(width: number, height: number): ChromaLayout {
   const outer = Math.min(width, height) * 0.42;
   const centerX = width / 2;
   const centerY = height / 2;
+  const inner = outer * INNER_RATIO;
+  const keyFont = clamp(outer / 8, 8, 11);
+  const keyY = centerY + outer * 0.2;
+  const keyBottom = keyY - centerY + keyFont / 2;
   return {
     centerX,
     centerY,
     outer,
-    inner: outer * INNER_RATIO,
+    inner,
     noteFont: clamp(outer / 7, 8, 12),
     chordFont: clamp(outer / 3.2, 11, 26),
-    keyFont: clamp(outer / 8, 8, 11),
+    keyFont,
     chordY: centerY - outer * 0.06,
-    keyY: centerY + outer * 0.2,
+    keyY,
+    keyMaxWidth: Math.max(1, 2 * Math.sqrt(Math.max(0, inner * inner - keyBottom * keyBottom))),
   };
 }
 

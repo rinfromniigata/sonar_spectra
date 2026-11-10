@@ -135,6 +135,8 @@ describe("chroma モジュールの描画：中央のコードとキー", () => 
     expect(chord.font).toBe(`600 ${layout.chordFont}px NUMERIC`);
     expect(key).toMatchObject({ text: "modules.chroma_key(modules.chroma_key_minor(A))", style: "MUTED", x: layout.centerX, y: layout.keyY });
     expect(key.font).toBe(`${layout.keyFont}px NUMERIC`);
+    // 文言が伸びても円環にかからないよう、幅の上限を付けて描く（疑似ロケールの確認で見つかった崩れ）
+    expect(key.maxWidth).toBeCloseTo(layout.keyMaxWidth, 10);
   });
 
   it("長調のキーは長調の文言を引く", () => {

@@ -111,7 +111,7 @@ export function createChromaRenderer({ ctx, translate }: RenderContext): ModuleR
     if (shown.key) {
       ctx.fillStyle = colors.textMuted;
       ctx.font = `${layout.keyFont}px ${colors.fontNumeric}`;
-      ctx.fillText(keyText(shown.key), layout.centerX, layout.keyY);
+      ctx.fillText(keyText(shown.key), layout.centerX, layout.keyY, layout.keyMaxWidth);
     }
   }
 
