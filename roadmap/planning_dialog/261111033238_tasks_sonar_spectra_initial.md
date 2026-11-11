@@ -853,8 +853,10 @@ Phaseの推奨: Sonnet・high以上
   - 実施メモ（261112010646）：`README.md`と`docs/images/meter.png`（1920×1200）を作った。docs-onlyの変更で、コードは変えていない
     - スクリーンショット：`bun run tauri build --no-bundle`で作り直したリリース版の実行ファイルを、WebView2のリモートデバッグ付きで起動し、ページのWebAudioで音楽（キック・和音・ベース・ハイハット）を鳴らしながら、CDPの`Page.captureScreenshot`で撮った（ダーク・既定のレイアウト・1280×800・DPR 1.5）。撮影のあいだだけ`%APPDATA%\com.rinontech.sonar-spectra`の2ファイルをスクラッチパッドへ退避して既定の状態で起動し、撮ったあとで元に戻した（バイト単位で一致を確認）。スクリプトはスクラッチパッドに置いた
     - README：`docs_i18n.md`の順（一文説明・スクリーンショット・特徴5点・入手方法・動作環境・使い方・注意事項・末尾の案内）。言語はモード1のため言語リンクは置かない。注意事項に、SmartScreenの警告と開き方、データの保存場所と外部送信なし、既知の制限、出力デバイスが見つからないときを書いた。`CHANGELOG.md`へのリンクは、T10-3で作るまで切れている
-- [ ] T10-2 【エージェント】GitHubのAbout欄（説明文は英語、Webサイト、トピック）の文案を提示する
+- [x] T10-2 【エージェント】GitHubのAbout欄（説明文は英語、Webサイト、トピック）の文案を提示する
   - 依存: T10-1
+  - 実施: Sonnet・high
+  - 実施メモ（261112013146）：文案をチャットで提示した（説明文：`Neon-style real-time audio visualizer for VJ performances on Windows. Shows waveform, spectrum, phase and more from the system's output audio.`、Webサイト：空欄、トピック：`audio-visualizer` `vj` `tauri` `vue` `rust` `windows` `wasapi` `spectrum-analyzer` `webgl`）。設定はT10-5でユーザーが行う
 - [ ] T10-3 【エージェント】`CHANGELOG.md`（Keep a Changelog形式）に0.1.0を書き、`package.json`・`tauri.conf.json`・`Cargo.toml`のバージョンが`0.1.0`でそろっていることを確かめる
   - 依存: T10-1
 - [ ] T10-4 【エージェント】ローカルでビルドし、アイコン一式が`specs/`の最新のマスターSVGから生成されたものであることを確かめる。`roadmap/timeline.md`にリリース準備の行（`0.1.0`と、その時点のプランアセットの版）を追記し、コミットメッセージとタグ作成・pushのコマンドを提示して停止する
