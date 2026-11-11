@@ -861,9 +861,14 @@ Phaseの推奨: Sonnet・high以上
   - 依存: T10-1
   - 実施: Sonnet・high
   - 実施メモ（261112013406）：`CHANGELOG.md`を作り、0.1.0（2026-11-12）をAdded・Known issuesで書いた（Unreleasedの節は空で置いた）。プランアセットの版との対応は`timeline.md`に任せ、CHANGELOGには書いていない。バージョンは、`package.json`・`tauri.conf.json`・`Cargo.toml`（と`Cargo.lock`の`sonar_spectra`）がすべて`0.1.0`でそろっていることを確かめた。READMEの`CHANGELOG.md`へのリンクがつながった
-- [ ] T10-4 【エージェント】ローカルでビルドし、アイコン一式が`specs/`の最新のマスターSVGから生成されたものであることを確かめる。`roadmap/timeline.md`にリリース準備の行（`0.1.0`と、その時点のプランアセットの版）を追記し、コミットメッセージとタグ作成・pushのコマンドを提示して停止する
+- [x] T10-4 【エージェント】ローカルでビルドし、アイコン一式が`specs/`の最新のマスターSVGから生成されたものであることを確かめる。`roadmap/timeline.md`にリリース準備の行（`0.1.0`と、その時点のプランアセットの版）を追記し、コミットメッセージとタグ作成・pushのコマンドを提示して停止する
   - 依存: T9-2, T10-3
   - pushの前にバージョンを変えた場合は、timelineに新しい行を追記する（過去の行は書き換えない）
+  - 実施: Sonnet・high
+  - 実施メモ（261112015333）：ローカルビルドが通り、`roadmap/timeline.md`に`リリース準備 0.1.0（プランアセット v5）`の行を足した。コミットメッセージとタグ・pushのコマンドを提示して停止
+    - ビルド：`bun run tauri build --bundles nsis`で、`sonar_spectra_0.1.0_x64-setup.exe`（11.10 MiB）ができた。CIのリリースのワークフローと同じ`--bundles nsis`
+    - アイコン：`docs/brand/icon_master.svg`が`roadmap/specs/`の最新のマスター`sonar_spectra_icon_master_v5.svg`とバイト単位で一致する（v2から内容は変わっていない）。`bun run icons`で作り直すと、`icon.ico`・PNG・ファビコンはコミット済みのものと完全に一致した。`icon.icns`だけは、同じコマンドを2回続けても毎回バイトが変わる（`tauri icon`の生成のゆらぎ）ため、コミット済みの版に戻した
+    - README：特徴・使い方・動作環境・スクリーンショットは、T10-1でv5の実物から書いたもので、今回の内容と一致している。`bun run check`は、CIが通っている（ユーザー確認）ため、手元では再実行していない
 - [ ] T10-5 【ユーザー】コミット・`v0.1.0`タグの作成・pushを行い、GitHub Releasesにドラフトができたことを確かめる。About欄を設定する
   - 依存: T10-2, T10-4
 
