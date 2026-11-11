@@ -869,7 +869,7 @@ Phaseの推奨: Sonnet・high以上
     - ビルド：`bun run tauri build --bundles nsis`で、`sonar_spectra_0.1.0_x64-setup.exe`（11.10 MiB）ができた。CIのリリースのワークフローと同じ`--bundles nsis`
     - アイコン：`docs/brand/icon_master.svg`が`roadmap/specs/`の最新のマスター`sonar_spectra_icon_master_v5.svg`とバイト単位で一致する（v2から内容は変わっていない）。`bun run icons`で作り直すと、`icon.ico`・PNG・ファビコンはコミット済みのものと完全に一致した。`icon.icns`だけは、同じコマンドを2回続けても毎回バイトが変わる（`tauri icon`の生成のゆらぎ）ため、コミット済みの版に戻した
     - README：特徴・使い方・動作環境・スクリーンショットは、T10-1でv5の実物から書いたもので、今回の内容と一致している。`bun run check`は、CIが通っている（ユーザー確認）ため、手元では再実行していない
-- [ ] T10-5 【ユーザー】コミット・`v0.1.0`タグの作成・pushを行い、GitHub Releasesにドラフトができたことを確かめる。About欄を設定する
+- [x] T10-5 【ユーザー】コミット・`v0.1.0`タグの作成・pushを行い、GitHub Releasesにドラフトができたことを確かめる。About欄を設定する
   - 依存: T10-2, T10-4
 
 ## Phase 11: 公開
