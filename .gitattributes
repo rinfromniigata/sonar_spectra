@@ -1,0 +1,4 @@
+# テスト用の見本は、チェックアウトの改行の設定（autocrlf）によらず、LFで取り出す。
+# UIのテストが、書き出した本文と見本をバイト単位で比べるため、CRLFになると食い違う
+# （Windowsのランナーで取り出すCIで失敗した）
+src-tauri/src/**/fixtures/*.json text eol=lf
