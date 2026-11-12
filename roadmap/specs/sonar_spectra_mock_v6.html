@@ -95,6 +95,13 @@ body { background: var(--color-bg); color: var(--color-text); font-family: var(-
 .title-ver { font-family: var(--font-numeric); font-size: calc(var(--title-h) * 0.3); color: var(--color-text-muted); white-space: nowrap; }
 .title-ctrl { margin-left: auto; display: flex; gap: clamp(4px, 0.5cqi, 8px); align-items: center; min-width: 0; }
 .stage.fs { border-radius: var(--radius-lg); border: 1px solid var(--color-line); }
+/* macOS：OSが描く信号機ボタンの見本（モック上の表現。色はOSのもので、トークンではない） */
+.titlebar.mac { padding-left: 0; }
+.traffic { flex: none; display: flex; align-items: center; gap: calc(var(--title-h) * 0.18); padding-inline: calc(var(--title-h) * 0.4) calc(var(--title-h) * 0.3); height: 100%; }
+.traffic i { display: block; width: calc(var(--title-h) * 0.27); height: calc(var(--title-h) * 0.27); border-radius: 50%; }
+.traffic .tl-close { background: #ff5f57; } .traffic .tl-min { background: #febc2e; } .traffic .tl-zoom { background: #28c840; }
+.win.mac { border-radius: 12px; }
+.stage .overlay.norender { background: transparent; }
 
 /* 走査線と周辺減光 */
 .stage .crt { position: absolute; inset: 0; pointer-events: none; z-index: 7;
@@ -357,6 +364,34 @@ body { background: var(--color-bg); color: var(--color-text); font-family: var(-
     <div class="stage fs" data-layout="t" data-mode="loading"></div>
   </section>
 
+  <!-- S01e -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S01e</span><h2 class="screen-title" data-i18n="screen.s01e.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s01e.note"></p>
+    <div class="stage fs" data-layout="t" data-mode="norender"></div>
+  </section>
+
+  <!-- S09 macOS -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S09</span><h2 class="screen-title" data-i18n="screen.s09.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s09.note"></p>
+    <div class="win mac"><div class="stage" data-layout="t" data-mode="live" data-os="mac"></div></div>
+  </section>
+
+  <!-- S09a -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S09a</span><h2 class="screen-title" data-i18n="screen.s09a.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s09a.note"></p>
+    <div class="stage fs" data-layout="t" data-mode="live" data-fs="on" data-os="mac"></div>
+  </section>
+
+  <!-- S09b -->
+  <section class="screen">
+    <div class="screen-head"><span class="screen-id">S09b</span><h2 class="screen-title" data-i18n="screen.s09b.title"></h2></div>
+    <p class="screen-note" data-i18n="screen.s09b.note"></p>
+    <div class="win mac"><div class="stage" data-layout="t" data-mode="perm" data-os="mac"></div></div>
+  </section>
+
   <!-- S05 スペクトラムの表示方式 -->
   <section class="screen">
     <div class="screen-head"><span class="screen-id">S05</span><h2 class="screen-title" data-i18n="screen.s05.title"></h2></div>
@@ -473,8 +508,8 @@ body { background: var(--color-bg); color: var(--color-text); font-family: var(-
     <section>
       <h3 data-i18n="notes.decided"></h3>
       <ul>
-        <li>Tauri＋Vue 3＋Viteのデスクトップアプリ。初版はWindowsのみ（Macは後で取り込み方式を追加）</li>
-        <li>音声入力源は抽象化する。初版の実装は出力音声のループバック（WASAPI）だけ</li>
+        <li>Tauri＋Vue 3＋Viteのデスクトップアプリ。Windows（x64）とmacOS（Apple Silicon、macOS 26以降）に対応する（macOSは0.2.0から）</li>
+        <li>音声入力源は抽象化する。実装は出力音声のループバックで、WindowsはWASAPI、macOSはCore AudioのProcess Tap（cpal経由）</li>
         <li>解析と描画は入力源を知らない作りにする</li>
         <li>用途はVJ中の演出用表示。計測の厳密さ（規格準拠のLUFS）は求めない</li>
         <li>初版は日本語のみ（モード1）。多言語化の基盤だけ用意する</li>
@@ -484,6 +519,10 @@ body { background: var(--color-bg); color: var(--color-text); font-family: var(-
         <li>レベルメーターは細く、光量を抑える</li>
         <li>最上部にタイトル帯（SONAR/SPECTRAとバージョン）を置き、右側に操作系を常に表示する：出力系統・レイアウト編集・設定・ボーダレスフルスクリーン（全画面中は終了を表す内向きのアイコン）</li>
         <li>テーマの切り替えは設定パネルの中に置く</li>
+        <li>macOSでは標準のタイトルバーを出さず、アプリのタイトル帯に信号機ボタンを重ねる（S09）。ボーダレスフルスクリーンは新しい操作スペースを作らずに覆い、信号機ボタンは出さない（S09a）。Windowsのタイトルバーは標準のまま</li>
+        <li>macOSでシステムオーディオの録音が許可されていないときは、許可の手順と「システム設定を開く」「再試行」を出す（S09b）</li>
+        <li>描画（WebGL2）を開始できないときは、メーターの領域の中央に1行だけ出す（S01e）。入力源の状態の表示と重なるときの出し分けはS01eの説明のとおり</li>
+        <li>設定パネルの構成の欄は「上書き保存」「名前を付けて保存」「構成を管理」の3つ。表示の欄の末尾に「フレームレートの上限」（60／45／30 fps、既定60）を置く</li>
         <li>スペクトラムは輪郭線の下を塗りつぶし、下端に向けてフェードさせて下段との境目を切る</li>
         <li>波形は、左側に音量の履歴、右側に今の瞬間の波形を並べる。履歴は速めに流してスパイクを鋭く見せる。今の波形は、硬い芯（振幅小・なめらか）と柔らかい外縁（振幅大・即応）の2本で描き、間を半透明で塗る。今の波形は両端固定（境目と反対側の端で中心に戻る）で、境目には点線の境界線を引く</li>
         <li>レイアウト編集中は、各モジュールの見出しの歯車ボタンから、そのインスタンスの設定をモジュールの横に直接開ける</li>
@@ -528,11 +567,11 @@ const dict = {
     "doc.theme": "テーマ", "doc.theme_system": "OS設定", "doc.theme_dark": "ダーク", "doc.theme_light": "ライト",
     "doc.locale": "言語", "doc.locale_pseudo": "疑似ロケール",
     "app.window_title": "sonar_spectra",
-    "app.version": "v0.1.0",
+    "app.version": "v0.2.0",
     "toolbar.source": "出力系統", "toolbar.layout": "レイアウト編集", "toolbar.settings": "設定", "toolbar.fullscreen": "ボーダレスフルスクリーン", "toolbar.fullscreen_exit": "ボーダレスフルスクリーンを終了",
     "settings.theme": "テーマ", "settings.theme_dark": "ダーク", "settings.theme_light": "ライト", "settings.theme_system": "OS設定",
     "screen.s01.title": "メーター画面（ウィンドウ表示）",
-    "screen.s01.note": "タイトル帯の右には、出力系統・レイアウト編集・設定・ボーダレスフルスクリーンのボタンを並べる。起動するとすぐ出力音声を拾って表示する。配置は参考動画のサブモニターを下敷きにし、音量系（レベルとラウドネス）を左端の細い列にまとめ、その右にスペクトラムと同じ高さの「周波数別の定位」を置いた。ラウドネスはその下まで横に広げている。波形は点線の境界線より左が音量の履歴、右が今の瞬間の波形。今の波形は両端が中心に固定され、履歴とつながる。最上部はタイトル帯で、右側に操作系（出力系統・設定・ボーダレスフルスクリーン）を並べる。",
+    "screen.s01.note": "タイトル帯の右には、出力系統・レイアウト編集・設定・ボーダレスフルスクリーンのボタンを並べる。起動するとすぐ出力音声を拾って表示する。配置は参考動画のサブモニターを下敷きにし、音量系（レベルとラウドネス）を左端の細い列にまとめ、その右にスペクトラムと同じ高さの「周波数別の定位」を置いた。ラウドネスはその下まで横に広げている。波形は点線の境界線より左が音量の履歴、右が今の瞬間の波形。今の波形は両端が中心に固定され、履歴とつながる。最上部はタイトル帯で、右側に操作系（出力系統・レイアウト編集・設定・ボーダレスフルスクリーン）を並べる。",
     "screen.s01a.title": "メーター画面（ボーダレスフルスクリーン）",
     "screen.s01a.note": "本番での見え方。ウィンドウ枠が消え、タイトル帯と操作系はそのまま残る。全画面のボタンは、終了を表す内向きの矢印になる。",
     "screen.s01b.title": "無音のとき",
@@ -541,6 +580,14 @@ const dict = {
     "screen.s01c.note": "出力デバイスが見つからない・切断されたなどで取り込めない状態。",
     "screen.s01d.title": "起動中・入力源の切り替え中",
     "screen.s01d.note": "入力源を開くまでの短い待ち時間。",
+    "screen.s01e.title": "描画を開始できないとき",
+    "screen.s01e.note": "図形の描画（WebGL2）を開始できないとき。メーターの領域の中央に1行だけ出し、タイトル帯と各ボタンはふだんどおり操作できる。描画の層が復帰したら表示を消して描画を再開する。無音（S01b）と重なったときはこの表示を出し、使えない（S01c・S09b）・開いている途中（S01d）と重なったときはそちらを出す。",
+    "screen.s09.title": "macOSのメーター画面（ウィンドウ表示）",
+    "screen.s09.note": "macOSでは標準のタイトルバーを出さず、アプリのタイトル帯をウィンドウの最上部に置く。OSが描く信号機ボタン（閉じる・最小化・拡大）はタイトル帯の左端に重ね、帯の高さの中央にそろえる。ロゴはその右から始める。タイトル帯のボタン以外の部分をつかんでウィンドウを動かせ、ダブルクリックでOSの設定どおりに拡大・しまう。右側のボタンはWindowsと同じ。",
+    "screen.s09a.title": "macOSのボーダレスフルスクリーン",
+    "screen.s09a.note": "新しい操作スペースを作らずに画面全体を覆う（メニューバーとDockも隠す）。信号機ボタンは出さず、タイトル帯はWindowsのS01aと同じ。全画面のボタンで元のウィンドウに戻る。",
+    "screen.s09b.title": "macOSでシステムオーディオの録音が許可されていないとき",
+    "screen.s09b.note": "初回の起動時にOSが許可を求める。許可されていない・取り消されたときはこの表示を出す。「システム設定を開く」で該当する設定の画面を開き、「再試行」で入力源を開き直す。",
     "screen.s02.title": "設定パネル",
     "screen.s02.note": "メーターを動かしたまま、タイトル帯の下・右側に重ねて開く。テーマの切り替えはここに置く。長いデバイス名の例も入れている。",
     "screen.parts.title": "部品の状態",
@@ -625,6 +672,14 @@ const dict = {
     "meter.waveform": "波形", "meter.spectrum": "スペクトラム", "meter.stereo": "位相", "meter.spectrogram": "スペクトログラム", "meter.loudness": "ラウドネス",
     "meter.loudness_unit": "LOUD", "meter.loudness_peak": "ピーク {value} dB",
     "source.chip_loopback": "出力音声 · スピーカー (Realtek High Definition Audio)",
+    "source.chip_loopback_mac": "出力音声 · MacBook Proのスピーカー",
+    "source.chip_perm": "録音が許可されていません",
+    "perm.title": "システムオーディオの録音が許可されていません",
+    "perm.body": "システム設定の「プライバシーとセキュリティ」→「画面収録とシステムオーディオ録音」で、sonar_spectraの「システムオーディオ録音のみ」をオンにしてから、再試行してください。",
+    "perm.open_settings": "システム設定を開く",
+    "status.render_unavailable": "描画を開始できません",
+    "config.overwrite": "上書き保存",
+    "settings.frame_limit": "フレームレートの上限", "settings.frame_limit_60": "60 fps", "settings.frame_limit_45": "45 fps", "settings.frame_limit_30": "30 fps",
     "source.chip_long": "出力音声 · スピーカー (Focusrite Scarlett 2i2 USB Audio Interface 4th Gen) — 長いデバイス名の例",
     "source.chip_silent": "出力音声 · 無音",
     "source.chip_error": "入力源を開けません",
@@ -712,12 +767,17 @@ function buildStage(el) {
     html += `</div>`;
   }
   html += `</div><div class="crt"></div>`;
-  const chipKey = mode === "error" ? "source.chip_error" : mode === "silent" ? "source.chip_silent" : el.dataset.long ? "source.chip_long" : "source.chip_loopback";
-  const dot = mode === "error" ? "err" : mode === "silent" || mode === "loading" ? "off" : "";
-  html += `<header class="titlebar"><p class="title-mark">SONAR<span>/</span>SPECTRA</p><span class="title-ver" data-i18n="app.version"></span>
+  const mac = el.dataset.os === "mac";
+  const chipKey = mode === "error" ? "source.chip_error" : mode === "perm" ? "source.chip_perm" : mode === "silent" ? "source.chip_silent" : el.dataset.long ? "source.chip_long" : mac ? "source.chip_loopback_mac" : "source.chip_loopback";
+  const dot = mode === "error" || mode === "perm" ? "err" : mode === "silent" || mode === "loading" || mode === "norender" ? "off" : "";
+  /* macOS：ウィンドウ表示では、OSが描く信号機ボタン（閉じる・最小化・拡大）をタイトル帯の左端に重ね、その右から内容を始める。帯は全体がウィンドウを動かすつかみ */
+  const lights = mac && !fs ? `<span class="traffic" aria-hidden="true"><i class="tl-close"></i><i class="tl-min"></i><i class="tl-zoom"></i></span>` : "";
+  html += `<header class="titlebar${mac && !fs ? " mac" : ""}">${lights}<p class="title-mark">SONAR<span>/</span>SPECTRA</p><span class="title-ver" data-i18n="app.version"></span>
     <div class="title-ctrl"><button type="button" class="chip" data-i18n-aria="toolbar.source"><span class="dot ${dot}"></span><span class="txt" data-i18n="${chipKey}"></span></button><button type="button" class="btn${edit ? " is-active" : ""}" data-i18n-aria="toolbar.layout">${ICON_LAYOUT}</button><button type="button" class="btn" data-i18n-aria="toolbar.settings">${ICON_GEAR}</button><button type="button" class="btn" data-i18n-aria="${fs ? "toolbar.fullscreen_exit" : "toolbar.fullscreen"}">${fs ? ICON_FS_EXIT : ICON_FS}</button></div></header>`;
   if (mode === "silent") html += `<div class="overlay thin"><span class="pulse"></span><p class="ov-body" data-i18n="status.silent"></p></div>`;
   if (mode === "loading") html += `<div class="overlay"><span class="spinner"></span><p class="ov-body" data-i18n="status.loading"></p></div>`;
+  if (mode === "perm") html += `<div class="overlay ov-err"><p class="ov-title" data-i18n="perm.title"></p><p class="ov-body" data-i18n="perm.body"></p><div class="ov-actions"><button type="button" class="btn primary" data-i18n="perm.open_settings"></button><button type="button" class="btn" data-i18n="common.retry"></button></div></div>`;
+  if (mode === "norender") html += `<div class="overlay thin norender"><p class="ov-body" data-i18n="status.render_unavailable"></p></div>`;
   if (mode === "error") html += `<div class="overlay ov-err"><p class="ov-title" data-i18n="error.title"></p><p class="ov-body" data-i18n="error.body"></p><div class="ov-actions"><button type="button" class="btn primary" data-i18n="common.retry"></button><button type="button" class="btn" data-i18n="settings.open"></button></div></div>`;
   if (el.dataset.drawer === "on") html += drawerHtml();
   if (el.dataset.drawer === "palette") html += paletteDrawerHtml();
@@ -851,7 +911,7 @@ function drawerHtml() {
       <fieldset class="fieldset"><legend class="legend" data-i18n="preset.legend"></legend>
         <div class="select"><span data-i18n="preset.current"></span><span aria-hidden="true">▾</span></div>
         <span class="ins-note" data-i18n="preset.modified"></span>
-        <div class="btn-row"><button type="button" class="btn" data-i18n="preset.save"></button><button type="button" class="btn" data-i18n="preset.manage"></button></div>
+        <div class="btn-row"><button type="button" class="btn" data-i18n="config.overwrite"></button><button type="button" class="btn" data-i18n="preset.save"></button><button type="button" class="btn" data-i18n="preset.manage"></button></div>
       </fieldset>
       <fieldset class="fieldset"><legend class="legend" data-i18n="settings.source"></legend>
         <label class="opt checked"><input type="radio" name="src_demo" id="src_loopback" checked><span class="opt-main"><span class="opt-title" data-i18n="settings.source_loopback"></span><span class="opt-desc" data-i18n="settings.source_loopback_desc"></span></span></label>
@@ -872,6 +932,7 @@ function drawerHtml() {
         <div class="row"><span data-i18n="settings.scanline"></span><button class="sw" type="button" role="switch" aria-checked="true" data-i18n-aria="settings.scanline"></button></div>
         <div class="row"><span data-i18n="settings.always_on_top"></span><button class="sw" type="button" role="switch" aria-checked="false" data-i18n-aria="settings.always_on_top"></button></div>
         <div class="row"><span data-i18n="settings.start_fullscreen"></span><button class="sw" type="button" role="switch" aria-checked="false" data-i18n-aria="settings.start_fullscreen"></button></div>
+        <div class="row"><span data-i18n="settings.frame_limit"></span><div class="seg"><button type="button" aria-pressed="true" data-i18n="settings.frame_limit_60"></button><button type="button" aria-pressed="false" data-i18n="settings.frame_limit_45"></button><button type="button" aria-pressed="false" data-i18n="settings.frame_limit_30"></button></div></div>
       </fieldset>
     </div>
     <div class="drawer-foot"><button type="button" class="btn" data-i18n="common.close"></button></div>
@@ -1576,9 +1637,10 @@ function frame(now) {
   const time = (now - t0) / 1000;
   for (const m of meters) {
     if (!m.visible || !m.w) continue;
-    const silent = m.mode === "silent" || m.mode === "loading" || m.mode === "error";
+    if (m.mode === "norender") continue;
+    const silent = m.mode === "silent" || m.mode === "loading" || m.mode === "error" || m.mode === "perm";
     if (silent && m.drawnSilent && m.kind !== "wave") continue;
-    withDirection(m, () => draw[m.kind](m, m.mode === "error" ? 0 : time, silent));
+    withDirection(m, () => draw[m.kind](m, m.mode === "error" || m.mode === "perm" ? 0 : time, silent));
     if (silent) m.drawnSilent = true;
   }
   if (!reduce) requestAnimationFrame(frame);

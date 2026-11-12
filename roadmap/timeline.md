@@ -6,3 +6,4 @@
 - 261110134022 プランアセット v4：フレームレートの上限（60／45／30fps）を設け、図形の描画をWebGL2へ移し、発光をT9-1の推奨案(a)の方式にする ← development/261110124814_change_frame_limit_and_webgl.md
 - 261111033238 プランアセット v5：描画を開始できない表示と、入力源の状態の表示（S01b〜S01d）が重ならないよう、中央に1つだけ出す（無音では描画を開始できない表示、使えない・開いている途中では入力源の表示） ← development/261111033031_change_render_unavailable_priority.md
 - 261112015333 リリース準備 0.1.0（プランアセット v5）← CHANGELOG.md
+- 261113032840 プランアセット v6：macOS（Apple Silicon、macOS 26以降）に対応し、0.2.0として配布する（出力音声の取得、信号機ボタンとタイトル帯〔S09〕、新しい操作スペースを作らない全画面〔S09a〕、録音の許可がないときの表示〔S09b〕、Liquid Glassのアイコン、M1での負荷の確かめ方）。claude.aiの改訂版を取り込み ← development/261113031351_change_macos_support.md

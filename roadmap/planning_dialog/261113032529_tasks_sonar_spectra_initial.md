@@ -1,8 +1,8 @@
 # sonar_spectra 実装タスク（tasks）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v5.md`、`261111033238_imple_sonar_spectra_architecture.md`
-- 対になる検証：`261111033238_walk_sonar_spectra_initial.md`
-- 改訂：change「261111033031_change_render_unavailable_priority」を反映し、Phase 9にT9-9（T9-8のあと）を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110165456_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映し、T9-6の見出しの「等倍の画像を重ねる」を「等倍の図形を重ねる」に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110133636_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にT9-4〜T9-8（T9-3のあと）を足した。T10-1の依存をT9-8に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_tasks_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でT7-6・T7-7を追加））
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v6.md`、`261113032529_imple_sonar_spectra_architecture.md`
+- 対になる検証：`261113032529_walk_sonar_spectra_initial.md`
+- 改訂：change「261113031351_change_macos_support」を反映し、macOS対応と0.2.0のリリースのためにPhase 12〜17（T12-1〜T17-1）を足した。完了済みの項目（Phase 1〜11）は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261111033238_tasks_sonar_spectra_initial.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映し、Phase 9にT9-9（T9-8のあと）を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110165456_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映し、T9-6の見出しの「等倍の画像を重ねる」を「等倍の図形を重ねる」に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110133636_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にT9-4〜T9-8（T9-3のあと）を足した。T10-1の依存をT9-8に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_tasks_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でT7-6・T7-7を追加）））
 - 進め方：Phase nの実装（Tn-\*）→ 検証（Wn-\*）→ 修正と再検証。Wnがすべて通過してからPhase n+1へ進む
 
 ## Phase 1: 基盤（雛形・トークン・i18n・検査・部品・アイコン）
@@ -879,3 +879,113 @@ Phaseの推奨: Sonnet・high以上
 - [x] T11-1 【ユーザー】ドラフトリリースを公開する
   - 依存: T10-5
   - 実施メモ（261112022143）：ユーザーが実施したと報告
+
+## Phase 12: macOSでの出力音声の取得
+
+Phaseの推奨: Opus・high以上
+引き継ぎ: v6（macOS対応・0.2.0）の最初のPhase。開発機はMacBook Air（M1・8GB、macOS 27）で、XcodeはなくCommand Line Toolsだけ（Xcode 26以降のインストールはユーザーが裏で進め、T14-2で完了を報告する）。RustはHomebrewの版（rustupなし）
+
+- [ ] T12-1 【エージェント】macOS対応で使うAPIを確かめ、許可がないときの振る舞いを試作で確かめて報告する
+  - 依存: T11-1
+  - 確かめること：`cpal` 0.18.2のループバック（出力デバイスに入力のストリームを作る方法、集約デバイスの後始末、既定の変更・切断の通知）、Tauri 2.12の`titleBarStyle: Overlay`・`hiddenTitle`・`trafficLightPosition`・`set_simple_fullscreen`・プラットフォーム別の設定ファイル（`tauri.macos.conf.json`）・`Info.plist`の合成・アドホック署名の設定・`.icon`の`bundle.icon`への対応（対応した版と既知の不具合）、システム設定のシステムオーディオ録音の画面を開く方法。インストール済みの版と公式ドキュメントで確かめ、記憶に頼らない
+  - 許可：使い捨ての試作（スクラッチパッドに置き、リポジトリに入れない）で、許可する前・許可しない・取り消したあとに、エラーで返るか、無音が来るだけか、状態を調べる手段があるかを実機で確かめる。無音が来るだけで見分けられないときは、実装に進まずに仕様変更として相談する
+  - imple 3.1・3.5・3.6・7節と食い違う点があれば、impleの直し方を添えて報告する（設計を変えるものは仕様変更、細部の補いはfix）
+- [ ] T12-2 【エージェント】使えない理由に`PermissionDenied`を足し、イベント`source-status`からUIの型・ストアまで通す（表示はT13-4）
+  - 推奨: Sonnet・high以上
+  - 依存: T12-1
+  - 既存の理由の扱い（S01cの表示、出力系統のチップ）を変えない。WindowsではこのOSの許可の理由を出さない
+- [ ] T12-3 【エージェント】macOSの入力源を`cpal`のループバック（Process Tap）で実装し、`default_source`がOSに合うものを返すようにする
+  - 依存: T12-2
+  - imple 3.1。`#[cfg(target_os = "macos")]`で分け、`cpal`はmacOSのときだけの依存にする。Windowsの`WasapiLoopback`と`UnsupportedSource`のふるまいは変えない
+  - 既定の出力デバイスでの取得、デバイスの一覧と切り替え、ステレオ・f32へのそろえ（共通の`convert`）、無音の判定（共通の`state`）、既定の変更・切断での開き直し、許可がないときの`PermissionDenied`の通知（見分け方はT12-1の結果に従う）
+  - 単体テスト：OSの音声に頼らない部分（形式のそろえ、状態の遷移、理由の対応）をテストする。実機での取得はW12-2・W12-3
+- [ ] T12-4 【エージェント】macOSのバンドルの設定を`tauri.macos.conf.json`と`Info.plist`に置き、`Info.plist`の用途の説明と辞書の文言の一致を自動検査に足す
+  - 推奨: Sonnet・high以上
+  - 依存: T12-3
+  - imple 3.6の「バンドルの設定」。最低バージョン26.0、対象は`aarch64-apple-darwin`だけ、アドホック署名。`NSAudioCaptureUsageDescription`の文言は辞書に新しいキーで足し（言い回しは委任事項）、`Info.plist`の値と一致することを`bun run check`で確かめる（imple 4.8）
+  - タイトルバーの設定（Overlay・信号機ボタンの位置）はT13-1で足す
+- [ ] T12-5 【エージェント】`ci.yml`にmacOSのランナーのジョブを足し、WindowsとmacOSの両方で`bun run check`を回す
+  - 推奨: Sonnet・high以上
+  - 依存: T12-4
+  - ランナーのラベルとアクションの版は、その時点のGitHubのドキュメントで確かめる。`paths-ignore`と`concurrency`は今のまま。`release.yml`はT16-1で扱う
+
+## Phase 13: macOSのウィンドウ・許可の表示・メニュー
+
+Phaseの推奨: Sonnet・high以上
+
+- [ ] T13-1 【エージェント】Rust側に`platform`を作り、OSの種類のコマンド、タイトルバーのOverlayと信号機ボタンの位置、`set_simple_fullscreen`、システム設定を開く、App Napの抑止を実装する
+  - 推奨: Opus・high以上
+  - 依存: W12-4
+  - imple 3.5・3.6。コマンドは`get_platform`・`set_simple_fullscreen`・`open_privacy_settings`（名前と細部は実装で決めてよい）。Windowsのウィンドウの設定とふるまいは変えない
+  - 信号機ボタンの位置の値は委任事項。帯の高さの中央にそろうよう、T13-2と合わせて実機で決める
+- [ ] T13-2 【エージェント】タイトル帯をOSの種類で切り替える（macOSでは信号機ボタンの分の余白、つかみ、ダブルクリック。出力系統のチップのmacOSの文言）
+  - 依存: T13-1
+  - 画面: S09
+  - imple 4.5の「タイトル帯」「出力系統のチップ」。モックのファイルは`sonar_spectra_mock_v6.html`（旧形式の1枚）なので、画面IDで位置を検索してS09の範囲だけを読む
+- [ ] T13-3 【エージェント】macOSの全画面を`set_simple_fullscreen`に切り替え、全画面では信号機ボタンの余白をなくす
+  - 依存: T13-2
+  - 画面: S09a
+  - `window_api`をOSの種類で呼び分け、`window_controller`の状態の持ち方と、起動時の全画面・Escで戻る動きは変えない。Windowsは今の`setFullscreen`のまま
+- [ ] T13-4 【エージェント】許可がないときの表示（S09b）を実装し、中央の表示の出し分けに組み込む
+  - 依存: T13-3
+  - 画面: S09b, S01e
+  - `StatusOverlay`に`perm.title`・`perm.body`と「システム設定を開く」「再試行」のボタン。出し分けでは使えない（S01c）と同じ側に入れ、描画を開始できない表示より優先する（`centerNotice`の判定とテストを足す）。辞書に`perm.*`・`source.chip_perm`・`source.chip_loopback_mac`などをモックの辞書から足す（キーの設計は委任事項）
+- [ ] T13-5 【エージェント】macOSのメニューバーに、アプリメニューと「編集」メニューを置く
+  - 依存: T13-4
+  - imple 3.6の「メニュー」。Tauriの定義済みの項目で作り、名前の入力欄（構成・配色の名前）で取り消し・カット・コピー・ペースト・すべてを選択のショートカットが効くことを確かめる。Windowsにはメニューを足さない
+
+## Phase 14: Apple環境向けアイコン
+
+Phaseの推奨: Sonnet・high以上
+
+- [ ] T14-1 【エージェント】マスターSVGの前景`01_ring`・`02_wave`・`03_peak`を、レイヤーごとのSVGとして`docs/brand/icon_layers/`に書き出す処理を`bun run icons`に足し、書き出す
+  - 推奨: Sonnet・medium以上
+  - 依存: W13-3
+  - imple 7節。1024四方のキャンバスのまま、角丸や余白を足さない。`00_bg`は書き出さず、その色をT14-3の手順に添えて示す。既存の形式（`.ico`・PNG・`.icns`・ファビコン）の出力は変えない（作り直して一致を確かめる。`.icns`の生成のゆらぎはT10-4の実施メモのとおり）
+- [ ] T14-2 【ユーザー】Xcode 26以降を入れ、`xcrun --find actool`が通ることを確かめる
+  - Phase 12から裏で進めてよい。完了したら報告する
+- [ ] T14-3 【ユーザー】`docs/brand/icon_layers/`のSVGと`brand.md`の「Apple環境向けアイコン」から、Icon Composerで`AppIcon.icon`を作り、エージェントが示す場所に置く
+  - 依存: T14-1
+- [ ] T14-4 【エージェント】`AppIcon.icon`をビルドに組み込み、`.icns`を従来形式のフォールバックとして残す
+  - 依存: T14-2, T14-3
+  - imple 7節。置き場所はT14-1の完了時に示す。Tauriの対応と既知の不具合はT12-1の報告に従う。手元のビルドで`.app`に`Assets.car`と`.icns`が入ることを確かめる（アイコンだけを変えたときは古いアイコンのまま組まれることがある。W1-12の実施メモのとおり`build.rs`を触って作り直す）
+
+## Phase 15: macOSでの負荷と動作の継続
+
+Phaseの推奨: Opus・high以上
+
+- [ ] T15-1 【エージェント】リリースビルドを内蔵ディスプレイの全画面に出し、全モジュールで描く回数と1回の時間を測る。上限60fpsに届かなければ原因を調べて軽くする
+  - 依存: W14-3
+  - SPEC 3節「macOSでの負荷の確かめ方」、imple 4.6の「macOSでの計測」。全モジュールを有効にした保存済みの構成で、音の見本を鳴らして測る。Windows用の処理と、両OSで共通の描画の結果（見た目）は変えない
+  - 軽くしても届かないときは、計測の結果を添えて仕様変更（上限の初期値を45fpsにする、発光を軽くするなど）として相談する
+- [ ] T15-2 【エージェント】ほかのアプリを前面にしたとき、App Napやウィンドウの隠れによる間引きで、取得・送出・描画が落ちないことを測って確かめる
+  - 依存: T15-1
+  - imple 3.6の「App Napの抑止」。前面・背面（ウィンドウは見えている）・最小化で、描く回数と送出の回数を比べる。最小化では止まること（v1のとおり）
+
+## Phase 16: 0.2.0のリリースの準備
+
+Phaseの推奨: Sonnet・high以上
+
+- [ ] T16-1 【エージェント】`release.yml`にmacOS（Apple Silicon、`.dmg`、アドホック署名）のジョブを足す
+  - 依存: W15-3
+  - imple 6節。Xcode 26以降のランナー（ラベルはその時点のドキュメントで確かめる）。タグとバージョン表記の一致の確かめと`bun run check`はWindowsのジョブと同じにする。1つのドラフトリリースに両OSのファイルがそろうようにする。リリースの説明文に、macOSの初回の開き方と許可の与え直しの案内を足す
+- [ ] T16-2 【エージェント】READMEと`CONTRIBUTING.md`をmacOSに対応させる
+  - 依存: T16-1
+  - 画面: S09
+  - README：入手方法（`.dmg`）、動作環境（macOS 26以降のApple Silicon）、初回の開き方（「このまま開く」。版ごとに必要）、システムオーディオ録音の許可と、更新するたびの与え直し、データの保存場所（macOS）。macOSのスクリーンショットを足すかは、実物を見て決める
+  - CONTRIBUTING：macOSの開発環境（Xcode 26以降、`bun run icons`のレイヤーの書き出し、`AppIcon.icon`の作り直しの手順）、CIのmacOSのジョブ
+- [ ] T16-3 【エージェント】GitHubのAbout欄の文案（説明文の「on Windows」、トピック）を見直して提示する
+  - 依存: T16-2
+- [ ] T16-4 【エージェント】`CHANGELOG.md`に0.2.0を書き、`package.json`・`tauri.conf.json`・`Cargo.toml`のバージョンを`0.2.0`にそろえる
+  - 依存: T16-2
+  - Known issuesに、macOSのアドホック署名による初回の開き方と、許可の与え直しを書く（SPEC 7節）
+- [ ] T16-5 【エージェント】ローカルでmacOSのビルドを確かめ、アイコン一式と`.icon`のレイヤーが`specs/`の最新のマスターSVGから作られたことを確かめる。`roadmap/timeline.md`にリリース準備の行（`0.2.0`と、その時点のプランアセットの版）を追記し、コミットメッセージとタグ作成・pushのコマンドを提示して停止する
+  - 依存: T14-4, T16-4
+  - pushの前にバージョンを変えた場合は、timelineに新しい行を追記する（過去の行は書き換えない）
+- [ ] T16-6 【ユーザー】コミット・`v0.2.0`タグの作成・pushを行い、GitHub Releasesのドラフトに、Windowsのインストーラーと、macOSの`.dmg`がそろったことを確かめる。About欄を設定する
+  - 依存: T16-3, T16-5
+
+## Phase 17: 公開（0.2.0）
+
+- [ ] T17-1 【ユーザー】ドラフトリリースを公開する
+  - 依存: W16-3, W16-4
