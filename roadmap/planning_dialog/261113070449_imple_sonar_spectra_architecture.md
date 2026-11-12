@@ -1,9 +1,9 @@
 # sonar_spectra 実装設計（imple）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v8.md` と同版のデザインアセット
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v9.md` と同版のデザインアセット
 - 種別：Agentic Coding
-- 対になるドキュメント：`261113063725_tasks_sonar_spectra_initial.md`、`261113063725_walk_sonar_spectra_initial.md`
-- 改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映（プランアセット v8。タイトル帯のダブルクリックは拡大・戻すだけ、Escで全画面を終える動きは求めない、T13-1〜T13-5で確かめた細部：3.6、4.5）。前の版は`archived/261113042452_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映（プランアセット v7。録音の許可を判定せずS09bを取りやめる、Process Tapと集約デバイスを自前で作りcpalで開く、T12-1で確かめた細部：2節、3.1、3.5、3.6、4.5、7節）。前の版は`archived/261113032529_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113031351_change_macos_support」を反映（プランアセット v6。macOSへの対応：1節、2節、3.1、3.4、3.5、3.6〔新設〕、4.5、4.6、4.8、6節、7節。v5のSPEC 11節「モックとの差分」がモックに取り込まれたため、11節への参照を画面IDに改めた）。前の版は`archived/261111033238_imple_sonar_spectra_architecture.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映（4.5：描画を開始できない表示と、入力源の状態の表示〔S01b〜S01d〕の出し分け）。前の版は`archived/261110165456_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映（4.6の発光：等倍の図形は画像を写さず同じ頂点の範囲をもう一度描いて重ねる）。前の版は`archived/261110133636_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映（1節、2節、3.4、4.2、4.5、4.6、4.8、5.1、5.2の16、5.3）。前の版は`archived/261109115345_imple_sonar_spectra_architecture.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」）））））
+- 対になるドキュメント：`261113070449_tasks_sonar_spectra_initial.md`、`261113070449_walk_sonar_spectra_initial.md`
+- 改訂：change「261113065821_change_app_display_name」を反映（プランアセット v9。アプリの表示名をSonar Spectraにし、Windowsで0.1.0から更新するときインストーラーが旧版を自動で取り除く：2節、6節）。前の版は`archived/261113063725_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映（プランアセット v8。タイトル帯のダブルクリックは拡大・戻すだけ、Escで全画面を終える動きは求めない、T13-1〜T13-5で確かめた細部：3.6、4.5）。前の版は`archived/261113042452_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映（プランアセット v7。録音の許可を判定せずS09bを取りやめる、Process Tapと集約デバイスを自前で作りcpalで開く、T12-1で確かめた細部：2節、3.1、3.5、3.6、4.5、7節）。前の版は`archived/261113032529_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113031351_change_macos_support」を反映（プランアセット v6。macOSへの対応：1節、2節、3.1、3.4、3.5、3.6〔新設〕、4.5、4.6、4.8、6節、7節。v5のSPEC 11節「モックとの差分」がモックに取り込まれたため、11節への参照を画面IDに改めた）。前の版は`archived/261111033238_imple_sonar_spectra_architecture.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映（4.5：描画を開始できない表示と、入力源の状態の表示〔S01b〜S01d〕の出し分け）。前の版は`archived/261110165456_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映（4.6の発光：等倍の図形は画像を写さず同じ頂点の範囲をもう一度描いて重ねる）。前の版は`archived/261110133636_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映（1節、2節、3.4、4.2、4.5、4.6、4.8、5.1、5.2の16、5.3）。前の版は`archived/261109115345_imple_sonar_spectra_architecture.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」））））））
 
 ## 1. 方針
 
@@ -52,6 +52,7 @@ sonar_spectra/
 │  ├─ icons/                    マスターSVGから形式ごとに展開したアイコン一式（リポジトリに含める。7節）
 │  ├─ AppIcon.icon              Icon Composer で作った Apple 環境向けアイコン（利用者が作る。置き場所は T14-4 で決めて示す。v6）
 │  ├─ Info.plist                macOS の Info.plist に足す項目（NSAudioCaptureUsageDescription。v6）
+│  ├─ windows/hooks.nsh         Windows のインストーラー（NSIS）のフック。0.1.0（表示名 sonar_spectra）を取り除く（v9）
 │  ├─ tauri.conf.json
 │  └─ tauri.macos.conf.json     macOS だけの設定（タイトルバー、最低バージョン、署名。v6）
 ├─ scripts/                     i18n の自動検査、トークン直書きの検査、アイコンの展開（generate_icons.ts）
@@ -387,7 +388,9 @@ interface Palette { id: string; name: string; main: string; sub: string; accent:
 
 - tauri-actionで、Windows x64のインストーラー（NSIS）と、macOS（Apple Silicon、`aarch64-apple-darwin`）のディスクイメージ（`.dmg`）をビルドする（SPEC 7節。v6）。`release.md`の「macOS Universal」は作らない（Intel Macはスコープ外のため）
 - macOSのジョブは、Xcode 26以降のあるランナーで動かす（`.icon`を`actool`で`Assets.car`にするため）。ランナーのラベルは、T16-1の時点のGitHubのドキュメントで確かめる
-- 識別子：`com.rinontech.sonar-spectra`。バージョンは`package.json`・`tauri.conf.json`・`Cargo.toml`で同じ値（初回`0.1.0`）
+- 表示名（v9）：`productName`は「Sonar Spectra」（SPEC 10節）。ウィンドウの`title`、`index.html`の`<title>`、辞書の`app.window_title`と、アプリ名を含む文言（`config.file_filter`・`config.import_failed`）も同じにする。アプリメニューの名前は`getName()`（＝`productName`）から作るので、辞書には持たない。`productName`から、`.app`・`.dmg`・インストーラーの名前、インストール先、ショートカット、Windowsのアンインストール情報のキーが決まる。実行ファイルの名前はCargoの`package.name`（`sonar_spectra`）のままにし、`mainBinaryName`は使わない
+- 0.1.0からの更新（Windows。v9）：表示名が変わると、NSISのアンインストール情報のキー（`Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCTNAME}`）とインストール先が変わり、インストーラーは0.1.0を同じアプリと見なさない。そこで`bundle.windows.nsis.installerHooks`で`src-tauri/windows/hooks.nsh`を指し、`NSIS_HOOK_PREINSTALL`で、0.1.0のキー（`HKCU`。0.1.0は既定の`currentUser`で入る）の`UninstallString`があれば、旧版のアンインストーラーを`/S`で、`_?=`に旧版のインストール先を添えて待って実行し、終わったら旧版のアンインストーラーとフォルダーを消す。`/UPDATE`は付けない（付けるとショートカットなどが残る）。サイレントでは「アプリのデータを削除する」が選ばれないため、`identifier`の場所にある設定と構成は残り、0.2.0がそのまま読む。旧版が見つからなければ何もしない。細部（キーの読み方、引用符の扱い）は、インストール済みのtauri-bundlerの`installer.nsi`に合わせてT14-5で決める
+- 識別子：`com.rinontech.sonar-spectra`（表示名を変えても変えない。設定と構成の保存場所、WebView2のデータ、macOSの録音の許可は、これで決まる）。バージョンは`package.json`・`tauri.conf.json`・`Cargo.toml`で同じ値（初回`0.1.0`）
 - Windowsはコード署名なし。READMEにSmartScreenの警告と開き方を書く
 - macOSはアドホック署名だけ（Developer IDの署名と公証はしない）。READMEとCHANGELOGに、初回の開き方（「システム設定」→「プライバシーとセキュリティ」の「このまま開く」。版ごとに必要）と、更新するたびにシステムオーディオ録音の許可を与え直す必要があることを書く
 

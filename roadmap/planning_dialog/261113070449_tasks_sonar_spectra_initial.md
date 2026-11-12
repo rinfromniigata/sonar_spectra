@@ -1,8 +1,8 @@
 # sonar_spectra 実装タスク（tasks）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v8.md`、`261113063725_imple_sonar_spectra_architecture.md`
-- 対になる検証：`261113063725_walk_sonar_spectra_initial.md`
-- 改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映し、T13-3の「Escで戻る動き」の書き方を改めた（Escの処理は足さない）。新しい項目はない。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113042452_tasks_sonar_spectra_initial.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映し、T12-2・T13-4を取りやめ（IDは残してチェックし、再利用しない）、T12-3・T13-1・T13-3・T13-5・T16-2を改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113032529_tasks_sonar_spectra_initial.md`（その前の改訂：change「261113031351_change_macos_support」を反映し、macOS対応と0.2.0のリリースのためにPhase 12〜17（T12-1〜T17-1）を足した。完了済みの項目（Phase 1〜11）は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261111033238_tasks_sonar_spectra_initial.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映し、Phase 9にT9-9（T9-8のあと）を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110165456_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映し、T9-6の見出しの「等倍の画像を重ねる」を「等倍の図形を重ねる」に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110133636_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にT9-4〜T9-8（T9-3のあと）を足した。T10-1の依存をT9-8に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_tasks_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でT7-6・T7-7を追加））））
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v9.md`、`261113070449_imple_sonar_spectra_architecture.md`
+- 対になる検証：`261113070449_walk_sonar_spectra_initial.md`
+- 改訂：change「261113065821_change_app_display_name」を反映し、Phase 14の先頭にT14-5（表示名の変更とインストーラーのフック）を足し、T14-1の依存をT14-5に改め、T16-1・T16-2・T16-4に表示名と旧版の取り除きの記述を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113063725_tasks_sonar_spectra_initial.md`（その前の改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映し、T13-3の「Escで戻る動き」の書き方を改めた（Escの処理は足さない）。新しい項目はない。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113042452_tasks_sonar_spectra_initial.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映し、T12-2・T13-4を取りやめ（IDは残してチェックし、再利用しない）、T12-3・T13-1・T13-3・T13-5・T16-2を改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113032529_tasks_sonar_spectra_initial.md`（その前の改訂：change「261113031351_change_macos_support」を反映し、macOS対応と0.2.0のリリースのためにPhase 12〜17（T12-1〜T17-1）を足した。完了済みの項目（Phase 1〜11）は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261111033238_tasks_sonar_spectra_initial.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映し、Phase 9にT9-9（T9-8のあと）を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110165456_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映し、T9-6の見出しの「等倍の画像を重ねる」を「等倍の図形を重ねる」に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110133636_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にT9-4〜T9-8（T9-3のあと）を足した。T10-1の依存をT9-8に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_tasks_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でT7-6・T7-7を追加）））））
 - 進め方：Phase nの実装（Tn-\*）→ 検証（Wn-\*）→ 修正と再検証。Wnがすべて通過してからPhase n+1へ進む
 
 ## Phase 1: 基盤（雛形・トークン・i18n・検査・部品・アイコン）
@@ -926,7 +926,7 @@ Phaseの推奨: Opus・high以上
 ## Phase 13: macOSのウィンドウ・メニュー
 
 Phaseの推奨: Sonnet・high以上
-引き継ぎ: Phase 13は完了（W13-1〜W13-3は通過。S01eのチップの点はユーザーの判断で今の実装のまま）。change「261113065821_change_app_display_name」（表示名をSonar Spectraに）が承認待ちで、承認後に新版を作ってから、次はT14-1。v8（change「261113063530」）で、ダブルクリックは拡大・戻すだけ、Escで全画面を終える動きは求めない、信号機ボタンを中央にそろえるのは既定の大きさ以上のウィンドウ、とした
+引き継ぎ: Phase 13は完了（W13-1〜W13-3は通過。S01eのチップの点はユーザーの判断で今の実装のまま）。change「261113065821_change_app_display_name」（表示名をSonar Spectraに）は承認済みで、v9に反映した。次はPhase 14の先頭のT14-5。v8（change「261113063530」）で、ダブルクリックは拡大・戻すだけ、Escで全画面を終える動きは求めない、信号機ボタンを中央にそろえるのは既定の大きさ以上のウィンドウ、とした
 
 - [x] T13-1 【エージェント】Rust側に`platform`を作り、OSの種類のコマンド、タイトルバーのOverlayと信号機ボタンの位置、App Napの抑止を実装する
   - 推奨: Opus・high以上
@@ -964,13 +964,19 @@ Phaseの推奨: Sonnet・high以上
   - 依存: T13-3
   - imple 3.6の「メニュー」。Tauriの定義済みの項目で作り、名前の入力欄（構成・配色の名前）で取り消し・カット・コピー・ペースト・すべてを選択のショートカットが効くことを確かめる。Windowsにはメニューを足さない
 
-## Phase 14: Apple環境向けアイコン
+## Phase 14: アプリの表示名とApple環境向けアイコン
 
 Phaseの推奨: Sonnet・high以上
 
+- [ ] T14-5 【エージェント】アプリの表示名を「Sonar Spectra」にし、Windowsのインストーラーに、0.1.0を自動で取り除くフックを足す
+  - 推奨: Opus・high以上
+  - 依存: W13-3
+  - SPEC 7節・10節、imple 6節。変えるもの：`productName`、ウィンドウの`title`（`tauri.conf.json`・`tauri.macos.conf.json`）、`index.html`の`<title>`、辞書の`app.window_title`・`config.file_filter`・`config.import_failed`、`app_menu.test.ts`の見本の名前、`lib.rs`のApp Napの理由の文、`release.yml`のリリース名、README・`CONTRIBUTING.md`の見出しと本文のアプリ名。変えないもの（SPEC 10節の識別子）：`identifier`、Cargo・`package.json`の`name`（実行ファイルの名前）、`sonar_spectra.config`、`localStorage`のキー、集約デバイスとタップの内部の名前、リポジトリのURL
+  - フックはimple 6節のとおり`src-tauri/windows/hooks.nsh`に置き、`bundle.windows.nsis.installerHooks`で指す。インストール済みのtauri-bundlerのテンプレート（`installer.nsi`）で、アンインストール情報のキー、`UninstallString`の形、`/S`・`/UPDATE`・`_?=`の扱い、`$DeleteAppDataCheckboxState`の既定値を確かめてから書く。macOSではNSISを組めないため、Windowsでの確かめはW14-5で行う
+  - `CHANGELOG.md`の[Unreleased]に、表示名の変更と、0.1.0が自動で取り除かれることを書く
 - [ ] T14-1 【エージェント】マスターSVGの前景`01_ring`・`02_wave`・`03_peak`を、レイヤーごとのSVGとして`docs/brand/icon_layers/`に書き出す処理を`bun run icons`に足し、書き出す
   - 推奨: Sonnet・medium以上
-  - 依存: W13-3
+  - 依存: T14-5
   - imple 7節。1024四方のキャンバスのまま、角丸や余白を足さない。`00_bg`は書き出さず、その色をT14-3の手順に添えて示す。既存の形式（`.ico`・PNG・`.icns`・ファビコン）の出力は変えない（作り直して一致を確かめる。`.icns`の生成のゆらぎはT10-4の実施メモのとおり）
 - [ ] T14-2 【ユーザー】Xcode 26以降を入れ、`xcrun --find actool`が通ることを確かめる
   - Phase 12から裏で進めてよい。完了したら報告する
@@ -999,16 +1005,19 @@ Phaseの推奨: Sonnet・high以上
 - [ ] T16-1 【エージェント】`release.yml`にmacOS（Apple Silicon、`.dmg`、アドホック署名）のジョブを足す
   - 依存: W15-3
   - imple 6節。Xcode 26以降のランナー（ラベルはその時点のドキュメントで確かめる）。タグとバージョン表記の一致の確かめと`bun run check`はWindowsのジョブと同じにする。1つのドラフトリリースに両OSのファイルがそろうようにする。リリースの説明文に、macOSの初回の開き方と許可の与え直しの案内を足す
+  - リリースの説明文に、Windowsで0.1.0から更新すると旧版が自動で取り除かれ、設定と構成は引き継がれることを書く（v9）
 - [ ] T16-2 【エージェント】READMEと`CONTRIBUTING.md`をmacOSに対応させる
   - 依存: T16-1
   - 画面: S09
-  - README：入手方法（`.dmg`）、動作環境（macOS 26以降のApple Silicon）、初回の開き方（「このまま開く」。版ごとに必要）、システムオーディオ録音の許可（初回の確認で許可する。拒否した・更新したあとは、システム設定の「画面とシステムオーディオ録音」でsonar_spectraをオンにすると、操作なしで表示が始まる。許可がないあいだは無音として見える）、データの保存場所（macOS）。macOSのスクリーンショットを足すかは、実物を見て決める
+  - README：入手方法（`.dmg`）、動作環境（macOS 26以降のApple Silicon）、初回の開き方（「このまま開く」。版ごとに必要）、システムオーディオ録音の許可（初回の確認で許可する。拒否した・更新したあとは、システム設定の「画面とシステムオーディオ録音」でSonar Spectraをオンにすると、操作なしで表示が始まる。許可がないあいだは無音として見える）、データの保存場所（macOS）。macOSのスクリーンショットを足すかは、実物を見て決める
+  - README（v9）：Windowsで0.1.0から更新すると、旧版（`sonar_spectra`）が自動で取り除かれ、設定と構成は引き継がれることを書く。インストーラーと`.dmg`のファイル名は、T16-6のドラフトで実際の名前（GitHubはスペースを`.`に置き換える）を確かめてから合わせる
   - CONTRIBUTING：macOSの開発環境（Xcode 26以降、`bun run icons`のレイヤーの書き出し、`AppIcon.icon`の作り直しの手順）、CIのmacOSのジョブ
 - [ ] T16-3 【エージェント】GitHubのAbout欄の文案（説明文の「on Windows」、トピック）を見直して提示する
   - 依存: T16-2
 - [ ] T16-4 【エージェント】`CHANGELOG.md`に0.2.0を書き、`package.json`・`tauri.conf.json`・`Cargo.toml`のバージョンを`0.2.0`にそろえる
   - 依存: T16-2
   - Known issuesに、macOSのアドホック署名による初回の開き方と、許可の与え直しを書く（SPEC 7節）
+  - 表示名の変更と旧版の自動の取り除き（T14-5で[Unreleased]に書いたもの）を0.2.0に含める（v9）
 - [ ] T16-5 【エージェント】ローカルでmacOSのビルドを確かめ、アイコン一式と`.icon`のレイヤーが`specs/`の最新のマスターSVGから作られたことを確かめる。`roadmap/timeline.md`にリリース準備の行（`0.2.0`と、その時点のプランアセットの版）を追記し、コミットメッセージとタグ作成・pushのコマンドを提示して停止する
   - 依存: T14-4, T16-4
   - pushの前にバージョンを変えた場合は、timelineに新しい行を追記する（過去の行は書き換えない）
