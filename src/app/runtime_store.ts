@@ -1,7 +1,8 @@
-// 実行中だけの状態のストア（imple 4.4 の useRuntimeStore）：入力源の状態、レイアウト編集中かどうかと選んでいるインスタンス、開いているドロワー、全画面かどうか。
+// 実行中だけの状態のストア（imple 4.4 の useRuntimeStore）：入力源の状態、レイアウト編集中かどうかと選んでいるインスタンス、開いているドロワー、全画面かどうか、OSの種類。
 // 保存しない。
 
 import { inject, ref, shallowRef, type InjectionKey, type Ref, type ShallowRef } from "vue";
+import type { Platform } from "../platform";
 import type { SourceStatusEvent } from "../source/source_status";
 
 /** 開くドロワー：設定（S02）、配色の管理（S02a）、構成の管理（S02b） */
@@ -40,6 +41,8 @@ export interface RuntimeStore {
   takeConfigIntent(): ConfigIntent | null;
   /** ボーダレスフルスクリーン中か（実際のウィンドウの状態を映す。保存しない。起動時の全画面は設定の display.startFullscreen） */
   readonly fullscreen: Ref<boolean>;
+  /** アプリが動いているOSの種類（タイトル帯の形と全画面の方式を選ぶ）。起動時に get_platform で決め、その後は変えない */
+  readonly platform: Ref<Platform>;
   /** ドロワーを開く。back を渡すと、見出しのボタンが「戻る」になり、そのドロワーへ戻る */
   openDrawer(id: DrawerId, back?: DrawerId | null): void;
   closeDrawer(): void;
@@ -62,6 +65,7 @@ export function createRuntimeStore(): RuntimeStore {
   const configIntent = ref<ConfigIntent | null>(null);
   const layoutEditing = ref(false);
   const fullscreen = ref(false);
+  const platform = ref<Platform>("other");
   const selectedInstanceId = ref<string | null>(null);
   const instanceSettingsOpen = ref(false);
   return {
@@ -79,6 +83,7 @@ export function createRuntimeStore(): RuntimeStore {
       return intent;
     },
     fullscreen,
+    platform,
     openDrawer: (id, back = null) => {
       drawer.value = id;
       drawerBack.value = back;

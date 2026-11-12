@@ -39,6 +39,10 @@
   /* タイトル帯：高さは画面の幅（置く側の container-type: inline-size）に応じて 20〜44px。
      メーターの格子や重ねる画面（ドロワー・状態の表示）も、この高さの下から始める */
   --title-h: clamp(20px, 3.4cqi, 44px);
+  /* macOS のウィンドウ表示（S09）で、タイトル帯の左端に OS が重ねる信号機ボタンの分の余白。
+     信号機ボタンの左端（src-tauri/tauri.macos.conf.json の trafficLightPosition の x = 16）＋ 3つのボタンの幅
+     （macOS 26 で直径14・間隔23 → 60）＋ ロゴまでの間（モックの比で約24）。ボタンの大きさは帯の高さに合わせて変わらない */
+  --traffic-light-inset: 100px;
 
   /* 状態の表示（S01b〜S01d）：脈動の点・スピナーの大きさ、文字の下限、「開いています」を出すまでの待ち */
   --pulse-size: 10px;

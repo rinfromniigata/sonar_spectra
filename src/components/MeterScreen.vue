@@ -249,6 +249,7 @@ defineExpose({ client, channel: () => channel });
       :version="version"
       :source="source.event.value"
       :fullscreen="runtime.fullscreen.value"
+      :platform="runtime.platform.value"
       :layout-editing="editing"
       @settings="toggleSettings"
       @source="openSettings"

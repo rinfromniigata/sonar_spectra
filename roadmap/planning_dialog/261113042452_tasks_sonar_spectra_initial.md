@@ -926,18 +926,29 @@ Phaseの推奨: Opus・high以上
 ## Phase 13: macOSのウィンドウ・メニュー
 
 Phaseの推奨: Sonnet・high以上
+引き継ぎ: T13-1〜T13-5は完了（T13-4は取りやめ）。次はW13-1。W13-3の前に相談が2点：つかみのダブルクリックがシステム設定の「しまう・何もしない」に従わないこと（T13-2）、Escで全画面を終える処理がないこと（T13-3）
 
-- [ ] T13-1 【エージェント】Rust側に`platform`を作り、OSの種類のコマンド、タイトルバーのOverlayと信号機ボタンの位置、App Napの抑止を実装する
+- [x] T13-1 【エージェント】Rust側に`platform`を作り、OSの種類のコマンド、タイトルバーのOverlayと信号機ボタンの位置、App Napの抑止を実装する
   - 推奨: Opus・high以上
+  - 実施: Opus 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ：`src-tauri/src/platform/`（`Platform::current`、macOSだけの`app_nap::UserActivity`。`UserInitiatedAllowingIdleSystemSleep`でApp Napだけを止め、システムのスリープは止めない。`lib.rs`で`manage`して起動中ずっと持つ）、コマンド`get_platform`、UIの入口`src/platform/`（`getPlatform`。Tauriの外では`"other"`）。capabilitiesに`allow-set-simple-fullscreen`と、Overlayでつかみに要る`allow-start-dragging`（`core:window:default`に含まれない）を足した。信号機ボタンの位置の値はT13-2で決める
+  - 実施メモ：確かめたこと（tauri 2.12.5・tao 0.37.2）：simple fullscreenのあいだ`isFullscreen()`はfalseを返す（taoは`fullscreen`と`is_simple_fullscreen`を別に持つ）ので、全画面の状態はUIで持つ（T13-3）。`trafficLightPosition`のyは閉じるボタンの上端までの距離（`inset_traffic_lights`）
   - 依存: W12-4
   - imple 3.5・3.6。コマンドは`get_platform`（名前と細部は実装で決めてよい）。全画面は`@tauri-apps/api`の`setSimpleFullscreen`を使うので、コマンドは作らず、capabilitiesに`core:window:allow-set-simple-fullscreen`を足す。`tauri.macos.conf.json`の配列（`app.windows`）は全体を書く（imple 3.6）。Windowsのウィンドウの設定とふるまいは変えない
   - 信号機ボタンの位置の値は委任事項。帯の高さの中央にそろうよう、T13-2と合わせて実機で決める
-- [ ] T13-2 【エージェント】タイトル帯をOSの種類で切り替える（macOSでは信号機ボタンの分の余白、つかみ、ダブルクリック。出力系統のチップのmacOSの文言）
+- [x] T13-2 【エージェント】タイトル帯をOSの種類で切り替える（macOSでは信号機ボタンの分の余白、つかみ、ダブルクリック。出力系統のチップのmacOSの文言）
+  - 実施: Opus 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ：OSの種類は`main.ts`で`getPlatform`し、実行中の状態のストアの`platform`に置く。`TitleBar`は`platform`がmacOSのとき`is-mac`（左の余白`--traffic-light-inset`）と`data-tauri-drag-region="deep"`（ボタンはTauriがつかみから外す）を付ける。`chipView(event, platform)`がmacOSでデバイス名つきの文言を`source.chip_loopback_mac`にする。値はモックの見本のデバイス名を`{device}`に置き換える既存の移し方に従い「出力音声 · {device}」（`source.chip_live`と同じ文）
+  - 実施メモ：信号機ボタンの位置は`trafficLightPosition` `{x:16, y:15}`、余白は`--traffic-light-inset: 100px`（`component_metrics.css`）。AppKitから読んだmacOS 26のボタンは直径14・間隔23（3つで幅60）。yは帯の高さ44px（ウィンドウの幅1294px以上。既定の1280pxでは43.5px）の中央に合わせた。最小の幅960pxでは帯が32.6pxになり、ボタンの中心が帯の中央より約6px下にずれる（ボタンの位置はOSが固定で、帯の高さに追従しない）。画面収録の権限がなく撮影できなかったため、見た目はW13-3で確かめる
+  - 実施メモ：つかみのダブルクリックは、Tauriの既定（`drag.js`）が常に`internal_toggle_maximize`（拡大・戻す）を呼び、システム設定の「ダブルクリックでしまう」「何もしない」を見ない。既定の設定（拡大・フィル）ではそのまま合うので既定の振る舞いのままにした。設定に従わせるには、macOSの設定（`AppleActionOnDoubleClick`）を読むコマンドの追加（インターフェースの変更）が要る
   - 依存: T13-1
   - 画面: S09
   - imple 4.5の「タイトル帯」「出力系統のチップ」。モックのファイルは`sonar_spectra_mock_v7.html`（旧形式の1枚）なので、画面IDで位置を検索してS09の範囲だけを読む
   - 辞書に`source.chip_loopback_mac`をモックの辞書から足す（v7で取りやめたT13-4から移した。`perm.*`・`source.chip_perm`は足さない）
-- [ ] T13-3 【エージェント】macOSの全画面を`setSimpleFullscreen`に切り替え、全画面では信号機ボタンの余白をなくす
+- [x] T13-3 【エージェント】macOSの全画面を`setSimpleFullscreen`に切り替え、全画面では信号機ボタンの余白をなくす
+  - 実施: Opus 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ：`tauriWindowApi(platform)`がmacOSでは`macFullscreen`を使う。Tauriの`isFullscreen`はsimple fullscreenを見ないため、入ったかどうかを`macFullscreen`の中で持つ（simple fullscreenはアプリの操作でしか出入りしない）。信号機の緑のボタンでOSの全画面に入ったときも全画面として扱い、全画面のボタンでそちらを終える。`window_controller`は変えていない。`TitleBar`は全画面では`has-traffic-lights`を外して余白をなくす
+  - 実施メモ：アプリにはEscで全画面を終える処理がない（Windowsも同じ。OSもEscでは終えない）。この項目の「Escで戻る動きは変えない」に従い足していないが、W13-3の「全画面のボタンとEscで戻る」のEscは今のままでは通らない
   - 依存: T13-2
   - 画面: S09a
   - `window_api`をOSの種類で呼び分け、`window_controller`の状態の持ち方と、起動時の全画面・Escで戻る動きは変えない。Windowsは今の`setFullscreen`のまま
@@ -946,7 +957,10 @@ Phaseの推奨: Sonnet・high以上
   - 依存: T13-3
   - 画面: S09b, S01e
   - `StatusOverlay`に`perm.title`・`perm.body`と「システム設定を開く」「再試行」のボタン。出し分けでは使えない（S01c）と同じ側に入れ、描画を開始できない表示より優先する（`centerNotice`の判定とテストを足す）。辞書に`perm.*`・`source.chip_perm`・`source.chip_loopback_mac`などをモックの辞書から足す（キーの設計は委任事項）
-- [ ] T13-5 【エージェント】macOSのメニューバーに、アプリメニューと「編集」メニューを置く
+- [x] T13-5 【エージェント】macOSのメニューバーに、アプリメニューと「編集」メニューを置く
+  - 実施: Opus 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ：辞書は要る。Tauriの定義済みの項目は、文言を渡さないと英語のまま固定（muda 0.20.0の既定の文言。OSの言語に合わせない）。そのため、メニューはUIの`src/platform/app_menu.ts`で、定義済みの項目に辞書`menu.*`の文言を渡して組み（`@tauri-apps/api/menu`。権限は`core:default`に含まれる）、`main.ts`がmacOSのときだけ`setAsAppMenu`する。起動直後はTauriの既定のメニュー（英語）が出ていて、組み終えたところで置き換わる（組めなければ既定のまま）。コンポーネントの外で引く型つきの`globalT`を`use_t.ts`に足した
+  - 実施メモ：`bun run check`が通る。実機でメニューが置き換わることと、名前の入力欄でのショートカットは、System Eventsの読み取りにアクセシビリティの許可がなく確かめられなかったため、W13-3で確かめる
   - 依存: T13-3
   - imple 3.6の「メニュー」。Tauriの定義済みの項目で作り、名前の入力欄（構成・配色の名前）で取り消し・カット・コピー・ペースト・すべてを選択のショートカットが効くことを確かめる。Windowsにはメニューを足さない
 

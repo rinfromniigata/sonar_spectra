@@ -2,8 +2,12 @@
 // タイトル帯：SONAR/SPECTRA とバージョン、出力系統のチップ、レイアウト編集・設定・ボーダレスフルスクリーンのボタン。
 // 高さは --title-h（画面の幅に応じて変わる）。置く側が container-type: inline-size を持つこと。
 // ボタンの動作はここでは持たず、イベントで知らせる（設定とチップは MeterScreen が設定パネルを開く。全画面は MeterScreen がウィンドウの扱いにつなぐ。レイアウト編集は MeterScreen が編集を始める・終える）。
+// macOS（S09）：OS の標準のタイトルバーを出さず（tauri.macos.conf.json の Overlay）、OS が描く信号機ボタンを帯の左端に重ねる。
+// その分の余白を左に取り、ロゴはその右から始める（全画面の S09a では信号機ボタンが出ないので、余白をなくして Windows の S01a と同じ形）。帯のボタン以外の部分がウィンドウのつかみになり、ダブルクリックで拡大・しまう
+// （Tauri の data-tauri-drag-region。"deep" で子孫もつかみにし、ボタンは Tauri がつかみから外す）。Windows は今のまま
 import { computed } from "vue";
 import { useT } from "../i18n/use_t";
+import type { Platform } from "../platform";
 import { chipView, type SourceStatusEvent } from "../source";
 import UiChip from "./ui/UiChip.vue";
 import UiIconButton from "./ui/UiIconButton.vue";
@@ -18,8 +22,10 @@ const props = withDefaults(
     layoutEditing?: boolean;
     /** ボーダレスフルスクリーン中か（アイコンと読み上げの名前を終了用に変える） */
     fullscreen?: boolean;
+    /** アプリが動いているOSの種類（macOS ではタイトル帯の形とチップの文言が変わる） */
+    platform?: Platform;
   }>(),
-  { version: "", layoutEditing: false, fullscreen: false },
+  { version: "", layoutEditing: false, fullscreen: false, platform: "other" },
 );
 defineEmits<{ source: []; layoutEdit: []; settings: []; fullscreen: [] }>();
 
@@ -29,15 +35,20 @@ const { t } = useT();
 const BRAND = ["SONAR", "/", "SPECTRA"] as const;
 
 const chip = computed(() => {
-  const view = chipView(props.source);
-  const text =
-    view.messageKey === "source.chip_live" ? t("source.chip_live", { device: view.device ?? "" }) : t(view.messageKey);
+  const view = chipView(props.source, props.platform);
+  const text = view.device !== null ? t(view.messageKey, { device: view.device }) : t(view.messageKey);
   return { status: view.status, text };
 });
+
+const mac = computed(() => props.platform === "macos");
 </script>
 
 <template>
-  <header class="title-bar">
+  <header
+    class="title-bar"
+    :class="{ 'is-mac': mac, 'has-traffic-lights': mac && !fullscreen }"
+    :data-tauri-drag-region="mac ? 'deep' : undefined"
+  >
     <p class="mark">
       <template v-for="(part, index) in BRAND" :key="index">
         <span v-if="part === '/'" class="slash">{{ part }}</span>
@@ -72,6 +83,11 @@ const chip = computed(() => {
   padding-inline: clamp(var(--space-2), 1cqi, var(--space-4));
   background: var(--color-bg);
   border-bottom: var(--border-width) solid var(--color-line);
+}
+
+/* macOS のウィンドウ表示：左端の信号機ボタン（OS が描く）の分を空ける。全画面（S09a）では信号機ボタンが出ないので空けない */
+.title-bar.has-traffic-lights {
+  padding-left: var(--traffic-light-inset);
 }
 
 .mark {

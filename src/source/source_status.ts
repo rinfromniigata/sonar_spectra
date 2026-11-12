@@ -3,6 +3,7 @@
 
 import type { ChipStatus } from "../components/ui/types";
 import type { MessageKey } from "../i18n/use_t";
+import type { Platform } from "../platform";
 
 /** イベントの名前（Rust の audio_engine::SOURCE_STATUS_EVENT と同じ） */
 export const SOURCE_STATUS_EVENT = "source-status";
@@ -70,23 +71,29 @@ export function centerNotice(event: SourceStatusEvent | null, renderUnavailable:
 /** チップの表示：点の色（`status`）と、文言の辞書キー（デバイス名が要るときは `device` も） */
 export interface ChipView {
   status: ChipStatus;
-  messageKey: Extract<MessageKey, "source.chip_live" | "source.chip_silent" | "source.chip_unavailable" | "status.opening">;
-  /** `source.chip_live` のプレースホルダに入れるデバイス名。要らないときは null */
+  messageKey: Extract<
+    MessageKey,
+    "source.chip_live" | "source.chip_loopback_mac" | "source.chip_silent" | "source.chip_unavailable" | "status.opening"
+  >;
+  /** `source.chip_live`・`source.chip_loopback_mac` のプレースホルダに入れるデバイス名。要らないときは null */
   device: string | null;
 }
 
 /**
  * 状態からチップの表示を決める。まだ状態が届いていないとき（起動直後）は「起動中」とする。
- * 起動中・切り替え中でデバイスが分かっていれば、デバイス名つきで点だけ消灯の色にする（モックの S01d）
+ * 起動中・切り替え中でデバイスが分かっていれば、デバイス名つきで点だけ消灯の色にする（モックの S01d）。
+ * デバイス名つきの文言は、macOS では source.chip_loopback_mac にする（ほかの文言はOSによらない）
  */
-export function chipView(event: SourceStatusEvent | null): ChipView {
+export function chipView(event: SourceStatusEvent | null, platform: Platform = "other"): ChipView {
   const state = event?.status.state ?? "opening";
   const device = event?.device?.name ?? null;
+  // デバイス名つきの文言：macOS では source.chip_loopback_mac（imple 4.5。モックの S09）
+  const deviceKey = platform === "macos" ? "source.chip_loopback_mac" : "source.chip_live";
   switch (state) {
     case "live":
       return device === null
         ? { status: "live", messageKey: "status.opening", device: null }
-        : { status: "live", messageKey: "source.chip_live", device };
+        : { status: "live", messageKey: deviceKey, device };
     case "silent":
       return { status: "silent", messageKey: "source.chip_silent", device: null };
     case "unavailable":
@@ -94,6 +101,6 @@ export function chipView(event: SourceStatusEvent | null): ChipView {
     case "opening":
       return device === null
         ? { status: "silent", messageKey: "status.opening", device: null }
-        : { status: "silent", messageKey: "source.chip_live", device };
+        : { status: "silent", messageKey: deviceKey, device };
   }
 }

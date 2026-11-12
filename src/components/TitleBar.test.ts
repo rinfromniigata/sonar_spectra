@@ -58,4 +58,30 @@ describe("TitleBar", () => {
     const full = await render({ source: live, fullscreen: true });
     expect(labels(full)).toEqual(["出力系統", "レイアウト編集", "設定", "ボーダレスフルスクリーンを終了"]);
   });
+
+  it("macOS（S09）：信号機ボタンの分の余白を取る形になり、帯のボタン以外がつかみになる。チップは macOS の文言", async () => {
+    const html = await render({ source: live, platform: "macos" });
+    expect(html).toMatch(/<header[^>]*class="title-bar is-mac has-traffic-lights"/);
+    expect(html).toMatch(/<header[^>]*data-tauri-drag-region="deep"/);
+    expect(html).toContain("出力音声 · Speakers");
+    // ボタンの並びと読み上げの名前は Windows と同じ
+    expect(labels(html)).toEqual(["出力系統", "レイアウト編集", "設定", "ボーダレスフルスクリーン"]);
+  });
+
+  it("macOS の全画面（S09a）：信号機ボタンの余白をなくし、終了用のボタンになる", async () => {
+    const html = await render({ source: live, platform: "macos", fullscreen: true });
+    expect(html).toMatch(/<header[^>]*class="title-bar is-mac"/);
+    expect(html).not.toContain("has-traffic-lights");
+    expect(labels(html)).toEqual(["出力系統", "レイアウト編集", "設定", "ボーダレスフルスクリーンを終了"]);
+  });
+
+  it("Windows とそれ以外：今のまま（余白もつかみも足さない）", async () => {
+    for (const platform of ["windows", "other"] as const) {
+      const html = await render({ source: live, platform });
+      expect(html).toMatch(/<header class="title-bar"/);
+      expect(html).not.toContain("is-mac");
+      expect(html).not.toContain("data-tauri-drag-region");
+    }
+    expect(await render({ source: live })).not.toContain("data-tauri-drag-region");
+  });
 });

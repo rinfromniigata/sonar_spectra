@@ -2,6 +2,7 @@
 // vue-i18n の t と $t は、補完のためにキーの型を持つが、任意の文字列も受け付けてしまう。
 // ここで辞書の型からキーとプレースホルダを決め、存在しないキーや足りないプレースホルダを型検査で検出する。
 import { useI18n } from "vue-i18n";
+import { i18n } from ".";
 import type { SourceMessages } from "./locales/ja";
 
 /** 辞書の末端（文字列）までのキー。例: title_bar.settings */
@@ -35,4 +36,10 @@ export function useT(): { t: Translate } {
   const { t } = useI18n({ useScope: "global" });
   const typed: Translate = (key, ...args) => (args.length > 0 ? t(key, args[0] as Record<string, unknown>) : t(key));
   return { t: typed };
+}
+
+/** コンポーネントの外（起動時に組む macOS のメニューなど）で使う、型つきの翻訳関数。今のロケールで引く */
+export function globalT(): Translate {
+  const { t } = i18n.global;
+  return (key, ...args) => (args.length > 0 ? t(key, args[0] as Record<string, unknown>) : t(key));
 }

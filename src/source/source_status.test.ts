@@ -43,6 +43,23 @@ describe("chipView", () => {
   it("取得中なのにデバイスが分からないときは、デバイス名の欠けた文言を出さず「開いています」にする", () => {
     expect(chipView(event({ state: "live" }, null))).toEqual({ status: "live", messageKey: "status.opening", device: null });
   });
+
+  it("macOS では、デバイス名つきの文言だけが source.chip_loopback_mac になる（S09）", () => {
+    expect(chipView(event({ state: "live" }), "macos")).toEqual({
+      status: "live",
+      messageKey: "source.chip_loopback_mac",
+      device: "スピーカー (Realtek)",
+    });
+    expect(chipView(event({ state: "opening" }), "macos").messageKey).toBe("source.chip_loopback_mac");
+    expect(chipView(event({ state: "silent" }), "macos").messageKey).toBe("source.chip_silent");
+    expect(chipView(event({ state: "unavailable", reason: "notFound" }, null), "macos").messageKey).toBe(
+      "source.chip_unavailable",
+    );
+    expect(chipView(event({ state: "live" }, null), "macos").messageKey).toBe("status.opening");
+    // Windows とそれ以外は今のまま
+    expect(chipView(event({ state: "live" }), "windows").messageKey).toBe("source.chip_live");
+    expect(chipView(event({ state: "live" }), "other").messageKey).toBe("source.chip_live");
+  });
 });
 
 describe("overlayMode", () => {

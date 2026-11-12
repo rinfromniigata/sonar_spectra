@@ -3,6 +3,7 @@ pub mod audio_engine;
 pub mod audio_source;
 pub mod commands;
 pub mod frame_transport;
+pub mod platform;
 pub mod settings_store;
 
 use std::sync::Mutex;
@@ -42,6 +43,11 @@ pub fn run() {
             // %APPDATA%\com.rinontech.sonar-spectra\state.json
             let data_dir = app.path().app_data_dir()?;
             app.manage(Mutex::new(SettingsStore::new(data_dir)));
+            // App Nap を止める（起動中ずっと持つ。imple 3.6）
+            #[cfg(target_os = "macos")]
+            app.manage(platform::app_nap::begin_user_activity(
+                "sonar_spectra captures and visualizes system audio in real time",
+            ));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -54,6 +60,7 @@ pub fn run() {
             commands::load_state,
             commands::save_state,
             commands::validate_config_file,
+            commands::get_platform,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
