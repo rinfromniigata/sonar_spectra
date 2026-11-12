@@ -27,6 +27,15 @@ impl SilenceDetector {
         }
     }
 
+    /// 無音と判定した状態から始める（無音のあいだに作り直したとき、表示を `Live` に揺らさない）
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub fn new_silent(sample_rate: u32) -> Self {
+        let mut detector = Self::new(sample_rate);
+        detector.quiet_frames = detector.hold_frames;
+        detector.silent = true;
+        detector
+    }
+
     /// ステレオ・インターリーブのフレームを受けて、判定を進める
     pub fn feed(&mut self, frames: &[f32]) {
         let loud = frames.iter().any(|s| s.abs() > SILENCE_THRESHOLD);
@@ -129,6 +138,16 @@ mod tests {
 
         // 戻った後は、また保持時間を数え直す
         d.feed_quiet(1_999);
+        assert_eq!(d.status(), SourceStatus::Live);
+    }
+
+    #[test]
+    fn a_detector_started_silent_stays_silent_until_sound_arrives() {
+        let mut d = SilenceDetector::new_silent(1_000);
+        assert_eq!(d.status(), SourceStatus::Silent);
+        d.feed(&[0.0; 2 * 100]);
+        assert_eq!(d.status(), SourceStatus::Silent);
+        d.feed(&[0.2, -0.2]);
         assert_eq!(d.status(), SourceStatus::Live);
     }
 

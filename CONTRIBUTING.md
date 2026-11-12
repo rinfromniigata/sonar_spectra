@@ -53,11 +53,12 @@ bun run dev:pseudo
 bun run check
 ```
 
-次の検査を順に実行し、最初に失敗したところで止まります。CI（`.github/workflows/ci.yml`）も、pushとプルリクエストのたびに同じコマンドを実行します。ただし、`roadmap/`・`docs/`・Markdown・`LICENSE`だけの変更では実行しません（どの検査もこれらを読まないため）。個別に実行することもできます。
+次の検査を順に実行し、最初に失敗したところで止まります。CI（`.github/workflows/ci.yml`）も、pushとプルリクエストのたびに、WindowsとmacOS（Apple Silicon）のランナーで同じコマンドを実行します（出力音声の取得はOSごとに条件付きでコンパイルするため、両方で検査します）。ただし、`roadmap/`・`docs/`・Markdown・`LICENSE`だけの変更では実行しません（どの検査もこれらを読まないため）。個別に実行することもできます。
 
 - `bun run check:types`：型検査（`vue-tsc`と`tsc`）。存在しない辞書のキーや、プレースホルダの過不足もここで見つかります
 - `bun run check:lint`：ESLint。UIの文字列の直書き（テンプレート、`aria-label`などの属性、スクリプト内の日本語）と、`useT()`を通らない翻訳を検出します
 - `bun run check:i18n`：ロケール間のキーの過不足、プレースホルダの一致、メッセージの構文、未使用キー
+- `bun run check:plist`：`src-tauri/Info.plist`の用途の説明（`NSAudioCaptureUsageDescription`）が、原文の辞書の値と一致すること
 - `bun run check:tokens`：`src/theme/`以外にある、色とpx値の直書き
 - `bun run check:unit`：単体テスト（vitest）
 - `bun run check:rust`：`cargo clippy`（警告もエラー扱い）と`cargo test`
@@ -80,6 +81,7 @@ SONAR_UPDATE_FIXTURE=1 cargo test --manifest-path src-tauri/Cargo.toml regenerat
 - 文字列を連結して文を組み立てず、可変部分はプレースホルダ（`{name}`）で表します。日付と数値は`src/i18n/format.ts`の関数で整形します
 - キーは`"title_bar.settings"`のように、組み立てずに文字列のまま書きます（未使用キーの検査が、文字列として現れるキーを数えるため）
 - 辞書にはあるが、使う画面がまだできていないキーは、`scripts/i18n_pending_keys.ts`に挙げます。画面で使い始めたら、ここから外します（外し忘れは`check:i18n`がエラーにします）
+- OSが出す文言（macOSの`Info.plist`の用途の説明）も、原文の辞書の`bundle.*`が正本です。辞書を直してから`src-tauri/Info.plist`に同じ値を写します（対応は`scripts/info_plist_check_core.ts`の`INFO_PLIST_MESSAGES`）
 
 ### 値の決まり
 

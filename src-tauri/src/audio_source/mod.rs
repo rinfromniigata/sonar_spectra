@@ -1,18 +1,23 @@
 //! 入力源（audio_source）
 //!
 //! 音声のフレームを出す共通のインターフェース。解析・送出はこのモジュールの型だけを知り、
-//! 取得方式（初版は WASAPI のループバック）の違いは `AudioSource` の実装に閉じ込める。
-//! Mac の取得方式や入力デバイスは、`AudioSource` の実装を足すだけで済むようにする。
+//! 取得方式（Windows は WASAPI のループバック、macOS は Process Tap）の違いは
+//! `AudioSource` の実装に閉じ込める。入力デバイスなどは、`AudioSource` の実装を足すだけで済むようにする。
 
-// 変換と状態の判定は取得方式によらないが、使うのは今のところ WASAPI の実装だけ
+// 変換・状態の判定・見張りは取得方式によらない。使わない OS でも単体テストはかける
+#[cfg(target_os = "macos")]
+mod core_audio_tap;
+// macOS は f32 だけを使うので、整数の形式は Windows でだけ使う
 #[cfg_attr(not(windows), allow(dead_code))]
 mod convert;
 mod ring_buffer;
-#[cfg_attr(not(windows), allow(dead_code))]
+#[cfg_attr(not(any(windows, target_os = "macos")), allow(dead_code))]
 mod state;
 mod unsupported;
 #[cfg(windows)]
 mod wasapi_loopback;
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+mod watch;
 
 use std::fmt;
 use std::sync::Arc;
@@ -20,17 +25,23 @@ use std::sync::Arc;
 use serde::Serialize;
 
 pub use ring_buffer::{DEFAULT_RING_FRAMES, FrameReader, FrameSink, WindowInfo, frame_ring};
+#[cfg(target_os = "macos")]
+pub use core_audio_tap::CoreAudioTap;
 pub use unsupported::UnsupportedSource;
 #[cfg(windows)]
 pub use wasapi_loopback::WasapiLoopback;
 
-/// この OS の既定の入力源（Windows は WASAPI のループバック、ほかはまだない）
+/// この OS の既定の入力源（Windows は WASAPI のループバック、macOS は Process Tap、ほかはまだない）
 pub fn default_source() -> Box<dyn AudioSource> {
     #[cfg(windows)]
     {
         Box::new(WasapiLoopback::new())
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    {
+        Box::new(CoreAudioTap::new())
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
     {
         Box::new(UnsupportedSource)
     }

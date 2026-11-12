@@ -1,7 +1,8 @@
 // i18n の自動検査（bun run check:i18n）
 // - ロケール間のキーの過不足と、プレースホルダの一致
 // - メッセージの構文
-// - 未使用キー（画面がまだのキーは scripts/i18n_pending_keys.ts に挙げる）
+// - 未使用キー（画面がまだのキーは scripts/i18n_pending_keys.ts に挙げる。
+//   Info.plist に写すキーは使用中として数える。一致は scripts/info_plist_check.ts が確かめる）
 // 存在しないキーの参照は、vue-tsc（src/i18n/use_t.ts の型）で検出する。
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
@@ -17,6 +18,7 @@ import {
   formatIssue,
 } from "./i18n_check_core";
 import { PENDING_KEYS } from "./i18n_pending_keys";
+import { INFO_PLIST_MESSAGES } from "./info_plist_check_core";
 
 const ROOT = join(import.meta.dirname, "..");
 const SRC = join(ROOT, "src");
@@ -61,6 +63,7 @@ const used = new Set([
   ...[...findUsedKeys(read(codeFiles.filter((file) => file.startsWith(DEV + sep))), allKeys)].filter((key) =>
     key.startsWith(DEV_ONLY_PREFIX),
   ),
+  ...Object.values(INFO_PLIST_MESSAGES).filter((key) => allKeys.has(key)),
 ]);
 issues.push(...checkUsage(allKeys, used, PENDING_KEYS));
 

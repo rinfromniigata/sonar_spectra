@@ -204,6 +204,12 @@ const ja = {
     frame_limit_45: "45 fps",
     frame_limit_30: "30 fps",
   },
+  // アプリの外（OS）が出す文言。画面では使わず、バンドルの設定に同じ値を書く（bun run check:plist で一致を確かめる）
+  bundle: {
+    // macOS の Info.plist の NSAudioCaptureUsageDescription（システムオーディオ録音の確認に出る用途の説明）
+    audio_capture_usage:
+      "再生中の音を解析してメーターに表示するために、システムオーディオを取得します。音声を録音・保存することはありません。",
+  },
   dev_gallery: {
     title: "部品の状態",
     hint: "開発時だけ開ける画面です。Ctrl+Shift+P でメーター画面と切り替えます。",

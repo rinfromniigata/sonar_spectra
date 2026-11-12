@@ -1,5 +1,6 @@
-# 自動検査（bun run check）。push とプルリクエストで、Windows のランナーで実行する。
-# 初版の対象は Windows x64 だけ（出力音声の取得に WASAPI を使うため）
+# 自動検査（bun run check）。push とプルリクエストで、Windows と macOS のランナーで実行する。
+# 出力音声の取得は OS ごとに条件付きでコンパイルする（Windows は WASAPI、macOS は Process Tap）ため、
+# 両方で clippy とテストにかける。macOS は Apple Silicon（arm64）のランナーを使う
 # bun run check が読まないファイル（計画と記録・ブランドの写し・文書）だけの変更では実行しない
 name: CI
 
@@ -26,7 +27,12 @@ concurrency:
 
 jobs:
   check:
-    runs-on: windows-latest
+    strategy:
+      # 片方の OS で失敗しても、もう片方の結果を見られるようにする
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
 

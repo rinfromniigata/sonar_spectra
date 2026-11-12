@@ -11,10 +11,11 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "icons": "bun scripts/generate_icons.ts",
-    "check": "bun run check:types && bun run check:lint && bun run check:i18n && bun run check:tokens && bun run check:unit && bun run check:rust",
+    "check": "bun run check:types && bun run check:lint && bun run check:i18n && bun run check:plist && bun run check:tokens && bun run check:unit && bun run check:rust",
     "check:types": "vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
     "check:lint": "eslint --max-warnings 0 .",
     "check:i18n": "bun scripts/i18n_check.ts",
+    "check:plist": "bun scripts/info_plist_check.ts",
     "check:tokens": "bun scripts/token_check.ts",
     "check:unit": "vitest run",
     "check:rust": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml"

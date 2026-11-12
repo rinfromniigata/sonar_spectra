@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 値は原文の辞書（src/i18n/locales/ja.ts）の bundle.audio_capture_usage と同じにする（bun run check:plist） -->
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>再生中の音を解析してメーターに表示するために、システムオーディオを取得します。音声を録音・保存することはありません。</string>
+</dict>
+</plist>

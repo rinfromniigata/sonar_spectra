@@ -1,7 +1,7 @@
 //! 取得方式がまだない OS 向けの入力源
 //!
-//! 初版の取得方式は Windows の WASAPI だけ。ほかの OS でもアプリを組み立てて起動できるよう、
-//! 常に「使えない」を返す入力源を置く（Mac の取得方式を足したら置き換える）。
+//! 取得方式は Windows（WASAPI）と macOS（Process Tap）にある。ほかの OS でもアプリを組み立てて
+//! 起動できるよう、常に「使えない」を返す入力源を置く。
 
 use super::{AudioFormat, AudioSource, DeviceInfo, FrameSink, SourceError, StatusSink};
 

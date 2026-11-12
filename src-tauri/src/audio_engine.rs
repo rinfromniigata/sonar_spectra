@@ -103,12 +103,13 @@ impl AudioEngine {
     pub fn start_stream(&mut self, output: impl FnMut(Vec<u8>) + Send + 'static) {
         // 古い送出を先に止める（同じ読み出し口を2つのスレッドが読まないように）
         self.transport = None;
-        let transport = FrameTransport::start(self.reader.clone(), Pipeline::default(), output);
-        if let Some(ids) = &self.active_sections {
-            transport.set_active_sections(ids.clone());
-        }
-        transport.set_paused(self.paused);
-        self.transport = Some(transport);
+        self.transport = Some(FrameTransport::start_with(
+            self.reader.clone(),
+            Pipeline::default(),
+            self.paused,
+            self.active_sections.clone(),
+            output,
+        ));
 
         if self.source_started {
             self.status.reemit();

@@ -883,7 +883,7 @@ Phaseの推奨: Sonnet・high以上
 ## Phase 12: macOSでの出力音声の取得
 
 Phaseの推奨: Opus・high以上
-引き継ぎ: 次はT12-3。change「261113041903_change_macos_permission_and_tap」（v7）で、録音の許可は判定せず（T12-2・T13-4は取りやめ）、Process Tapと集約デバイスを自前で作ってcpalで開くことにした。許可にかかわる実機の確認は、ビルドした`.app`を`/Applications`に置いて行う。開発機はMacBook Air（M1・8GB、macOS 27.2.1）で、XcodeはなくCommand Line Toolsだけ（actoolは使えない）。RustはHomebrewの1.99.1（rustupなし）
+引き継ぎ: 次はW12-1。T12-3〜T12-5は完了。macOSで実際の取得（集約デバイスを`device_by_id`で見つけて開けること）はまだ確かめていない（VSCodeからのテストではOSの確認で止まった）ので、W12-2・W12-3で`.app`を`/Applications`に置いて確かめる。Windowsでの`clippy`・テストは手元で回せず、W12-4のCIが初回。開発機はMacBook Air（M1・8GB、macOS 27.2.1）、Command Line Toolsだけ（actoolなし）、RustはHomebrewの1.99.1（rustupなし）
 
 - [x] T12-1 【エージェント】macOS対応で使うAPIを確かめ、許可がないときの振る舞いを試作で確かめて報告する
   - 実施: Opus 5.5（エフォートは起動時の設定のまま）
@@ -901,18 +901,25 @@ Phaseの推奨: Opus・high以上
   - 推奨: Sonnet・high以上
   - 依存: T12-1
   - 既存の理由の扱い（S01cの表示、出力系統のチップ）を変えない。WindowsではこのOSの許可の理由を出さない
-- [ ] T12-3 【エージェント】macOSの入力源を、自前で作ったProcess Tapと集約デバイスを`cpal`で開く形で実装し、`default_source`がOSに合うものを返すようにする
+- [x] T12-3 【エージェント】macOSの入力源を、自前で作ったProcess Tapと集約デバイスを`cpal`で開く形で実装し、`default_source`がOSに合うものを返すようにする
+  - 実施: Opus 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ：`audio_source/core_audio_tap/`（`CoreAudioTap`。`tap.rs`がタップと集約デバイスの作成・後始末）と、OSに頼らない判定の`audio_source/watch.rs`（`decide`・`SilentRebuild`・`StallWatch`）を足した。集約デバイスは`cpal`の`device_by_id`（UID）で探して開き、`start`は`Opening`を通知してすぐ返し、`stop`は最長0.5秒だけ待って止まっているスレッドを切り離す。様子は0.5秒ごとに調べ、無音が10秒続くたびに作り直す（`SilenceDetector::new_silent`で`Silent`のまま）
+  - 実施メモ：実機の無視テストは、デバイスの一覧と見つからないデバイスが通過。取得のテストは、テストの実行（VSCodeから）でOSの確認が出て作成が90秒止まったまま失敗し、集約デバイスを`device_by_id`で見つけられることと実際の取得は未確認。W12-2で`.app`から確かめる
   - 依存: T12-1
   - imple 3.1（v7）。`#[cfg(target_os = "macos")]`で分け、`cpal`と`objc2-core-audio`はmacOSのときだけの依存にする。Windowsの`WasapiLoopback`と`UnsupportedSource`のふるまいは変えない
   - 既定の出力デバイスでの取得、デバイスの一覧と切り替え（入出力兼用のデバイスも出力のループバックで取る）、ステレオ・f32へのそろえ（共通の`convert`）、無音の判定（共通の`state`）、既定の変更（自前の監視）・切断・標本化周波数の変更での開き直し、無音が続くあいだの一定間隔の作り直し、初回の確認のあいだ`Opening`を出してエンジンのロックを持ち続けないこと、停止での集約デバイスとタップの後始末
   - 単体テスト：OSの音声に頼らない部分（形式のそろえ、状態の遷移、無音のあいだの作り直しの判定、既定への追従の判定）をテストする。実機での取得はW12-2・W12-3
-- [ ] T12-4 【エージェント】macOSのバンドルの設定を`tauri.macos.conf.json`と`Info.plist`に置き、`Info.plist`の用途の説明と辞書の文言の一致を自動検査に足す
+- [x] T12-4 【エージェント】macOSのバンドルの設定を`tauri.macos.conf.json`と`Info.plist`に置き、`Info.plist`の用途の説明と辞書の文言の一致を自動検査に足す
   - 推奨: Sonnet・high以上
+  - 実施: Opus 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ：辞書のキーは`bundle.audio_capture_usage`。検査は`bun run check:plist`（`scripts/info_plist_check.ts`、対応表は`info_plist_check_core.ts`の`INFO_PLIST_MESSAGES`で、`check:i18n`はこのキーを使用中として数える）。`bun tauri build --debug --bundles app`の`.app`で、`LSMinimumSystemVersion` 26.0・用途の説明・`adhoc,runtime`の署名を確かめた。`bun run check`中に見つけた既存のテストの不安定さを直した（fix「261113044506_fix_phase12」の1）
   - 依存: T12-3
   - imple 3.6の「バンドルの設定」。最低バージョン26.0、対象は`aarch64-apple-darwin`だけ、アドホック署名。`NSAudioCaptureUsageDescription`の文言は辞書に新しいキーで足し（言い回しは委任事項）、`Info.plist`の値と一致することを`bun run check`で確かめる（imple 4.8）
   - タイトルバーの設定（Overlay・信号機ボタンの位置）はT13-1で足す
-- [ ] T12-5 【エージェント】`ci.yml`にmacOSのランナーのジョブを足し、WindowsとmacOSの両方で`bun run check`を回す
+- [x] T12-5 【エージェント】`ci.yml`にmacOSのランナーのジョブを足し、WindowsとmacOSの両方で`bun run check`を回す
   - 推奨: Sonnet・high以上
+  - 実施: Opus 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ：`check`ジョブを`matrix.os: [windows-latest, macos-latest]`（`fail-fast: false`）にした。GitHubのドキュメント（2026-11-13）で`macos-latest`はmacOS 26・arm64。アクションの版（checkout v7・setup-bun v2・rust-cache v2）は最新の系列のまま。このMacにはWindowsのターゲットがなく、Windowsでの`clippy`はW12-4のCIで確かめる
   - 依存: T12-4
   - ランナーのラベルとアクションの版は、その時点のGitHubのドキュメントで確かめる。`paths-ignore`と`concurrency`は今のまま。`release.yml`はT16-1で扱う
 

@@ -132,7 +132,26 @@ impl FrameTransport {
         pipeline: Pipeline,
         output: impl FnMut(Vec<u8>) + Send + 'static,
     ) -> Self {
-        let shared = Arc::new(Shared::default());
+        Self::start_with(reader, pipeline, false, None, output)
+    }
+
+    /// 一時停止と有効なセクションを決めてから、スレッドを起こして送出を始める
+    /// （起こした後に伝えると、伝わる前の1回分が送られることがある）
+    pub fn start_with(
+        reader: FrameReader,
+        pipeline: Pipeline,
+        paused: bool,
+        active_sections: Option<Vec<u8>>,
+        output: impl FnMut(Vec<u8>) + Send + 'static,
+    ) -> Self {
+        let shared = Arc::new(Shared {
+            control: Mutex::new(Control {
+                stop: false,
+                paused,
+                active_sections,
+            }),
+            wake: Condvar::new(),
+        });
         let shared_in = Arc::clone(&shared);
         let ticker = Ticker::new(reader, pipeline);
         let thread = thread::Builder::new()
