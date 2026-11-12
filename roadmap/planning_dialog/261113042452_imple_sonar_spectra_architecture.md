@@ -1,9 +1,9 @@
 # sonar_spectra 実装設計（imple）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v6.md` と同版のデザインアセット
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v7.md` と同版のデザインアセット
 - 種別：Agentic Coding
-- 対になるドキュメント：`261113032529_tasks_sonar_spectra_initial.md`、`261113032529_walk_sonar_spectra_initial.md`
-- 改訂：change「261113031351_change_macos_support」を反映（プランアセット v6。macOSへの対応：1節、2節、3.1、3.4、3.5、3.6〔新設〕、4.5、4.6、4.8、6節、7節。v5のSPEC 11節「モックとの差分」がモックに取り込まれたため、11節への参照を画面IDに改めた）。前の版は`archived/261111033238_imple_sonar_spectra_architecture.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映（4.5：描画を開始できない表示と、入力源の状態の表示〔S01b〜S01d〕の出し分け）。前の版は`archived/261110165456_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映（4.6の発光：等倍の図形は画像を写さず同じ頂点の範囲をもう一度描いて重ねる）。前の版は`archived/261110133636_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映（1節、2節、3.4、4.2、4.5、4.6、4.8、5.1、5.2の16、5.3）。前の版は`archived/261109115345_imple_sonar_spectra_architecture.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」）））
+- 対になるドキュメント：`261113042452_tasks_sonar_spectra_initial.md`、`261113042452_walk_sonar_spectra_initial.md`
+- 改訂：change「261113041903_change_macos_permission_and_tap」を反映（プランアセット v7。録音の許可を判定せずS09bを取りやめる、Process Tapと集約デバイスを自前で作りcpalで開く、T12-1で確かめた細部：2節、3.1、3.5、3.6、4.5、7節）。前の版は`archived/261113032529_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113031351_change_macos_support」を反映（プランアセット v6。macOSへの対応：1節、2節、3.1、3.4、3.5、3.6〔新設〕、4.5、4.6、4.8、6節、7節。v5のSPEC 11節「モックとの差分」がモックに取り込まれたため、11節への参照を画面IDに改めた）。前の版は`archived/261111033238_imple_sonar_spectra_architecture.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映（4.5：描画を開始できない表示と、入力源の状態の表示〔S01b〜S01d〕の出し分け）。前の版は`archived/261110165456_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映（4.6の発光：等倍の図形は画像を写さず同じ頂点の範囲をもう一度描いて重ねる）。前の版は`archived/261110133636_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映（1節、2節、3.4、4.2、4.5、4.6、4.8、5.1、5.2の16、5.3）。前の版は`archived/261109115345_imple_sonar_spectra_architecture.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」））））
 
 ## 1. 方針
 
@@ -43,8 +43,8 @@ sonar_spectra/
 ├─ src-tauri/                   Rust
 │  ├─ src/
 │  │  ├─ main.rs / lib.rs       Tauri の組み立て、プラグイン登録、コマンド登録
-│  │  ├─ audio_source/          入力源（trait と、WASAPI ループバック〔Windows〕・cpal の Process Tap〔macOS〕の実装）
-│  │  ├─ platform/              ウィンドウとOSの差（タイトルバー、全画面の方式、メニュー、システム設定を開く、App Nap の抑止。v6）
+│  │  ├─ audio_source/          入力源（trait と、WASAPI ループバック〔Windows〕・Process Tap〔macOS。集約デバイスを cpal で開く。v7〕の実装）
+│  │  ├─ platform/              ウィンドウとOSの差（タイトルバー、全画面の方式、メニュー、App Nap の抑止。v6）
 │  │  ├─ analysis/              解析（種類ごとのファイル）
 │  │  ├─ frame_transport/       約60回/秒のまとめと、バイト列への符号化
 │  │  ├─ settings_store/        設定と構成のJSON
@@ -72,7 +72,7 @@ sonar_spectra/
 pub struct DeviceInfo { pub id: String, pub name: String, pub is_default: bool }
 
 pub enum SourceStatus { Opening, Live, Silent, Unavailable { reason: UnavailableReason } }
-pub enum UnavailableReason { NotFound, Disconnected, InUse, PermissionDenied, Other } // PermissionDenied は v6（macOS のシステムオーディオ録音の許可がない）
+pub enum UnavailableReason { NotFound, Disconnected, InUse, Other } // v7：macOS の録音の許可は判定しない（PermissionDenied は作らない）
 
 pub struct AudioFormat { pub sample_rate: u32, pub channels: u16 } // 解析側にはステレオ f32 に揃えて渡す
 
@@ -85,9 +85,15 @@ pub trait AudioSource: Send {
 ```
 
 - Windowsの実装は`WasapiLoopback`（`wasapi`クレート 0.26系。APIはインストール後のドキュメントで確認する）。取得はイベント駆動の専用スレッドで行う
-- macOSの実装（v6）は、`cpal` 0.18系（0.18.2）のループバック（Core AudioのProcess Tapと集約デバイス。出力デバイスに入力のストリームを作る）。`#[cfg(target_os = "macos")]`で分け、`cpal`はmacOSのときだけの依存にする。名前（仮に`CoreAudioTap`）と細部は実装で決めてよい。`cpal`のコールバックからリングバッファへ書き、ステレオ・f32へのそろえは共通の`convert`を使う
+- macOSの実装（v6。v7で改めた）は、Core AudioのProcess Tapと集約デバイスを`objc2-core-audio`で自前で作り、その集約デバイスを`cpal` 0.18系（0.18.2）の入力として開く。`#[cfg(target_os = "macos")]`で分け、`cpal`と`objc2-core-audio`はmacOSのときだけの依存にする。名前（仮に`CoreAudioTap`）と細部は実装で決めてよい。`cpal`のコールバックからリングバッファへ書き、ステレオ・f32へのそろえは共通の`convert`を使う
+  - タップは、選んだ出力デバイスのUIDに対して、全プロセス（除外なし）・ミュートしない・プライベートで作り、集約デバイスはそのタップだけを持つプライベートなもの（タップの自動開始あり）にする。作り方は`cpal`の`host/coreaudio/macos/loopback.rs`が参考になる。停止のときは、ストリームを止めてから集約デバイス、タップの順に壊す
+  - `cpal`自身のループバック（出力デバイスに入力のストリームを作る）は使わない。入力チャンネルを持つデバイス（入出力兼用のオーディオインターフェース等）では、ループバックではなくそのデバイスの入力を開くため（T12-1）
+  - 出力デバイスの今の形式（`default_output_config()`が返すもの）で開き、出力デバイスの標本化周波数などを変えない
   - `default_source`は、Windowsでは`WasapiLoopback`、macOSではこの実装、ほかのOSでは`UnsupportedSource`を返す
-  - 許可がないとき（システムオーディオ録音を許可されていない・取り消された）は`Unavailable { reason: PermissionDenied }`を通知する。許可がないことをどう見分けるか（エラーで返るか、無音が来るだけか、調べる手段があるか）はT12-1で確かめる。見分けられなければ、出し方を仕様変更として相談する（無音〔S01b〕として扱うと決めつけない）
+  - 既定の出力への追従：タップは作成時のデバイスに固定され、`cpal`からは既定の変更が通知されない。`kAudioHardwarePropertyDefaultOutputDevice`を自前で監視し（または短い間隔で既定のデバイスを調べ）、既定に追従しているときは開き直す。`cpal`のエラーの`DeviceNotAvailable`（切断）と`StreamInvalidated`（標本化周波数の変更）でも開き直す
+  - 録音の許可（v7）：判定しない。許可がない（未決定で拒否・取り消し）ときも、エラーは返らず0のサンプルが来るだけで、許可があって何も鳴っていないときと見分けられず、公開APIもないため（T12-1）。許可がないときは無音（S01b）になる
+  - 無音のあいだの開き直し（v7）：macOSでは、無音（`Silent`）が続くあいだ、一定の間隔（例：10秒。細部は実装で決めてよい）で取得を作り直す。許可したあとも、動いているストリームには0が来続け、作り直せば取れるため（T12-1）。作り直しのあいだも状態は`Silent`のまま（`Opening`にしない）にして、表示を揺らさない
+  - 初回の取得では、OSの確認が出ているあいだ、ストリームの作成が答えるまで止まる（T12-1で4〜71秒）。そのあいだは`Opening`を通知し、エンジンのロックを持ったまま待たない（`list_output_devices`・`set_render_paused`などのコマンドを止めない）
   - デバイスの一覧・既定の変更・切断の扱いは、Windowsと同じ状態の通知（`Opening`／`Live`／`Silent`／`Unavailable`）にそろえる
 - モノラルや多チャンネルのデバイスは、この層でステレオに揃える（解析は常にL・Rの2チャンネルを前提にできる）
 - 既定のデバイスが変わった・切断された場合は`Unavailable`か`Opening`を通知し、再オープンを試みる
@@ -135,24 +141,22 @@ pub trait Analyzer: Send {
 - `start_stream(on_frame: Channel)`：取得と送出を開始する。結果のバイト列は`on_frame`へ
 - `list_output_devices() -> Vec<DeviceInfo>`
 - `select_output_device(device_id: Option<String>)`：入力源を切り替える（`Opening` → `Live`）
-- `retry_source()`：S01c・S09bの「再試行」
+- `retry_source()`：S01cの「再試行」
 - `get_platform() -> "windows" | "macos" | "other"`（v6）：タイトル帯の形と全画面の方式を選ぶ
-- `open_privacy_settings()`（v6。macOSだけ）：S09bの「システム設定を開く」。システム設定の「プライバシーとセキュリティ」の、システムオーディオ録音の画面を開く（開き方はT12-1・T13-1で確かめる）
-- `set_simple_fullscreen(on: bool)`（v6。macOSだけ）：新しい操作スペースを作らない全画面（S09a）
 - `set_render_paused(paused: bool)`：最小化の通知
 - `set_active_sections(ids: Vec<u8>)`
 - `load_state() -> PersistedState` / `save_state(state: PersistedState)`
 - `validate_config_file(text: String) -> Config`：読み込んだファイルの検証と移行
-- イベント`source-status`：`SourceStatus`と`DeviceInfo`（出力系統のチップ、S01b〜S01d・S09bの表示に使う）。v6で、使えない理由に`permission_denied`が増える
+- イベント`source-status`：`SourceStatus`と`DeviceInfo`（出力系統のチップ、S01b〜S01dの表示に使う）。v7：使えない理由は増えない（`permission_denied`は作らない）
 
 ### 3.6 ウィンドウとOSの差（platform。v6）
 
+- **`tauri.macos.conf.json`の重なり方**（v7。T12-1）：`tauri.conf.json`にJSON Merge Patch（RFC 7396）で重なり、配列（`app.windows`・`bundle.icon`）はまるごと置き換わる。配列を変えるときは、macOS用に全体を書く
 - **タイトルバー**：macOSだけ、`tauri.macos.conf.json`でウィンドウを`titleBarStyle: Overlay`・`hiddenTitle: true`にし、`trafficLightPosition`で信号機ボタンをタイトル帯の左端・帯の高さの中央に置く（正確な値は委任事項。実機で合わせる）。Windowsは標準のタイトルバーのまま
-- **全画面**：macOSは`set_simple_fullscreen`（Tauri 2.10以降）で、新しい操作スペースを作らずに覆い、メニューバーとDockを隠す。Windowsは今の`setFullscreen`のまま。UIの`window_api`は、OSの種類で呼び分ける（`window_controller`の状態の持ち方は変えない）。全画面の状態は記憶しない（v1と同じ）
+- **全画面**：macOSは`@tauri-apps/api`の`setSimpleFullscreen`（Tauri 2.10以降。権限`core:window:allow-set-simple-fullscreen`をcapabilitiesに足す。独自のコマンドは作らない。v7）で、新しい操作スペースを作らずに覆い、メニューバーとDockを隠す。Windowsは今の`setFullscreen`のまま。UIの`window_api`は、OSの種類で呼び分ける（`window_controller`の状態の持ち方は変えない）。全画面の状態は記憶しない（v1と同じ）
 - **メニュー**：macOSだけ、アプリメニュー（このアプリについて・隠す・ほかを隠す・すべてを表示・終了）と「編集」メニュー（取り消し・やり直し・カット・コピー・ペースト・すべてを選択）を、Tauriの定義済みの項目で作る。名前の入力欄で標準のショートカットが効くこと。項目の文言は定義済みの項目（OSの言語）に任せ、辞書を使う必要があるかはT13-5で確かめる
-- **システム設定を開く**：`open_privacy_settings`で、システムオーディオ録音の設定の画面を開く
 - **App Napの抑止**：macOSで、起動中は`NSProcessInfo`の活動（`beginActivityWithOptions`。ユーザーが始めた活動・App Napを止める）を保ち、VJツールを前面にしても取得・送出・描画が間引かれないようにする。WebViewの描画の間引き（ウィンドウが見えている限り上限どおりに描くこと）は、T15-2で測って確かめる
-- **バンドルの設定（macOS）**：`minimumSystemVersion` 26.0、対象は`aarch64-apple-darwin`だけ、アドホック署名（`signingIdentity: "-"`。キーの名前はインストール済みのTauriで確かめる）。`Info.plist`に`NSAudioCaptureUsageDescription`を足す。その文言は原文の辞書（`ja.ts`）のキーから取り、`Info.plist`の値と辞書の値が一致することを自動検査で確かめる（4.8）
+- **バンドルの設定（macOS）**：`minimumSystemVersion` 26.0、対象は`aarch64-apple-darwin`だけ（設定ではなく`tauri build --target aarch64-apple-darwin`で絞る。v7）、アドホック署名（`bundle.macOS.signingIdentity: "-"`。バンドラーは`codesign --force -s - --options runtime`を実行し、この署名でProcess Tapが使える〔エンタイトルメント不要。T12-1〕）。`Info.plist`は`src-tauri/Info.plist`に置けば自動で合成され、devのビルドにも埋め込まれる。`Info.plist`に`NSAudioCaptureUsageDescription`を足す。その文言は原文の辞書（`ja.ts`）のキーから取り、`Info.plist`の値と辞書の値が一致することを自動検査で確かめる（4.8）
 
 ## 4. UI側
 
@@ -233,16 +237,15 @@ interface ShapeSink {
 ### 4.5 画面（components）
 
 - `App.vue`：`MeterScreen`（タイトル帯＋格子＋走査線と周辺減光）を常に表示し、その上に`StatusOverlay`（S01b〜S01d）、`SettingsDrawer`（S02）／`PaletteDrawer`（S02a）／`ConfigDrawer`（S02b）、`LayoutEditPanel`と`InstanceInspector`（S03）を状態で重ねる
-- ボーダレスフルスクリーン：Windowsは`@tauri-apps/api`のウィンドウAPIで全画面にする（ボーダレスになることを実機で確認済み）。macOSは`set_simple_fullscreen`（3.6）。タイトル帯と操作系は残し、ボタンは終了のアイコンに変える（S01a、S09a）
+- ボーダレスフルスクリーン：Windowsは`@tauri-apps/api`のウィンドウAPIで全画面にする（ボーダレスになることを実機で確認済み）。macOSは`setSimpleFullscreen`（3.6）。タイトル帯と操作系は残し、ボタンは終了のアイコンに変える（S01a、S09a）
 - タイトル帯（v6）：`get_platform`がmacOSのときは、左端に信号機ボタンの分の余白を取り、ロゴをその右から始める。帯のボタン以外の部分に`data-tauri-drag-region`を付け、ダブルクリックでOSの設定どおりに拡大・しまう（Tauriのつかみの既定の振る舞いで足りるかを確かめる）（S09）。全画面（S09a）では余白をなくし、Windowsの全画面（S01a）と同じ形にする。Windowsは今のまま
-- 出力系統のチップ（v6）：macOSでは取得中の文言を`source.chip_loopback_mac`に、許可がないときは`source.chip_perm`にする（モックの辞書のとおり）
-- 許可がないとき（v6。S09b）：`StatusOverlay`に、`perm.title`・`perm.body`と、「システム設定を開く」（`open_privacy_settings`）・「再試行」（`retry_source`）のボタンを出す。中央の表示の出し分けでは、使えない（S01c）と同じ側に入れる（描画を開始できない表示より優先する。S01eの説明のとおり）
+- 出力系統のチップ（v6）：macOSでは取得中の文言を`source.chip_loopback_mac`に（モックの辞書のとおり）。許可がないときの`source.chip_perm`は作らない（v7）
 - ウィンドウ状態：`tauri-plugin-window-state`で位置・大きさ・ディスプレイを記憶する。全画面の状態は記憶しない（StateFlagsから外す）
 - `MeterGrid`（v4）：格子の後ろに、共有のWebGL2キャンバスを1枚敷く（格子と同じ範囲、ポインターのイベントは通す）。`ModuleFrame`のキャンバスは文字の層になり、地は透明にする（地の色は共有キャンバスが塗る）
 - 描画を開始できないとき（v4。S01e）：WebGL2のコンテキストを作れなければ、メーターの領域の中央に`status.render_unavailable`を1行出す。タイトル帯と操作系はふだんどおり
 - 中央の表示の出し分け（v5。S01e）：描画を開始できない表示（`MeterGrid`）と、入力源の状態の表示（`StatusOverlay`。S01b〜S01d）は、中央に1つだけ出す。`MeterGrid`は描画の層が使えない（作れない・失った）ことを親の`MeterScreen`へ知らせ、`MeterScreen`が両方の出し方を決める（名前と細部は実装で決めてよい）
   - 無音（S01b）：描画を開始できない表示を出し、`StatusOverlay`の無音の表示は出さない（無音はタイトル帯のチップで分かる。チップは今のまま）
-  - 使えない（S01c・S09b）・開いている途中（S01d）：`StatusOverlay`を出し、描画を開始できない表示は出さない（入力源が開いて live か silent になったら出す）
+  - 使えない（S01c）・開いている途中（S01d）：`StatusOverlay`を出し、描画を開始できない表示は出さない（入力源が開いて live か silent になったら出す）
   - 判定は純粋関数にしてテストする（入力源の状態 × 描画の層の状態 → 出す表示）
 - 設定パネルの表示の欄（v4。S02）：末尾に「フレームレートの上限」のセグメント（60／45／30fps）を置く
 - ライトテーマで小さな文字に`neon-b`・`neon-c`を使う部品（適合判定のバッジ、手動配置のバッジ、LOUDの数値など）は、文字を`--color-text`にし、枠線だけ発光色を残す（SPEC 9節）
@@ -398,6 +401,7 @@ interface Palette { id: string; name: string; main: string; sub: string; accent:
   - macOSの従来形式用：マスターを824四方に縮めて中央に置き（四辺100）、角丸半径185.4で切り抜く。ここから`icon.icns`だけを取る。連続曲率の角丸への置き換えは、まず行わない（SPECで任意とされているため。必要になったら別の作業として扱う）
   - `.icon`用（v6）：マスターの前景`01_ring`・`02_wave`・`03_peak`を、1024四方のキャンバスのまま、角丸や余白を足さずに、レイヤーごとのSVGとして`docs/brand/icon_layers/{id}.svg`へ書き出す（`00_bg`は書き出さない。その色はIcon Composerの背景の塗りにする）。`bun run icons`の中で行う
 - **`AppIcon.icon`**（v6）：利用者が、レイヤーのSVGと`brand.md`の「Apple環境向けアイコン」からIcon Composerで作り、リポジトリに置く。`tauri.conf.json`（または`tauri.macos.conf.json`）の`bundle.icon`に加え、`.icns`は従来形式のフォールバックとして残す。Tauriの`.icon`の扱い（対応した版、`actool`の呼び出し、既知の不具合）はT12-1とT14-4で確かめる
+  - Tauriの`.icon`の扱い（v7。T12-1）：tauri-bundler 2.9.0で対応し、`@tauri-apps/cli` 2.12.4はtauri-bundler 2.10.4を使う。`bundle.icon`に`.icon`のフォルダを挙げると、バンドラーが`actool`（26以上）で`Assets.car`を作り、`CFBundleIconName`と`CFBundleIconFile`（`.icns`）の両方を`Info.plist`に書く。`actool`がない・26未満のときは、エラーを記録するだけで、`Assets.car`なしでビルドに成功する（下の確かめ方で拾う）。既知の不具合（tauri#15315：`actool`がnilの挿入で落ちる、tauri#16386：Xcode 27.1で`Bad file descriptor`。どちらも未解決）に当たったときは、事前に`actool`で作った`Assets.car`を`bundle.icon`に入れる（`.car`はそのまま使われる）
 - **ファビコン**：`public/favicon.svg`はWindows用の中間SVG（角丸で切り抜いたもの）を置く。`public/favicon.ico`は`icon.ico`の写し
 - **切り抜きの書き方**：中間SVGでは`clipPath`だけを使う。マスターSVGの規則（`filter`・`mask`・`opacity`系を使わない）はマスターに対するもので、展開後のファイルには及ばないが、`clipPath`で足りるため使わない
 - **確かめ方**：展開した画像の画素から、角が透明であること、Windows向けは図形の外接矩形の余白が四辺112/1024以上、`.icns`の中の画像はタイルの外接矩形が四辺100/1024（1画素までのずれは許す）であることを測る。`.icon`については、`.icon`の中のレイヤーのSVGが`docs/brand/icon_layers/`と一致すること、ビルドした`.app`に`Assets.car`と`.icns`の両方があることを確かめる（v6）

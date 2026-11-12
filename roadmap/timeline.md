@@ -7,3 +7,4 @@
 - 261111033238 プランアセット v5：描画を開始できない表示と、入力源の状態の表示（S01b〜S01d）が重ならないよう、中央に1つだけ出す（無音では描画を開始できない表示、使えない・開いている途中では入力源の表示） ← development/261111033031_change_render_unavailable_priority.md
 - 261112015333 リリース準備 0.1.0（プランアセット v5）← CHANGELOG.md
 - 261113032840 プランアセット v6：macOS（Apple Silicon、macOS 26以降）に対応し、0.2.0として配布する（出力音声の取得、信号機ボタンとタイトル帯〔S09〕、新しい操作スペースを作らない全画面〔S09a〕、録音の許可がないときの表示〔S09b〕、Liquid Glassのアイコン、M1での負荷の確かめ方）。claude.aiの改訂版を取り込み ← development/261113031351_change_macos_support.md
+- 261113042727 プランアセット v7：macOSで録音の許可を判定せず、許可がないときの表示（S09b）を取りやめる（許可がないときは無音として見え、無音のあいだの作り直しで許可後に自動で回復する）。Process Tapと集約デバイスを自前で作り、cpalで開く ← development/261113041903_change_macos_permission_and_tap.md
