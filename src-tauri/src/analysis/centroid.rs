@@ -65,8 +65,7 @@ impl CentroidAnalyzer {
         let first = ((CENTROID_MIN_HZ / bin_hz).ceil() as usize).max(1);
         let last = ((CENTROID_MAX_HZ / bin_hz).ceil() as usize).min(self.average.len());
         let (mut power, mut weighted, mut total) = (0.0f32, 0.0f64, 0.0f64);
-        for k in first..last {
-            let p = self.average[k];
+        for (k, &p) in self.average.iter().enumerate().take(last).skip(first) {
             power += p;
             let a = f64::from(p.sqrt());
             weighted += a * k as f64 * f64::from(bin_hz);

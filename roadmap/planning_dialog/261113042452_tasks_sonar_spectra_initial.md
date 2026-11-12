@@ -883,7 +883,7 @@ Phaseの推奨: Sonnet・high以上
 ## Phase 12: macOSでの出力音声の取得
 
 Phaseの推奨: Opus・high以上
-引き継ぎ: 次はW12-1。T12-3〜T12-5は完了。macOSで実際の取得（集約デバイスを`device_by_id`で見つけて開けること）はまだ確かめていない（VSCodeからのテストではOSの確認で止まった）ので、W12-2・W12-3で`.app`を`/Applications`に置いて確かめる。Windowsでの`clippy`・テストは手元で回せず、W12-4のCIが初回。開発機はMacBook Air（M1・8GB、macOS 27.2.1）、Command Line Toolsだけ（actoolなし）、RustはHomebrewの1.99.1（rustupなし）
+引き継ぎ: 次はW12-4のやり直し（ユーザーがpushしてCIを確かめる）。W12-1〜W12-3は通過。1回目のCIはRust 1.100.0のclippyの新しい指摘で落ち、fix_phase12の2で直した。CIは`@stable`で手元（Homebrewの1.99.1）より新しい版になりうるため、clippyの指摘がCIでだけ出ることがある
 
 - [x] T12-1 【エージェント】macOS対応で使うAPIを確かめ、許可がないときの振る舞いを試作で確かめて報告する
   - 実施: Opus 5.5（エフォートは起動時の設定のまま）
