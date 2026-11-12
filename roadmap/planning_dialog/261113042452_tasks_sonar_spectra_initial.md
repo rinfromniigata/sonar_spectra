@@ -883,7 +883,7 @@ Phaseの推奨: Sonnet・high以上
 ## Phase 12: macOSでの出力音声の取得
 
 Phaseの推奨: Opus・high以上
-引き継ぎ: 次はW12-4のやり直し（ユーザーがpushしてCIを確かめる）。W12-1〜W12-3は通過。1回目のCIはRust 1.100.0のclippyの新しい指摘で落ち、fix_phase12の2で直した。CIは`@stable`で手元（Homebrewの1.99.1）より新しい版になりうるため、clippyの指摘がCIでだけ出ることがある
+引き継ぎ: Phase 12は完了（W12-1〜W12-4通過）。次はPhase 13のT13-1。CIは`@stable`で手元（Homebrewの1.99.1）より新しい版になりうるため、clippyの指摘がCIでだけ出ることがある（fix_phase12の2）。`.app`の許可の確認は`/Applications`に置いた`.app`で行う
 
 - [x] T12-1 【エージェント】macOS対応で使うAPIを確かめ、許可がないときの振る舞いを試作で確かめて報告する
   - 実施: Opus 5.5（エフォートは起動時の設定のまま）
