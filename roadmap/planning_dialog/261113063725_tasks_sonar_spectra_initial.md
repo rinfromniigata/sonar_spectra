@@ -1,8 +1,8 @@
 # sonar_spectra 実装タスク（tasks）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v7.md`、`261113042452_imple_sonar_spectra_architecture.md`
-- 対になる検証：`261113042452_walk_sonar_spectra_initial.md`
-- 改訂：change「261113041903_change_macos_permission_and_tap」を反映し、T12-2・T13-4を取りやめ（IDは残してチェックし、再利用しない）、T12-3・T13-1・T13-3・T13-5・T16-2を改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113032529_tasks_sonar_spectra_initial.md`（その前の改訂：change「261113031351_change_macos_support」を反映し、macOS対応と0.2.0のリリースのためにPhase 12〜17（T12-1〜T17-1）を足した。完了済みの項目（Phase 1〜11）は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261111033238_tasks_sonar_spectra_initial.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映し、Phase 9にT9-9（T9-8のあと）を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110165456_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映し、T9-6の見出しの「等倍の画像を重ねる」を「等倍の図形を重ねる」に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110133636_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にT9-4〜T9-8（T9-3のあと）を足した。T10-1の依存をT9-8に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_tasks_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でT7-6・T7-7を追加）））
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v8.md`、`261113063725_imple_sonar_spectra_architecture.md`
+- 対になる検証：`261113063725_walk_sonar_spectra_initial.md`
+- 改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映し、T13-3の「Escで戻る動き」の書き方を改めた（Escの処理は足さない）。新しい項目はない。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113042452_tasks_sonar_spectra_initial.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映し、T12-2・T13-4を取りやめ（IDは残してチェックし、再利用しない）、T12-3・T13-1・T13-3・T13-5・T16-2を改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113032529_tasks_sonar_spectra_initial.md`（その前の改訂：change「261113031351_change_macos_support」を反映し、macOS対応と0.2.0のリリースのためにPhase 12〜17（T12-1〜T17-1）を足した。完了済みの項目（Phase 1〜11）は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261111033238_tasks_sonar_spectra_initial.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映し、Phase 9にT9-9（T9-8のあと）を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110165456_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映し、T9-6の見出しの「等倍の画像を重ねる」を「等倍の図形を重ねる」に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110133636_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にT9-4〜T9-8（T9-3のあと）を足した。T10-1の依存をT9-8に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_tasks_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でT7-6・T7-7を追加））））
 - 進め方：Phase nの実装（Tn-\*）→ 検証（Wn-\*）→ 修正と再検証。Wnがすべて通過してからPhase n+1へ進む
 
 ## Phase 1: 基盤（雛形・トークン・i18n・検査・部品・アイコン）
@@ -926,7 +926,7 @@ Phaseの推奨: Opus・high以上
 ## Phase 13: macOSのウィンドウ・メニュー
 
 Phaseの推奨: Sonnet・high以上
-引き継ぎ: T13-1〜T13-5は完了（T13-4は取りやめ）。次はW13-1。ユーザーの判断（261113）：つかみのダブルクリックは「しまう・何もしない」の設定に従わなくてよく、Escで全画面を終える対応も要らない（W13-3の実施メモ参照）
+引き継ぎ: T13-1〜T13-5は完了（T13-4は取りやめ）。次はW13-1。v8（change「261113063530」）で、ダブルクリックは拡大・戻すだけ、Escで全画面を終える動きは求めない、信号機ボタンを中央にそろえるのは既定の大きさ以上のウィンドウ、とした
 
 - [x] T13-1 【エージェント】Rust側に`platform`を作り、OSの種類のコマンド、タイトルバーのOverlayと信号機ボタンの位置、App Napの抑止を実装する
   - 推奨: Opus・high以上
@@ -940,18 +940,18 @@ Phaseの推奨: Sonnet・high以上
   - 実施: Opus 5.5（エフォートは起動時の設定のまま）
   - 実施メモ：OSの種類は`main.ts`で`getPlatform`し、実行中の状態のストアの`platform`に置く。`TitleBar`は`platform`がmacOSのとき`is-mac`（左の余白`--traffic-light-inset`）と`data-tauri-drag-region="deep"`（ボタンはTauriがつかみから外す）を付ける。`chipView(event, platform)`がmacOSでデバイス名つきの文言を`source.chip_loopback_mac`にする。値はモックの見本のデバイス名を`{device}`に置き換える既存の移し方に従い「出力音声 · {device}」（`source.chip_live`と同じ文）
   - 実施メモ：信号機ボタンの位置は`trafficLightPosition` `{x:16, y:15}`、余白は`--traffic-light-inset: 100px`（`component_metrics.css`）。AppKitから読んだmacOS 26のボタンは直径14・間隔23（3つで幅60）。yは帯の高さ44px（ウィンドウの幅1294px以上。既定の1280pxでは43.5px）の中央に合わせた。最小の幅960pxでは帯が32.6pxになり、ボタンの中心が帯の中央より約6px下にずれる（ボタンの位置はOSが固定で、帯の高さに追従しない）。画面収録の権限がなく撮影できなかったため、見た目はW13-3で確かめる
-  - 実施メモ：つかみのダブルクリックは、Tauriの既定（`drag.js`）が常に`internal_toggle_maximize`（拡大・戻す）を呼び、システム設定の「ダブルクリックでしまう」「何もしない」を見ない。既定の設定（拡大・フィル）ではそのまま合うので既定の振る舞いのままにした。設定に従わせるには、macOSの設定（`AppleActionOnDoubleClick`）を読むコマンドの追加（インターフェースの変更）が要る
+  - 実施メモ：つかみのダブルクリックは、Tauriの既定（`drag.js`）が常に`internal_toggle_maximize`（拡大・戻す）を呼び、システム設定の「ダブルクリックでしまう」「何もしない」を見ない。設定に従わせるにはコマンドの追加が要るため、v8で拡大・戻すだけにした（change「261113063530_change_macos_title_double_click_and_esc」）
   - 依存: T13-1
   - 画面: S09
-  - imple 4.5の「タイトル帯」「出力系統のチップ」。モックのファイルは`sonar_spectra_mock_v7.html`（旧形式の1枚）なので、画面IDで位置を検索してS09の範囲だけを読む
+  - imple 4.5の「タイトル帯」「出力系統のチップ」。モックのファイルは`sonar_spectra_mock_v8.html`（旧形式の1枚）なので、画面IDで位置を検索してS09の範囲だけを読む
   - 辞書に`source.chip_loopback_mac`をモックの辞書から足す（v7で取りやめたT13-4から移した。`perm.*`・`source.chip_perm`は足さない）
 - [x] T13-3 【エージェント】macOSの全画面を`setSimpleFullscreen`に切り替え、全画面では信号機ボタンの余白をなくす
   - 実施: Opus 5.5（エフォートは起動時の設定のまま）
   - 実施メモ：`tauriWindowApi(platform)`がmacOSでは`macFullscreen`を使う。Tauriの`isFullscreen`はsimple fullscreenを見ないため、入ったかどうかを`macFullscreen`の中で持つ（simple fullscreenはアプリの操作でしか出入りしない）。信号機の緑のボタンでOSの全画面に入ったときも全画面として扱い、全画面のボタンでそちらを終える。`window_controller`は変えていない。`TitleBar`は全画面では`has-traffic-lights`を外して余白をなくす
-  - 実施メモ：アプリにはEscで全画面を終える処理がない（Windowsも同じ。OSもEscでは終えない）。この項目の「Escで戻る動きは変えない」に従い足していないが、W13-3の「全画面のボタンとEscで戻る」のEscは今のままでは通らない
+  - 実施メモ：アプリにはEscで全画面を終える処理がない（Windowsも同じ。OSもEscでは終えない）。v8で、Escの動きは求めないことにした（change「261113063530_change_macos_title_double_click_and_esc」）
   - 依存: T13-2
   - 画面: S09a
-  - `window_api`をOSの種類で呼び分け、`window_controller`の状態の持ち方と、起動時の全画面・Escで戻る動きは変えない。Windowsは今の`setFullscreen`のまま
+  - `window_api`をOSの種類で呼び分け、`window_controller`の状態の持ち方と、起動時の全画面の動きは変えない。Escで全画面を終える処理は足さない（v8。全画面を終えるのは全画面のボタン）。Windowsは今の`setFullscreen`のまま
 - [x] T13-4 【エージェント】許可がないときの表示（S09b）を実装し、中央の表示の出し分けに組み込む
   - 取りやめ：change「261113041903_change_macos_permission_and_tap」（録音の許可は判定しない）
   - 依存: T13-3

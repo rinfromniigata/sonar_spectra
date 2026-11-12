@@ -1,9 +1,9 @@
 # sonar_spectra 実装設計（imple）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v7.md` と同版のデザインアセット
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v8.md` と同版のデザインアセット
 - 種別：Agentic Coding
-- 対になるドキュメント：`261113042452_tasks_sonar_spectra_initial.md`、`261113042452_walk_sonar_spectra_initial.md`
-- 改訂：change「261113041903_change_macos_permission_and_tap」を反映（プランアセット v7。録音の許可を判定せずS09bを取りやめる、Process Tapと集約デバイスを自前で作りcpalで開く、T12-1で確かめた細部：2節、3.1、3.5、3.6、4.5、7節）。前の版は`archived/261113032529_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113031351_change_macos_support」を反映（プランアセット v6。macOSへの対応：1節、2節、3.1、3.4、3.5、3.6〔新設〕、4.5、4.6、4.8、6節、7節。v5のSPEC 11節「モックとの差分」がモックに取り込まれたため、11節への参照を画面IDに改めた）。前の版は`archived/261111033238_imple_sonar_spectra_architecture.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映（4.5：描画を開始できない表示と、入力源の状態の表示〔S01b〜S01d〕の出し分け）。前の版は`archived/261110165456_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映（4.6の発光：等倍の図形は画像を写さず同じ頂点の範囲をもう一度描いて重ねる）。前の版は`archived/261110133636_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映（1節、2節、3.4、4.2、4.5、4.6、4.8、5.1、5.2の16、5.3）。前の版は`archived/261109115345_imple_sonar_spectra_architecture.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」））））
+- 対になるドキュメント：`261113063725_tasks_sonar_spectra_initial.md`、`261113063725_walk_sonar_spectra_initial.md`
+- 改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映（プランアセット v8。タイトル帯のダブルクリックは拡大・戻すだけ、Escで全画面を終える動きは求めない、T13-1〜T13-5で確かめた細部：3.6、4.5）。前の版は`archived/261113042452_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映（プランアセット v7。録音の許可を判定せずS09bを取りやめる、Process Tapと集約デバイスを自前で作りcpalで開く、T12-1で確かめた細部：2節、3.1、3.5、3.6、4.5、7節）。前の版は`archived/261113032529_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113031351_change_macos_support」を反映（プランアセット v6。macOSへの対応：1節、2節、3.1、3.4、3.5、3.6〔新設〕、4.5、4.6、4.8、6節、7節。v5のSPEC 11節「モックとの差分」がモックに取り込まれたため、11節への参照を画面IDに改めた）。前の版は`archived/261111033238_imple_sonar_spectra_architecture.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映（4.5：描画を開始できない表示と、入力源の状態の表示〔S01b〜S01d〕の出し分け）。前の版は`archived/261110165456_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映（4.6の発光：等倍の図形は画像を写さず同じ頂点の範囲をもう一度描いて重ねる）。前の版は`archived/261110133636_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映（1節、2節、3.4、4.2、4.5、4.6、4.8、5.1、5.2の16、5.3）。前の版は`archived/261109115345_imple_sonar_spectra_architecture.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」）））））
 
 ## 1. 方針
 
@@ -152,9 +152,9 @@ pub trait Analyzer: Send {
 ### 3.6 ウィンドウとOSの差（platform。v6）
 
 - **`tauri.macos.conf.json`の重なり方**（v7。T12-1）：`tauri.conf.json`にJSON Merge Patch（RFC 7396）で重なり、配列（`app.windows`・`bundle.icon`）はまるごと置き換わる。配列を変えるときは、macOS用に全体を書く
-- **タイトルバー**：macOSだけ、`tauri.macos.conf.json`でウィンドウを`titleBarStyle: Overlay`・`hiddenTitle: true`にし、`trafficLightPosition`で信号機ボタンをタイトル帯の左端・帯の高さの中央に置く（正確な値は委任事項。実機で合わせる）。Windowsは標準のタイトルバーのまま
-- **全画面**：macOSは`@tauri-apps/api`の`setSimpleFullscreen`（Tauri 2.10以降。権限`core:window:allow-set-simple-fullscreen`をcapabilitiesに足す。独自のコマンドは作らない。v7）で、新しい操作スペースを作らずに覆い、メニューバーとDockを隠す。Windowsは今の`setFullscreen`のまま。UIの`window_api`は、OSの種類で呼び分ける（`window_controller`の状態の持ち方は変えない）。全画面の状態は記憶しない（v1と同じ）
-- **メニュー**：macOSだけ、アプリメニュー（このアプリについて・隠す・ほかを隠す・すべてを表示・終了）と「編集」メニュー（取り消し・やり直し・カット・コピー・ペースト・すべてを選択）を、Tauriの定義済みの項目で作る。名前の入力欄で標準のショートカットが効くこと。項目の文言は定義済みの項目（OSの言語）に任せ、辞書を使う必要があるかはT13-5で確かめる
+- **タイトルバー**：macOSだけ、`tauri.macos.conf.json`でウィンドウを`titleBarStyle: Overlay`・`hiddenTitle: true`にし、`trafficLightPosition`で信号機ボタンをタイトル帯の左端・帯の高さの中央に置く。値は`{x:16, y:15}`（v8。T13-2）：macOS 26のボタンは直径14・間隔23で、帯の高さ44px（ウィンドウの幅1294px以上）の中央にそろう。位置は起動時に決まり帯の高さに追従しないため、狭いウィンドウでは中央より少し下になる（SPEC 2節。許容）。帯の左の余白は`--traffic-light-inset`（`component_metrics.css`。x＋ボタン3つの幅＋ロゴまでの間）。Overlayのつかみには権限`core:window:allow-start-dragging`（`core:window:default`に含まれない）が要る。Windowsは標準のタイトルバーのまま
+- **全画面**：macOSは`@tauri-apps/api`の`setSimpleFullscreen`（Tauri 2.10以降。権限`core:window:allow-set-simple-fullscreen`をcapabilitiesに足す。独自のコマンドは作らない。v7）で、新しい操作スペースを作らずに覆い、メニューバーとDockを隠す。Windowsは今の`setFullscreen`のまま。UIの`window_api`は、OSの種類で呼び分ける（`window_controller`の状態の持ち方は変えない）。Tauriの`isFullscreen`はsimple fullscreenを見ない（taoは`fullscreen`と`is_simple_fullscreen`を別に持つ）ため、macOSでは`window_api`の`macFullscreen`が入ったかどうかを持つ（simple fullscreenはアプリの操作でしか出入りしない）。信号機の緑のボタンでOSの全画面に入ったときも全画面として扱い、全画面のボタンでそちらを終える（v8）。全画面を終えるのは全画面のボタンだけで、Escの処理は持たない（Windowsと同じ。v8）。全画面の状態は記憶しない（v1と同じ）
+- **メニュー**：macOSだけ、アプリメニュー（このアプリについて・隠す・ほかを隠す・すべてを表示・終了）と「編集」メニュー（取り消し・やり直し・カット・コピー・ペースト・すべてを選択）を、Tauriの定義済みの項目で作る。名前の入力欄で標準のショートカットが効くこと。定義済みの項目の文言は、渡さないと英語のまま固定（muda 0.20.0。OSの言語に合わせない）ため、UI（`src/platform/app_menu.ts`）で辞書`menu.*`の文言を渡して組み、macOSのときだけ`setAsAppMenu`する（v8。T13-5）。起動直後はTauriの既定のメニュー（英語）が出ていて、組み終えたところで置き換わる（組めなければ既定のまま）
 - **App Napの抑止**：macOSで、起動中は`NSProcessInfo`の活動（`beginActivityWithOptions`。ユーザーが始めた活動・App Napを止める）を保ち、VJツールを前面にしても取得・送出・描画が間引かれないようにする。WebViewの描画の間引き（ウィンドウが見えている限り上限どおりに描くこと）は、T15-2で測って確かめる
 - **バンドルの設定（macOS）**：`minimumSystemVersion` 26.0、対象は`aarch64-apple-darwin`だけ（設定ではなく`tauri build --target aarch64-apple-darwin`で絞る。v7）、アドホック署名（`bundle.macOS.signingIdentity: "-"`。バンドラーは`codesign --force -s - --options runtime`を実行し、この署名でProcess Tapが使える〔エンタイトルメント不要。T12-1〕）。`Info.plist`は`src-tauri/Info.plist`に置けば自動で合成され、devのビルドにも埋め込まれる。`Info.plist`に`NSAudioCaptureUsageDescription`を足す。その文言は原文の辞書（`ja.ts`）のキーから取り、`Info.plist`の値と辞書の値が一致することを自動検査で確かめる（4.8）
 
@@ -238,7 +238,7 @@ interface ShapeSink {
 
 - `App.vue`：`MeterScreen`（タイトル帯＋格子＋走査線と周辺減光）を常に表示し、その上に`StatusOverlay`（S01b〜S01d）、`SettingsDrawer`（S02）／`PaletteDrawer`（S02a）／`ConfigDrawer`（S02b）、`LayoutEditPanel`と`InstanceInspector`（S03）を状態で重ねる
 - ボーダレスフルスクリーン：Windowsは`@tauri-apps/api`のウィンドウAPIで全画面にする（ボーダレスになることを実機で確認済み）。macOSは`setSimpleFullscreen`（3.6）。タイトル帯と操作系は残し、ボタンは終了のアイコンに変える（S01a、S09a）
-- タイトル帯（v6）：`get_platform`がmacOSのときは、左端に信号機ボタンの分の余白を取り、ロゴをその右から始める。帯のボタン以外の部分に`data-tauri-drag-region`を付け、ダブルクリックでOSの設定どおりに拡大・しまう（Tauriのつかみの既定の振る舞いで足りるかを確かめる）（S09）。全画面（S09a）では余白をなくし、Windowsの全画面（S01a）と同じ形にする。Windowsは今のまま
+- タイトル帯（v6）：`get_platform`がmacOSのときは、左端に信号機ボタンの分の余白を取り、ロゴをその右から始める。帯のボタン以外の部分に`data-tauri-drag-region`（`"deep"`。ボタンはTauriがつかみから外す）を付け、ダブルクリックで拡大する・元に戻す（S09）。ダブルクリックはTauriのつかみの既定の振る舞い（`internal_toggle_maximize`）のままとし、システム設定の「しまう」「何もしない」には従わない（v8。SPEC 2節）。全画面（S09a）では余白をなくし、Windowsの全画面（S01a）と同じ形にする。Windowsは今のまま
 - 出力系統のチップ（v6）：macOSでは取得中の文言を`source.chip_loopback_mac`に（モックの辞書のとおり）。許可がないときの`source.chip_perm`は作らない（v7）
 - ウィンドウ状態：`tauri-plugin-window-state`で位置・大きさ・ディスプレイを記憶する。全画面の状態は記憶しない（StateFlagsから外す）
 - `MeterGrid`（v4）：格子の後ろに、共有のWebGL2キャンバスを1枚敷く（格子と同じ範囲、ポインターのイベントは通す）。`ModuleFrame`のキャンバスは文字の層になり、地は透明にする（地の色は共有キャンバスが塗る）
