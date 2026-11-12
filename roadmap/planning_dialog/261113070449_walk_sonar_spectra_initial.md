@@ -2,6 +2,7 @@
 
 - 対象：`261113070449_tasks_sonar_spectra_initial.md`
 - 改訂：change「261113065821_change_app_display_name」を反映し、Phase 14にW14-4（W14-1のあと、W14-2の前）とW14-5（末尾）を足し、W14-2の依存をW14-4に改め、W14-3・W16-2・W16-3・W16-4に表示名と旧版の取り除きの確かめを足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113063725_walk_sonar_spectra_initial.md`（その前の改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映し、W13-3のS09（ダブルクリックは拡大・戻す、中央にそろうのは既定の大きさ以上）とS09a（Escを外す）を改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113042452_walk_sonar_spectra_initial.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映し、W12-1・W12-2・W12-3・W13-1〜W13-3・W16-3からS09bと`PermissionDenied`を外し、W12-3に許可の取り消しと与え直し、入出力兼用のデバイスを足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113032529_walk_sonar_spectra_initial.md`（その前の改訂：change「261113031351_change_macos_support」を反映し、macOS対応と0.2.0のリリースのためにPhase 12〜17（W12-1〜W17-1）を足した。完了済みの項目（Phase 1〜11）は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261111033238_walk_sonar_spectra_initial.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映し、Phase 9にW9-10（W9-7のあと、W9-8の前）を足し、W9-8の依存にW9-10を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110165456_walk_sonar_spectra_initial.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」に合わせて新しいタイムスタンプで引き継いだ（中身の変更なし）。前の版は`archived/261110133636_walk_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にW9-4〜W9-9を足し、未通過のW9-1をW9-7へ（中身を上限の計測に改めた）、W9-2をW9-9へ移した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_walk_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でW7-7・W7-8を追加し、W7-6をW7-9へ移動）））））
+- IDの付け替え（261113071817）：Phase 14の記載順と番号順をそろえるため、未着手のW14-2・W14-3・W14-5をW14-6〜W14-8に付け替えた（旧IDは移動先を示す行として残し、再利用しない）。tasksのT14-1〜T14-4も、T14-6〜T14-9に付け替えた。中身と実行順は変えていない
 - 進め方：各Phaseの実装の直後に、そのPhaseの項目を上から行う。不合格のときはその場で修正して同じ項目をやり直し、通過してからチェックを入れる。不合格の内容と、修正を記録したfix・changeのファイル名を実施メモに残す
 
 ## Phase 1: 基盤（雛形・トークン・i18n・検査・部品・アイコン）
@@ -715,24 +716,27 @@
 
 - [ ] W14-1 【エージェント】`bun run check`が通る
   - 推奨: Sonnet・low以上
-  - 依存: T14-4
+  - 依存: T14-9
+- W14-2 → W14-6へ移動（W14-4のあとに行うため、記載順と番号順をそろえた）
+- W14-3 → W14-7へ移動（同上）
 - [ ] W14-4 【エージェント】アプリの表示名が「Sonar Spectra」になり、旧版を取り除くフックが組み込まれている
   - 推奨: Sonnet・medium以上
   - 依存: W14-1
   - 利用者に見える場所（ウィンドウのタイトル、`index.html`の`<title>`、アプリメニュー、辞書の文言、`productName`、`release.yml`のリリース名、README・`CONTRIBUTING.md`の見出しと本文のアプリ名）に`sonar_spectra`が残っていない（`git grep`で洗い出し、残りがSPEC 10節の「利用者に見えない識別子」だけであることを確かめる）
   - 手元でビルドした`.app`と`.dmg`の名前、`.app`の`Info.plist`の`CFBundleName`が「Sonar Spectra」で、`CFBundleIdentifier`は`com.rinontech.sonar-spectra`のまま
   - `tauri.conf.json`がフックの`.nsh`を指し、フックが0.1.0のアンインストール情報（`HKCU`の`…\Uninstall\sonar_spectra`）を読み、旧版のアンインストーラーを`/S`で、`/UPDATE`を付けずに呼ぶ（ショートカットを消し、データを残す。tauri-bundlerのテンプレートの`$UpdateMode`と`$DeleteAppDataCheckboxState`の扱いと照らす）。旧版が見つからないときは何もしない
-- [ ] W14-2 【エージェント】アイコンの書き出しと組み込みが正しい
+- W14-5 → W14-8へ移動（同上）
+- [ ] W14-6 【エージェント】アイコンの書き出しと組み込みが正しい
   - 推奨: Sonnet・medium以上
   - 依存: W14-4
   - `docs/brand/icon_layers/`の3つのSVGが、`specs/`の最新のマスターSVGの各前景グループと一致する（1024四方、角丸と余白なし、`00_bg`なし）。`AppIcon.icon`の中のレイヤーのSVGが`docs/brand/icon_layers/`と一致する（`diff`）
   - 手元でビルドした`.app`の`Contents/Resources`に`Assets.car`と`.icns`の両方があり、`Info.plist`がそれを指している
   - `bun run icons`で作り直した`.ico`・PNG・ファビコンが、コミット済みのものと一致する
-- [ ] W14-3 【ユーザー】Dock・Finder・Launchpadで、アイコンの見え方を既定・ダーク・Clear・Tintedの各モードで確かめる
-  - 依存: W14-2
+- [ ] W14-7 【ユーザー】Dock・Finder・Launchpadで、アイコンの見え方を既定・ダーク・Clear・Tintedの各モードで確かめる
+  - 依存: W14-6
   - 対応する最も古いOS（macOS 26）の実機はないため、macOS 27で確かめる（SPEC 9節）
   - あわせて、Finder・Dock・メニューバーのアプリの名前とウィンドウのタイトルが「Sonar Spectra」であることを確かめる（v9）
-- [ ] W14-5 【ユーザー】Windowsの実機で、0.1.0を入れた状態から、手元でビルドしたインストーラーを入れ、旧版が自動で取り除かれることを確かめる
+- [ ] W14-8 【ユーザー】Windowsの実機で、0.1.0を入れた状態から、手元でビルドしたインストーラーを入れ、旧版が自動で取り除かれることを確かめる
   - 依存: W14-4
   - 画面: S01
   - インストーラーは`CONTRIBUTING.md`のビルドの手順で作るNSISのもの（`nsis/*-setup.exe`。配布はNSISだけなので、MSIは確かめない）。入れたあと、「アプリと機能」とスタートメニューに「Sonar Spectra」だけがあり、`sonar_spectra`の項目とショートカットが残っていない。旧版のインストール先のフォルダーが消えている。起動すると、ウィンドウのタイトルが「Sonar Spectra」で、0.1.0の設定と構成が引き継がれている
@@ -766,7 +770,7 @@
   - 依存: T16-6
   - 画面: S01, S01a
   - SmartScreenの警告からの開き方がREADMEどおり。起動するとすぐ出力音声が表示される。タイトルバーは標準のまま、ボーダレスフルスクリーンも0.1.0と同じ。0.1.0の設定と構成が引き継がれる
-  - 0.1.0（`sonar_spectra`）が自動で取り除かれ、「アプリと機能」とスタートメニューに「Sonar Spectra」だけが残る（v9。W14-5と同じ確かめを、配布するインストーラーで行う）
+  - 0.1.0（`sonar_spectra`）が自動で取り除かれ、「アプリと機能」とスタートメニューに「Sonar Spectra」だけが残る（v9。W14-8と同じ確かめを、配布するインストーラーで行う）
 
 ## Phase 17: 公開（0.2.0）
 

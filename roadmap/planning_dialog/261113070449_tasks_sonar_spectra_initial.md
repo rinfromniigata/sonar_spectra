@@ -3,6 +3,7 @@
 - 対象：`roadmap/specs/sonar_spectra_SPEC_v9.md`、`261113070449_imple_sonar_spectra_architecture.md`
 - 対になる検証：`261113070449_walk_sonar_spectra_initial.md`
 - 改訂：change「261113065821_change_app_display_name」を反映し、Phase 14の先頭にT14-5（表示名の変更とインストーラーのフック）を足し、T14-1の依存をT14-5に改め、T16-1・T16-2・T16-4に表示名と旧版の取り除きの記述を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113063725_tasks_sonar_spectra_initial.md`（その前の改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映し、T13-3の「Escで戻る動き」の書き方を改めた（Escの処理は足さない）。新しい項目はない。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113042452_tasks_sonar_spectra_initial.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映し、T12-2・T13-4を取りやめ（IDは残してチェックし、再利用しない）、T12-3・T13-1・T13-3・T13-5・T16-2を改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113032529_tasks_sonar_spectra_initial.md`（その前の改訂：change「261113031351_change_macos_support」を反映し、macOS対応と0.2.0のリリースのためにPhase 12〜17（T12-1〜T17-1）を足した。完了済みの項目（Phase 1〜11）は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261111033238_tasks_sonar_spectra_initial.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映し、Phase 9にT9-9（T9-8のあと）を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110165456_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映し、T9-6の見出しの「等倍の画像を重ねる」を「等倍の図形を重ねる」に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110133636_tasks_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にT9-4〜T9-8（T9-3のあと）を足した。T10-1の依存をT9-8に改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_tasks_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でT7-6・T7-7を追加）））））
+- IDの付け替え（261113071817）：Phase 14の記載順と番号順をそろえるため、T14-5のあとに行う未着手のT14-1〜T14-4をT14-6〜T14-9に付け替えた（旧IDは移動先を示す行として残し、再利用しない）。walkのW14-2・W14-3・W14-5も、W14-6〜W14-8に付け替えた。中身と実行順は変えていない
 - 進め方：Phase nの実装（Tn-\*）→ 検証（Wn-\*）→ 修正と再検証。Wnがすべて通過してからPhase n+1へ進む
 
 ## Phase 1: 基盤（雛形・トークン・i18n・検査・部品・アイコン）
@@ -968,30 +969,34 @@ Phaseの推奨: Sonnet・high以上
 
 Phaseの推奨: Sonnet・high以上
 
+- T14-1 → T14-6へ移動（T14-5のあとに行うため、記載順と番号順をそろえた）
+- T14-2 → T14-7へ移動（同上）
+- T14-3 → T14-8へ移動（同上）
+- T14-4 → T14-9へ移動（同上）
 - [ ] T14-5 【エージェント】アプリの表示名を「Sonar Spectra」にし、Windowsのインストーラーに、0.1.0を自動で取り除くフックを足す
   - 推奨: Opus・high以上
   - 依存: W13-3
   - SPEC 7節・10節、imple 6節。変えるもの：`productName`、ウィンドウの`title`（`tauri.conf.json`・`tauri.macos.conf.json`）、`index.html`の`<title>`、辞書の`app.window_title`・`config.file_filter`・`config.import_failed`、`app_menu.test.ts`の見本の名前、`lib.rs`のApp Napの理由の文、`release.yml`のリリース名、README・`CONTRIBUTING.md`の見出しと本文のアプリ名。変えないもの（SPEC 10節の識別子）：`identifier`、Cargo・`package.json`の`name`（実行ファイルの名前）、`sonar_spectra.config`、`localStorage`のキー、集約デバイスとタップの内部の名前、リポジトリのURL
-  - フックはimple 6節のとおり`src-tauri/windows/hooks.nsh`に置き、`bundle.windows.nsis.installerHooks`で指す。インストール済みのtauri-bundlerのテンプレート（`installer.nsi`）で、アンインストール情報のキー、`UninstallString`の形、`/S`・`/UPDATE`・`_?=`の扱い、`$DeleteAppDataCheckboxState`の既定値を確かめてから書く。macOSではNSISを組めないため、Windowsでの確かめはW14-5で行う
+  - フックはimple 6節のとおり`src-tauri/windows/hooks.nsh`に置き、`bundle.windows.nsis.installerHooks`で指す。インストール済みのtauri-bundlerのテンプレート（`installer.nsi`）で、アンインストール情報のキー、`UninstallString`の形、`/S`・`/UPDATE`・`_?=`の扱い、`$DeleteAppDataCheckboxState`の既定値を確かめてから書く。macOSではNSISを組めないため、Windowsでの確かめはW14-8で行う
   - `CHANGELOG.md`の[Unreleased]に、表示名の変更と、0.1.0が自動で取り除かれることを書く
-- [ ] T14-1 【エージェント】マスターSVGの前景`01_ring`・`02_wave`・`03_peak`を、レイヤーごとのSVGとして`docs/brand/icon_layers/`に書き出す処理を`bun run icons`に足し、書き出す
+- [ ] T14-6 【エージェント】マスターSVGの前景`01_ring`・`02_wave`・`03_peak`を、レイヤーごとのSVGとして`docs/brand/icon_layers/`に書き出す処理を`bun run icons`に足し、書き出す
   - 推奨: Sonnet・medium以上
   - 依存: T14-5
-  - imple 7節。1024四方のキャンバスのまま、角丸や余白を足さない。`00_bg`は書き出さず、その色をT14-3の手順に添えて示す。既存の形式（`.ico`・PNG・`.icns`・ファビコン）の出力は変えない（作り直して一致を確かめる。`.icns`の生成のゆらぎはT10-4の実施メモのとおり）
-- [ ] T14-2 【ユーザー】Xcode 26以降を入れ、`xcrun --find actool`が通ることを確かめる
+  - imple 7節。1024四方のキャンバスのまま、角丸や余白を足さない。`00_bg`は書き出さず、その色をT14-8の手順に添えて示す。既存の形式（`.ico`・PNG・`.icns`・ファビコン）の出力は変えない（作り直して一致を確かめる。`.icns`の生成のゆらぎはT10-4の実施メモのとおり）
+- [ ] T14-7 【ユーザー】Xcode 26以降を入れ、`xcrun --find actool`が通ることを確かめる
   - Phase 12から裏で進めてよい。完了したら報告する
-- [ ] T14-3 【ユーザー】`docs/brand/icon_layers/`のSVGと`brand.md`の「Apple環境向けアイコン」から、Icon Composerで`AppIcon.icon`を作り、エージェントが示す場所に置く
-  - 依存: T14-1
-- [ ] T14-4 【エージェント】`AppIcon.icon`をビルドに組み込み、`.icns`を従来形式のフォールバックとして残す
-  - 依存: T14-2, T14-3
-  - imple 7節。置き場所はT14-1の完了時に示す。Tauriの対応と既知の不具合はT12-1の報告に従う。手元のビルドで`.app`に`Assets.car`と`.icns`が入ることを確かめる（アイコンだけを変えたときは古いアイコンのまま組まれることがある。W1-12の実施メモのとおり`build.rs`を触って作り直す）
+- [ ] T14-8 【ユーザー】`docs/brand/icon_layers/`のSVGと`brand.md`の「Apple環境向けアイコン」から、Icon Composerで`AppIcon.icon`を作り、エージェントが示す場所に置く
+  - 依存: T14-6
+- [ ] T14-9 【エージェント】`AppIcon.icon`をビルドに組み込み、`.icns`を従来形式のフォールバックとして残す
+  - 依存: T14-7, T14-8
+  - imple 7節。置き場所はT14-6の完了時に示す。Tauriの対応と既知の不具合はT12-1の報告に従う。手元のビルドで`.app`に`Assets.car`と`.icns`が入ることを確かめる（アイコンだけを変えたときは古いアイコンのまま組まれることがある。W1-12の実施メモのとおり`build.rs`を触って作り直す）
 
 ## Phase 15: macOSでの負荷と動作の継続
 
 Phaseの推奨: Opus・high以上
 
 - [ ] T15-1 【エージェント】リリースビルドを内蔵ディスプレイの全画面に出し、全モジュールで描く回数と1回の時間を測る。上限60fpsに届かなければ原因を調べて軽くする
-  - 依存: W14-3
+  - 依存: W14-7
   - SPEC 3節「macOSでの負荷の確かめ方」、imple 4.6の「macOSでの計測」。全モジュールを有効にした保存済みの構成で、音の見本を鳴らして測る。Windows用の処理と、両OSで共通の描画の結果（見た目）は変えない
   - 軽くしても届かないときは、計測の結果を添えて仕様変更（上限の初期値を45fpsにする、発光を軽くするなど）として相談する
 - [ ] T15-2 【エージェント】ほかのアプリを前面にしたとき、App Napやウィンドウの隠れによる間引きで、取得・送出・描画が落ちないことを測って確かめる
@@ -1019,7 +1024,7 @@ Phaseの推奨: Sonnet・high以上
   - Known issuesに、macOSのアドホック署名による初回の開き方と、許可の与え直しを書く（SPEC 7節）
   - 表示名の変更と旧版の自動の取り除き（T14-5で[Unreleased]に書いたもの）を0.2.0に含める（v9）
 - [ ] T16-5 【エージェント】ローカルでmacOSのビルドを確かめ、アイコン一式と`.icon`のレイヤーが`specs/`の最新のマスターSVGから作られたことを確かめる。`roadmap/timeline.md`にリリース準備の行（`0.2.0`と、その時点のプランアセットの版）を追記し、コミットメッセージとタグ作成・pushのコマンドを提示して停止する
-  - 依存: T14-4, T16-4
+  - 依存: T14-9, T16-4
   - pushの前にバージョンを変えた場合は、timelineに新しい行を追記する（過去の行は書き換えない）
 - [ ] T16-6 【ユーザー】コミット・`v0.2.0`タグの作成・pushを行い、GitHub Releasesのドラフトに、Windowsのインストーラーと、macOSの`.dmg`がそろったことを確かめる。About欄を設定する
   - 依存: T16-3, T16-5

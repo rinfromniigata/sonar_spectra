@@ -50,7 +50,7 @@ sonar_spectra/
 │  │  ├─ settings_store/        設定と構成のJSON
 │  │  └─ commands.rs            UI から呼ぶコマンド
 │  ├─ icons/                    マスターSVGから形式ごとに展開したアイコン一式（リポジトリに含める。7節）
-│  ├─ AppIcon.icon              Icon Composer で作った Apple 環境向けアイコン（利用者が作る。置き場所は T14-4 で決めて示す。v6）
+│  ├─ AppIcon.icon              Icon Composer で作った Apple 環境向けアイコン（利用者が作る。置き場所は T14-9 で決めて示す。v6）
 │  ├─ Info.plist                macOS の Info.plist に足す項目（NSAudioCaptureUsageDescription。v6）
 │  ├─ windows/hooks.nsh         Windows のインストーラー（NSIS）のフック。0.1.0（表示名 sonar_spectra）を取り除く（v9）
 │  ├─ tauri.conf.json
@@ -403,7 +403,7 @@ interface Palette { id: string; name: string; main: string; sub: string; accent:
   - Windows用：1024四方のまま、角丸半径200の`clipPath`で切り抜く。余白は足さない。ここから`icon.ico`、Windows向けのPNG（`Square*Logo.png`・`StoreLogo.png`）、`bundle.icon`が参照するPNG（`32x32.png`・`128x128.png`・`128x128@2x.png`・`icon.png`・`64x64.png`）を取る
   - macOSの従来形式用：マスターを824四方に縮めて中央に置き（四辺100）、角丸半径185.4で切り抜く。ここから`icon.icns`だけを取る。連続曲率の角丸への置き換えは、まず行わない（SPECで任意とされているため。必要になったら別の作業として扱う）
   - `.icon`用（v6）：マスターの前景`01_ring`・`02_wave`・`03_peak`を、1024四方のキャンバスのまま、角丸や余白を足さずに、レイヤーごとのSVGとして`docs/brand/icon_layers/{id}.svg`へ書き出す（`00_bg`は書き出さない。その色はIcon Composerの背景の塗りにする）。`bun run icons`の中で行う
-- **`AppIcon.icon`**（v6）：利用者が、レイヤーのSVGと`brand.md`の「Apple環境向けアイコン」からIcon Composerで作り、リポジトリに置く。`tauri.conf.json`（または`tauri.macos.conf.json`）の`bundle.icon`に加え、`.icns`は従来形式のフォールバックとして残す。Tauriの`.icon`の扱い（対応した版、`actool`の呼び出し、既知の不具合）はT12-1とT14-4で確かめる
+- **`AppIcon.icon`**（v6）：利用者が、レイヤーのSVGと`brand.md`の「Apple環境向けアイコン」からIcon Composerで作り、リポジトリに置く。`tauri.conf.json`（または`tauri.macos.conf.json`）の`bundle.icon`に加え、`.icns`は従来形式のフォールバックとして残す。Tauriの`.icon`の扱い（対応した版、`actool`の呼び出し、既知の不具合）はT12-1とT14-9で確かめる
   - Tauriの`.icon`の扱い（v7。T12-1）：tauri-bundler 2.9.0で対応し、`@tauri-apps/cli` 2.12.4はtauri-bundler 2.10.4を使う。`bundle.icon`に`.icon`のフォルダを挙げると、バンドラーが`actool`（26以上）で`Assets.car`を作り、`CFBundleIconName`と`CFBundleIconFile`（`.icns`）の両方を`Info.plist`に書く。`actool`がない・26未満のときは、エラーを記録するだけで、`Assets.car`なしでビルドに成功する（下の確かめ方で拾う）。既知の不具合（tauri#15315：`actool`がnilの挿入で落ちる、tauri#16386：Xcode 27.1で`Bad file descriptor`。どちらも未解決）に当たったときは、事前に`actool`で作った`Assets.car`を`bundle.icon`に入れる（`.car`はそのまま使われる）
 - **ファビコン**：`public/favicon.svg`はWindows用の中間SVG（角丸で切り抜いたもの）を置く。`public/favicon.ico`は`icon.ico`の写し
 - **切り抜きの書き方**：中間SVGでは`clipPath`だけを使う。マスターSVGの規則（`filter`・`mask`・`opacity`系を使わない）はマスターに対するもので、展開後のファイルには及ばないが、`clipPath`で足りるため使わない
