@@ -67,7 +67,7 @@ jobs:
           tauriScript: bun run tauri
           args: --bundles nsis
           tagName: ${{ github.ref_name }}
-          releaseName: sonar_spectra ${{ github.ref_name }}
+          releaseName: Sonar Spectra ${{ github.ref_name }}
           releaseBody: 変更点は CHANGELOG.md を参照してください。初回起動時に SmartScreen の警告が出ることがあります（README を参照）。
           releaseDraft: true
           prerelease: false

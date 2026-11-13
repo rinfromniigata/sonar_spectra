@@ -3,21 +3,21 @@ import { globalT } from "../i18n/use_t";
 import { appMenuSpec } from "./app_menu";
 
 describe("appMenuSpec", () => {
-  const spec = appMenuSpec(globalT(), "sonar_spectra");
+  const spec = appMenuSpec(globalT(), "Sonar Spectra");
 
   it("アプリメニューと「編集」の2つだけを、この順に持つ（imple 3.6）", () => {
-    expect(spec.map((submenu) => submenu.text)).toEqual(["sonar_spectra", "編集"]);
+    expect(spec.map((submenu) => submenu.text)).toEqual(["Sonar Spectra", "編集"]);
   });
 
   it("アプリメニュー：このアプリについて・隠す・ほかを隠す・すべてを表示・終了（定義済みの項目、文言は辞書）", () => {
     expect(spec[0].items).toEqual([
-      { item: { About: null }, text: "sonar_spectraについて" },
+      { item: { About: null }, text: "Sonar Spectraについて" },
       { item: "Separator" },
-      { item: "Hide", text: "sonar_spectraを非表示" },
+      { item: "Hide", text: "Sonar Spectraを非表示" },
       { item: "HideOthers", text: "ほかを非表示" },
       { item: "ShowAll", text: "すべてを表示" },
       { item: "Separator" },
-      { item: "Quit", text: "sonar_spectraを終了" },
+      { item: "Quit", text: "Sonar Spectraを終了" },
     ]);
   });
 

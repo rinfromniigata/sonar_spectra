@@ -3,7 +3,7 @@
 // 可変部分はプレースホルダで表し、文字列の連結で文を組み立てない。
 const ja = {
   app: {
-    window_title: "sonar_spectra",
+    window_title: "Sonar Spectra",
     version: "v{version}",
   },
   common: {
@@ -183,12 +183,12 @@ const ja = {
     confirm_overwrite: "「{name}」に上書き",
     confirm_save_as: "別の名前で保存",
     confirm_discard: "変更を破棄",
-    file_filter: "sonar_spectra の構成",
+    file_filter: "Sonar Spectra の構成",
     file_fallback_name: "構成",
     exported: "「{name}」を書き出した",
     export_failed: "書き出せなかった。保存先を変えて、もう1度試す",
     imported: "「{name}」を読み込んだ。一覧から切り替えて使う",
-    import_failed: "読み込めなかった。sonar_spectra で書き出した構成ファイルを選ぶ",
+    import_failed: "読み込めなかった。Sonar Spectra で書き出した構成ファイルを選ぶ",
   },
   settings: {
     title: "設定",

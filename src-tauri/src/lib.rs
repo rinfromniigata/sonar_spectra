@@ -46,7 +46,7 @@ pub fn run() {
             // App Nap を止める（起動中ずっと持つ。imple 3.6）
             #[cfg(target_os = "macos")]
             app.manage(platform::app_nap::begin_user_activity(
-                "sonar_spectra captures and visualizes system audio in real time",
+                "Sonar Spectra captures and visualizes system audio in real time",
             ));
             Ok(())
         })

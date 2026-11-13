@@ -1,4 +1,4 @@
-# sonar_spectra 開発ガイド
+# Sonar Spectra 開発ガイド
 
 不具合の報告はIssueで受け付けます。プルリクエストは、事前にIssueで相談してください。
 
@@ -99,6 +99,8 @@ bun run tauri build
 
 フロントエンドのビルドのあと、Rust側をリリースビルドし、インストーラーを作ります（初回は数分かかります）。`src-tauri/target/release/bundle/`の下に、NSISのインストーラー（`nsis/*-setup.exe`）とMSI（`msi/`）ができます。インストーラーを作らず実行ファイルだけを確かめるときは、`bun run tauri build --no-bundle`です。
 
+NSISのインストーラーには、`src-tauri/windows/hooks.nsh`のフック（`bundle.windows.nsis.installerHooks`）を組み込みます。0.1.0は表示名が`sonar_spectra`だったため、アンインストール情報のキーとインストール先が今の版と違います。フックは、インストールの前に0.1.0のアンインストーラーをサイレントで実行し、設定と構成（`%APPDATA%\com.rinontech.sonar-spectra`）を残したまま旧版を取り除きます。表示名は`productName`で決まります。`identifier`とCargoの`package.name`（実行ファイルの名前）は、表示名とは別のもので、変えません（設定の保存場所と、実行ファイルの名前が、これで決まるため）。
+
 アイコンだけを変えたときは、`cargo build`・`tauri build`が古いアイコンのままの実行ファイルを作ることがあります。手元で確かめるときは、`src-tauri/build.rs`を触って（保存し直して）から作り直してください。
 
 ### リリースの手順
@@ -130,14 +132,16 @@ git push origin v0.1.0
 bun run icons
 ```
 
-`roadmap/specs/`にある最新版のマスターSVG（`sonar_spectra_icon_master_v{n}.svg`）から、`tauri icon`で`src-tauri/icons/`のアイコン一式を作り直し、ファビコンを`public/`に置きます。マスターSVGの写し`docs/brand/icon_master.svg`が最新版と一致していないときは、生成を止めます。マスターSVGが変わったら、先に写しを更新してから実行してください。
+`roadmap/specs/`にある最新版のマスターSVG（`sonar_spectra_icon_master_v{n}.svg`）から、`tauri icon`で`src-tauri/icons/`のアイコン一式を作り直し、ファビコンを`public/`に置き、レイヤーごとのSVGを`docs/brand/icon_layers/`に書き出します。マスターSVGの写し`docs/brand/icon_master.svg`が最新版と一致していないときは、生成を止めます。マスターSVGが変わったら、先に写しを更新してから実行してください。
 
 マスターSVGは角のない正方形で、角丸と余白は持ちません。生成するときに、形式ごとに次のとおり足します。
 
 - Windows向け（`icon.ico`・PNG）とファビコン：1024四方のまま、角丸半径200で切り抜きます（余白は足しません）
 - macOS向けの従来形式（`icon.icns`）：824四方に縮めて中央に置き（四辺に100の余白）、角丸半径185.4で切り抜きます
 
-モバイル向けは作りません。レイヤーごとのSVGの書き出しと、Apple環境向けの`AppIcon.icon`は、macOSに対応するまで作りません。
+- Apple環境向けの`AppIcon.icon`の材料：前景のレイヤー（`01_ring`・`02_wave`・`03_peak`）を、1024四方のキャンバスのまま、角丸や余白を足さずに`docs/brand/icon_layers/{レイヤー名}.svg`へ書き出します。`00_bg`は書き出さず、その色（実行の最後に表示します）をIcon Composerの背景の塗りにします
+
+`src-tauri/macos/AppIcon.icon`は、これらのSVGと`docs/brand/brand.md`の「Apple環境向けアイコン」から、Icon Composerで作ったものです。`bun run icons`は`src-tauri/icons/`を消してから作り直すため、その外に置いています。macOSのビルドでは、`src-tauri/tauri.macos.conf.json`の`bundle.icon`が`AppIcon.icon`と`icon.icns`の両方を指し、バンドラーが`actool`で`Assets.car`を作ります（`.icns`は、従来形式のフォールバックとして残します）。`actool`には、Xcode 26以降が要り、`xcode-select -p`がXcode本体（`/Applications/Xcode.app/Contents/Developer`）を指している必要があります。`actool`が使えないときも、ビルドは`Assets.car`なしで成功してしまうため、`.app`の`Contents/Resources/`に`Assets.car`があることを確かめてください。モバイル向けは作りません。
 
 ## リポジトリ構成
 
@@ -148,10 +152,10 @@ sonar_spectra/
 │  ├─ i18n/              辞書（locales/ja.ts）・useT()・ロケールの判定・整形・疑似ロケール
 │  ├─ components/ui/     基本部品
 │  └─ dev/               開発時だけ開ける画面（部品ギャラリー）
-├─ src-tauri/            Rust（Tauri）。icons/ は bun run icons で生成
+├─ src-tauri/            Rust（Tauri）。icons/ は bun run icons で生成。windows/hooks.nsh はNSISのフック、macos/AppIcon.icon はApple環境向けアイコン
 ├─ scripts/              検査（i18n・トークン）とアイコン生成のスクリプト
 ├─ public/               ファビコン（bun run icons で生成）
-├─ docs/brand/           ブランド方針（brand.md）とマスターSVGの写し
+├─ docs/brand/           ブランド方針（brand.md）とマスターSVGの写し。icon_layers/ は bun run icons で生成
 ├─ .github/workflows/    CI（ci.yml）とリリース（release.yml）
 └─ roadmap/              計画と記録（下記）
 ```

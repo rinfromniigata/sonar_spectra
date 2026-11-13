@@ -968,28 +968,38 @@ Phaseの推奨: Sonnet・high以上
 ## Phase 14: アプリの表示名とApple環境向けアイコン
 
 Phaseの推奨: Sonnet・high以上
+引き継ぎ: 次はW14-1。`AppIcon.icon`はbrand.mdとの違いを直し済み（T14-8の実施メモ）。NSISのフックは手元で組み立てていないため、W14-8で確かめる
 
 - T14-1 → T14-6へ移動（T14-5のあとに行うため、記載順と番号順をそろえた）
 - T14-2 → T14-7へ移動（同上）
 - T14-3 → T14-8へ移動（同上）
 - T14-4 → T14-9へ移動（同上）
-- [ ] T14-5 【エージェント】アプリの表示名を「Sonar Spectra」にし、Windowsのインストーラーに、0.1.0を自動で取り除くフックを足す
+- [x] T14-5 【エージェント】アプリの表示名を「Sonar Spectra」にし、Windowsのインストーラーに、0.1.0を自動で取り除くフックを足す
   - 推奨: Opus・high以上
   - 依存: W13-3
   - SPEC 7節・10節、imple 6節。変えるもの：`productName`、ウィンドウの`title`（`tauri.conf.json`・`tauri.macos.conf.json`）、`index.html`の`<title>`、辞書の`app.window_title`・`config.file_filter`・`config.import_failed`、`app_menu.test.ts`の見本の名前、`lib.rs`のApp Napの理由の文、`release.yml`のリリース名、README・`CONTRIBUTING.md`の見出しと本文のアプリ名。変えないもの（SPEC 10節の識別子）：`identifier`、Cargo・`package.json`の`name`（実行ファイルの名前）、`sonar_spectra.config`、`localStorage`のキー、集約デバイスとタップの内部の名前、リポジトリのURL
   - フックはimple 6節のとおり`src-tauri/windows/hooks.nsh`に置き、`bundle.windows.nsis.installerHooks`で指す。インストール済みのtauri-bundlerのテンプレート（`installer.nsi`）で、アンインストール情報のキー、`UninstallString`の形、`/S`・`/UPDATE`・`_?=`の扱い、`$DeleteAppDataCheckboxState`の既定値を確かめてから書く。macOSではNSISを組めないため、Windowsでの確かめはW14-8で行う
   - `CHANGELOG.md`の[Unreleased]に、表示名の変更と、0.1.0が自動で取り除かれることを書く
-- [ ] T14-6 【エージェント】マスターSVGの前景`01_ring`・`02_wave`・`03_peak`を、レイヤーごとのSVGとして`docs/brand/icon_layers/`に書き出す処理を`bun run icons`に足し、書き出す
+  - 実施: Opus 5.5（エフォートは起動時の設定のまま）
+  - フックは0.1.0のアンインストーラーを`/S`・`_?=`で待って実行し、成功したら旧版の`uninstall.exe`・フォルダー・`HKCU\Software\rinontech\sonar_spectra`（インストール先と言語の記録）を消す。`${MANUFACTURER}`はフックの読み込みより後で定義されるため、マクロの中で直接使う。手元にmakensisがなく、NSISの組み立てはW14-8で確かめる。macOSのデバッグビルドで`Sonar Spectra.app`（実行ファイル`sonar_spectra`、識別子は不変）を確認
+- [x] T14-6 【エージェント】マスターSVGの前景`01_ring`・`02_wave`・`03_peak`を、レイヤーごとのSVGとして`docs/brand/icon_layers/`に書き出す処理を`bun run icons`に足し、書き出す
   - 推奨: Sonnet・medium以上
   - 依存: T14-5
   - imple 7節。1024四方のキャンバスのまま、角丸や余白を足さない。`00_bg`は書き出さず、その色をT14-8の手順に添えて示す。既存の形式（`.ico`・PNG・`.icns`・ファビコン）の出力は変えない（作り直して一致を確かめる。`.icns`の生成のゆらぎはT10-4の実施メモのとおり）
-- [ ] T14-7 【ユーザー】Xcode 26以降を入れ、`xcrun --find actool`が通ることを確かめる
+  - 実施: Opus 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ（261113074428）：`docs/brand/icon_layers/`に`01_ring.svg`・`02_wave.svg`・`03_peak.svg`を書き出した。`00_bg`の色は`#07060f`（実行の最後に表示する）。`.ico`・PNG・ファビコンはバイト単位で一致。`.icns`はバイトが変わったが、`iconutil`で展開した画像は一致したため、コミット済みの版に戻した。`AppIcon.icon`の置き場所は`src-tauri/macos/AppIcon.icon`とする（`bun run icons`が`src-tauri/icons/`を消して作り直すため、その外に置く）
+- [x] T14-7 【ユーザー】Xcode 26以降を入れ、`xcrun --find actool`が通ることを確かめる
   - Phase 12から裏で進めてよい。完了したら報告する
-- [ ] T14-8 【ユーザー】`docs/brand/icon_layers/`のSVGと`brand.md`の「Apple環境向けアイコン」から、Icon Composerで`AppIcon.icon`を作り、エージェントが示す場所に置く
+  - 実施メモ（261113081433）：ユーザーが実施したと報告。Xcode 27.2。`xcode-select`がCommand Line Toolsを指していたため、`sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`で切り替えた
+- [x] T14-8 【ユーザー】`docs/brand/icon_layers/`のSVGと`brand.md`の「Apple環境向けアイコン」から、Icon Composerで`AppIcon.icon`を作り、エージェントが示す場所に置く
   - 依存: T14-6
-- [ ] T14-9 【エージェント】`AppIcon.icon`をビルドに組み込み、`.icns`を従来形式のフォールバックとして残す
+  - 実施メモ（261113110136）：ユーザーが実施したと報告。`src-tauri/macos/AppIcon.icon`。レイヤーのSVGは`docs/brand/icon_layers/`と一致。brand.mdとの違い（T14-9で`ictool`で描画して確認）：既定の外観の塗りが青の自動グラデーション（単色`#07060f`はダークだけ）、影が奥の「輪」にも付いている、Clear・Tintedで輪と波形の明るさの差がほとんどない。ユーザーがIcon Composerで直す（W14-7の前まで）
+  - 実施メモ（261113151156）：ユーザーが直したと報告。既定の塗りが単色`#07060f`、Ringの影がなし、Tinted（Clearにも効く）で輪の不透明度0.7になったことを、`icon.json`と`ictool`の描画で確認。作り直した`.app`に`Assets.car`と`icon.icns`が入ることも確認。ダークの塗りだけ`display-p3`で同じ数値（見た目の差はほぼない）
+- [x] T14-9 【エージェント】`AppIcon.icon`をビルドに組み込み、`.icns`を従来形式のフォールバックとして残す
   - 依存: T14-7, T14-8
   - imple 7節。置き場所はT14-6の完了時に示す。Tauriの対応と既知の不具合はT12-1の報告に従う。手元のビルドで`.app`に`Assets.car`と`.icns`が入ることを確かめる（アイコンだけを変えたときは古いアイコンのまま組まれることがある。W1-12の実施メモのとおり`build.rs`を触って作り直す）
+  - 実施: Opus 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ（261113110136）：`tauri.macos.conf.json`の`bundle.icon`に、基本の一覧から`.ico`を除き`macos/AppIcon.icon`を足したもの（配列はマージで置き換わるため全件）を書いた。デバッグビルドの`.app`の`Resources`に`Assets.car`と`icon.icns`（`src-tauri/icons/icon.icns`と一致）があり、`CFBundleIconName`=`Icon`、`CFBundleIconFile`=`icon.icns`。Xcode 27.2の`actool`では、tauri#16386・#15315は起きなかった。`CONTRIBUTING.md`に置き場所と`actool`の前提を書いた
 
 ## Phase 15: macOSでの負荷と動作の継続
 
