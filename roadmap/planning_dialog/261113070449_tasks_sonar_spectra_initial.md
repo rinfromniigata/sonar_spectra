@@ -968,7 +968,7 @@ Phaseの推奨: Sonnet・high以上
 ## Phase 14: アプリの表示名とApple環境向けアイコン
 
 Phaseの推奨: Sonnet・high以上
-引き継ぎ: 次はW14-1。`AppIcon.icon`はbrand.mdとの違いを直し済み（T14-8の実施メモ）。NSISのフックは手元で組み立てていないため、W14-8で確かめる
+引き継ぎ: Phase 14は完了（W14-1〜W14-8は通過）。次はPhase 15の先頭のT15-1。macOSの`.dmg`は、Finderの装飾のAppleScriptがタイムアウトする環境では`CI=true`を付けて作る。`docs/brand/brand.md`の見出しに`sonar_spectra`が残る（直すかはユーザーの判断待ち）
 
 - T14-1 → T14-6へ移動（T14-5のあとに行うため、記載順と番号順をそろえた）
 - T14-2 → T14-7へ移動（同上）

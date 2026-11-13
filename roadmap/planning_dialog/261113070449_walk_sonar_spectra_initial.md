@@ -714,33 +714,42 @@
 
 ## Phase 14: アプリの表示名とApple環境向けアイコン
 
-- [ ] W14-1 【エージェント】`bun run check`が通る
+- [x] W14-1 【エージェント】`bun run check`が通る
   - 推奨: Sonnet・low以上
   - 依存: T14-9
+  - 実施: Sonnet 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ：`bun run check`が終了コード0で通った（Rustのテスト157件通過、4件は`ignored`）
 - W14-2 → W14-6へ移動（W14-4のあとに行うため、記載順と番号順をそろえた）
 - W14-3 → W14-7へ移動（同上）
-- [ ] W14-4 【エージェント】アプリの表示名が「Sonar Spectra」になり、旧版を取り除くフックが組み込まれている
+- [x] W14-4 【エージェント】アプリの表示名が「Sonar Spectra」になり、旧版を取り除くフックが組み込まれている
   - 推奨: Sonnet・medium以上
   - 依存: W14-1
   - 利用者に見える場所（ウィンドウのタイトル、`index.html`の`<title>`、アプリメニュー、辞書の文言、`productName`、`release.yml`のリリース名、README・`CONTRIBUTING.md`の見出しと本文のアプリ名）に`sonar_spectra`が残っていない（`git grep`で洗い出し、残りがSPEC 10節の「利用者に見えない識別子」だけであることを確かめる）
   - 手元でビルドした`.app`と`.dmg`の名前、`.app`の`Info.plist`の`CFBundleName`が「Sonar Spectra」で、`CFBundleIdentifier`は`com.rinontech.sonar-spectra`のまま
   - `tauri.conf.json`がフックの`.nsh`を指し、フックが0.1.0のアンインストール情報（`HKCU`の`…\Uninstall\sonar_spectra`）を読み、旧版のアンインストーラーを`/S`で、`/UPDATE`を付けずに呼ぶ（ショートカットを消し、データを残す。tauri-bundlerのテンプレートの`$UpdateMode`と`$DeleteAppDataCheckboxState`の扱いと照らす）。旧版が見つからないときは何もしない
+  - 実施: Sonnet 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ：`git grep`で`sonar_spectra`が残るのは、識別子（`package.json`・Cargo・`sonar_spectra.config`・`localStorage`のキー・集約デバイスとタップの内部名・リポジトリのURL・テスト・スクリプトの一時名）、フックの旧版の名前、READMEとCHANGELOGの「0.1.0（表示名`sonar_spectra`）」の説明、`CONTRIBUTING.md`のcloneのURLと実行ファイル名の説明だけ。ウィンドウのタイトル・`index.html`・辞書・`productName`・`release.yml`のリリース名は「Sonar Spectra」。手元の`bun run tauri build`で`Sonar Spectra.app`と`Sonar Spectra_0.1.0_aarch64.dmg`ができ、`Info.plist`は`CFBundleName`=Sonar Spectra、`CFBundleIdentifier`=`com.rinontech.sonar-spectra`。フック（`hooks.nsh`）は、tauri-bundler 2.10.4の`installer.nsi`と照らし、`NSIS_HOOK_PREINSTALL`の位置、HKCUの`Uninstall\sonar_spectra`、`UninstallString`の形、`/S`と`_?=`、`/UPDATE`なし（`$UpdateMode`は0のままでショートカットが消える）、`$DeleteAppDataCheckboxState`が空でデータが残ること、旧版がなければ何もしないことを確かめた。macOSではNSISを組めないため、実際の動作はW14-8に残る
+  - 実施メモ：`.dmg`は、Finderへの装飾のAppleScriptがタイムアウトしてこの環境では作れなかった（`CI=true`で装飾を省くと作れる）。名前の確かめには影響しない。報告のみ。`docs/brand/brand.md`の見出しの`sonar_spectra`は開発者向けの文書でありSPEC 10節の対象外のため、直していない（直すかはユーザーの判断）
 - W14-5 → W14-8へ移動（同上）
-- [ ] W14-6 【エージェント】アイコンの書き出しと組み込みが正しい
+- [x] W14-6 【エージェント】アイコンの書き出しと組み込みが正しい
   - 推奨: Sonnet・medium以上
   - 依存: W14-4
   - `docs/brand/icon_layers/`の3つのSVGが、`specs/`の最新のマスターSVGの各前景グループと一致する（1024四方、角丸と余白なし、`00_bg`なし）。`AppIcon.icon`の中のレイヤーのSVGが`docs/brand/icon_layers/`と一致する（`diff`）
   - 手元でビルドした`.app`の`Contents/Resources`に`Assets.car`と`.icns`の両方があり、`Info.plist`がそれを指している
   - `bun run icons`で作り直した`.ico`・PNG・ファビコンが、コミット済みのものと一致する
-- [ ] W14-7 【ユーザー】Dock・Finder・Launchpadで、アイコンの見え方を既定・ダーク・Clear・Tintedの各モードで確かめる
+  - 実施: Sonnet 5.5（エフォートは起動時の設定のまま）
+  - 実施メモ：`docs/brand/icon_layers/`の3つのSVGは、`specs/`のv9のマスターの`01_ring`・`02_wave`・`03_peak`の各`<g>`をそのまま含み、`00_bg`はなく、1024四方。`AppIcon.icon/Assets/`の3つは`docs/brand/icon_layers/`と`diff`で一致。作り直した`.app`の`Resources`に`Assets.car`と`icon.icns`があり、`Info.plist`は`CFBundleIconName`=Icon・`CFBundleIconFile`=icon.icns、`icon.icns`は`src-tauri/icons/icon.icns`とバイト一致。`bun run icons`のあと、変わったのは`icon.icns`のバイトだけ（`iconutil`で展開した画像は一致するため、T14-6の実施メモのとおり、コミット済みの版に戻した）。`.ico`・PNG・ファビコンは一致
+- [x] W14-7 【ユーザー】Dock・Finder・Launchpadで、アイコンの見え方を既定・ダーク・Clear・Tintedの各モードで確かめる
   - 依存: W14-6
   - 対応する最も古いOS（macOS 26）の実機はないため、macOS 27で確かめる（SPEC 9節）
   - あわせて、Finder・Dock・メニューバーのアプリの名前とウィンドウのタイトルが「Sonar Spectra」であることを確かめる（v9）
-- [ ] W14-8 【ユーザー】Windowsの実機で、0.1.0を入れた状態から、手元でビルドしたインストーラーを入れ、旧版が自動で取り除かれることを確かめる
+  - 実施メモ：ユーザーが実機（macOS 27）で確かめ、問題なしと報告
+- [x] W14-8 【ユーザー】Windowsの実機で、0.1.0を入れた状態から、手元でビルドしたインストーラーを入れ、旧版が自動で取り除かれることを確かめる
   - 依存: W14-4
   - 画面: S01
   - インストーラーは`CONTRIBUTING.md`のビルドの手順で作るNSISのもの（`nsis/*-setup.exe`。配布はNSISだけなので、MSIは確かめない）。入れたあと、「アプリと機能」とスタートメニューに「Sonar Spectra」だけがあり、`sonar_spectra`の項目とショートカットが残っていない。旧版のインストール先のフォルダーが消えている。起動すると、ウィンドウのタイトルが「Sonar Spectra」で、0.1.0の設定と構成が引き継がれている
   - 0.1.0が入っていない状態から入れても、ふつうに入る（旧版の取り除きは何もしない）
+  - 実施メモ（261113164917）：ユーザーが実機で確かめ、問題なしと報告（Phase 14の検証はすべて通過）。初回はmacOS側の変更をpushしておらず、Windowsで旧名のまま組まれた（スタートメニューとタイトルバーが`sonar_spectra`）。最新の版にそろえて作り直すと、名前が「Sonar Spectra」になった。実行ファイル名`sonar_spectra.exe`はSPEC 10節のとおり変えない
 
 ## Phase 15: macOSでの負荷と動作の継続
 
