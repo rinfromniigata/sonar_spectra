@@ -327,9 +327,18 @@ mod tests {
         sink.reset(RATE);
         push_sine(&sink, 4_800, 0.5);
         let (tx, rx) = mpsc::channel();
-        let mut transport = FrameTransport::start(reader, Pipeline::default(), move |bytes| {
-            let _ = tx.send((Instant::now(), bytes));
-        });
+        // 測るのは送る間隔で、解析の速さではない。デバッグビルドのテストを並列に回すと、
+        // 重い解析（スペクトラム・クロマなど）では1回の処理が16.7msを超え、遅れを取り戻さない作りのため
+        // 回数が半分近くに落ちる（CI の macOS のランナーで起きた）。軽いレベルとVUだけを有効にして始める
+        let mut transport = FrameTransport::start_with(
+            reader,
+            Pipeline::default(),
+            false,
+            Some(vec![SectionId::Level.as_u8(), SectionId::Vu.as_u8()]),
+            move |bytes| {
+                let _ = tx.send((Instant::now(), bytes));
+            },
+        );
 
         thread::sleep(Duration::from_millis(500));
         let frames: Vec<_> = rx.try_iter().collect();
