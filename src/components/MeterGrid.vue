@@ -55,6 +55,7 @@ import { moduleRegistry, type ModuleRegistry } from "../modules/registry";
 import type { AnyModuleDefinition } from "../modules/types";
 import { equalTracks, frameDeviceRect, type DeviceRect, type GridMetrics } from "../render/gl/frame_rects";
 import { provideShapeLayer } from "../render/gl/use_shape_layer";
+import { useRenderScale } from "../render/render_scale";
 import EditHead from "./EditHead.vue";
 import ModuleFrame from "./ModuleFrame.vue";
 
@@ -125,17 +126,20 @@ function gridMetrics(): GridMetrics | null {
   return { left: rect.left, top: rect.top, paddingLeft, paddingTop, columns, rows, columnGap, rowGap };
 }
 
-/** 今の枠の範囲（共有キャンバスのデバイスピクセル）。描画の層が毎回の描画の初めに呼ぶ */
+/** 描画の倍率（描画の解像度の設定。共有キャンバスの画素数と枠の範囲に同じものを使う） */
+const renderScale = useRenderScale();
+
+/** 今の枠の範囲（共有キャンバスの画素。描画の倍率で求める）。描画の層が毎回の描画の初めに呼ぶ */
 function deviceFrames(): Map<string, DeviceRect> {
   const frames = new Map<string, DeviceRect>();
   if (!metrics) return frames;
-  const dpr = window.devicePixelRatio || 1;
-  for (const item of placed.value) frames.set(item.instance.id, frameDeviceRect(metrics, item.rect, dpr));
+  const scale = renderScale.current();
+  for (const item of placed.value) frames.set(item.instance.id, frameDeviceRect(metrics, item.rect, scale));
   return frames;
 }
 
 const layerCanvas = ref<HTMLCanvasElement | null>(null);
-const shapeLayer = provideShapeLayer({ canvas: layerCanvas, frames: deviceFrames });
+const shapeLayer = provideShapeLayer({ canvas: layerCanvas, frames: deviceFrames, scale: () => renderScale.current() });
 /** 描画を開始できない（WebGL2 を作れない・失って戻っていない） */
 const renderUnavailable = computed(() => shapeLayer.status.value === "unavailable" || shapeLayer.status.value === "lost");
 watch(renderUnavailable, (value) => emit("renderUnavailable", value), { immediate: true });

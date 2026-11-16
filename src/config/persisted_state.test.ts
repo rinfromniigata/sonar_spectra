@@ -52,7 +52,7 @@ describe("createDefaultState", () => {
     expect(state.dirty).toBe(false);
     expect(state.source).toEqual({ deviceId: null });
     // アプリ全体の設定：フレームレートの上限は60fps（構成の外）
-    expect(state.app).toEqual({ frameLimit: 60 });
+    expect(state.app).toEqual({ frameLimit: 60, renderResolution: "display" });
     expect(state.current).not.toHaveProperty("app");
   });
 });

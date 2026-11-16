@@ -156,9 +156,9 @@ describe("SettingsDrawer", () => {
     expect(changed).toMatch(new RegExp(`data-setting="startFullscreen"[\\s\\S]*?aria-checked="true"`));
   });
 
-  /** フレームレートの上限の行（見出しの文言・選択肢・押されている選択肢） */
-  function frameLimitRow(html: string): { label: string; options: string[]; pressed: string[] } {
-    const row = /<div class="row" data-setting="frameLimit"[^>]*>([\s\S]*?<\/div>)\s*<\/div>/.exec(html)![1];
+  /** セグメントの行（見出しの文言・選択肢・押されている選択肢） */
+  function segmentRow(html: string, key: string): { label: string; options: string[]; pressed: string[] } {
+    const row = new RegExp(`<div class="row" data-setting="${key}"[^>]*>([\\s\\S]*?<\\/div>)\\s*<\\/div>`).exec(html)![1];
     const buttons = [...row.matchAll(/<button([^>]*)>([^<]*)<\/button>/g)];
     return {
       label: /<span class="row-label"[^>]*>([^<]*)<\/span>/.exec(row)![1],
@@ -166,12 +166,14 @@ describe("SettingsDrawer", () => {
       pressed: buttons.filter((m) => m[1].includes('aria-pressed="true"')).map((m) => m[2].trim()),
     };
   }
+  const frameLimitRow = (html: string) => segmentRow(html, "frameLimit");
+  const renderResolutionRow = (html: string) => segmentRow(html, "renderResolution");
 
-  it("表示の欄の末尾に「フレームレートの上限」のセグメント（60・45・30 fps）を置く。初期値は60 fps", async () => {
+  it("表示の欄の「フレームレートの上限」のセグメント（60・45・30 fps）。初期値は60 fps", async () => {
     const html = await render();
     const display = html.slice(html.indexOf(`>${ja.settings.display}</legend>`));
     const keys = [...display.matchAll(/data-setting="(\w+)"/g)].map((m) => m[1]);
-    expect(keys).toEqual(["scanline", "alwaysOnTop", "startFullscreen", "frameLimit"]);
+    expect(keys).toEqual(["scanline", "alwaysOnTop", "startFullscreen", "frameLimit", "renderResolution"]);
     expect(frameLimitRow(html)).toEqual({
       label: ja.settings.frame_limit,
       options: [ja.settings.frame_limit_60, ja.settings.frame_limit_45, ja.settings.frame_limit_30],
@@ -184,6 +186,24 @@ describe("SettingsDrawer", () => {
     store.setFrameLimit(30);
     const html = await render(store);
     expect(frameLimitRow(html).pressed).toEqual([ja.settings.frame_limit_30]);
+    expect(store.dirty.value).toBe(false);
+    expect(html).not.toContain(ja.config.modified);
+  });
+
+  it("表示の欄の末尾（フレームレートの上限の次）に「描画の解像度」のセグメント（画面どおり・等倍）を置く。初期値は画面どおり", async () => {
+    expect(renderResolutionRow(await render())).toEqual({
+      label: ja.settings.render_resolution,
+      options: [ja.settings.render_resolution_display, ja.settings.render_resolution_one],
+      pressed: [ja.settings.render_resolution_display],
+    });
+  });
+
+  it("描画の解像度は、構成ではなくアプリ全体の設定を映し、選んでも「保存後に変更あり」にならない", async () => {
+    const store = configStore();
+    store.setRenderResolution("one");
+    const html = await render(store);
+    expect(renderResolutionRow(html).pressed).toEqual([ja.settings.render_resolution_one]);
+    expect(frameLimitRow(html).pressed).toEqual([ja.settings.frame_limit_60]);
     expect(store.dirty.value).toBe(false);
     expect(html).not.toContain(ja.config.modified);
   });

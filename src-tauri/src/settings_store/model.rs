@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 /// 今の `state.json` の形式の版
-pub const SCHEMA: u32 = 2;
+pub const SCHEMA: u32 = 3;
 
 /// 選べるフレームレートの上限（fps。`src/config/types.ts` の `FRAME_LIMITS` と同じ）
 pub const FRAME_LIMITS: [u32; 3] = [60, 45, 30];
@@ -45,6 +45,23 @@ pub struct PersistedState {
 pub struct AppSettings {
     /// フレームレートの上限（fps）。`FRAME_LIMITS` のどれか
     pub frame_limit: u32,
+    /// 描画の解像度（v10）
+    pub render_resolution: RenderResolution,
+}
+
+/// 描画の解像度（v10。`src/config/types.ts` の `RenderResolution` と同じ）
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RenderResolution {
+    /// 画面どおり（`devicePixelRatio`）
+    Display,
+    /// 等倍（`min(devicePixelRatio, 1)`）
+    One,
+}
+
+impl RenderResolution {
+    /// JSON での値（2→3の移行で足す既定）
+    pub const DEFAULT_JSON: &str = "display";
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

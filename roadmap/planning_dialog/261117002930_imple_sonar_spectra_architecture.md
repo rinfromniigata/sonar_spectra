@@ -1,9 +1,9 @@
 # sonar_spectra 実装設計（imple）
 
-- 対象：`roadmap/specs/sonar_spectra_SPEC_v9.md` と同版のデザインアセット
+- 対象：`roadmap/specs/sonar_spectra_SPEC_v11.md` と同版のデザインアセット
 - 種別：Agentic Coding
-- 対になるドキュメント：`261113070449_tasks_sonar_spectra_initial.md`、`261113070449_walk_sonar_spectra_initial.md`
-- 改訂：change「261113065821_change_app_display_name」を反映（プランアセット v9。アプリの表示名をSonar Spectraにし、Windowsで0.1.0から更新するときインストーラーが旧版を自動で取り除く：2節、6節）。前の版は`archived/261113063725_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映（プランアセット v8。タイトル帯のダブルクリックは拡大・戻すだけ、Escで全画面を終える動きは求めない、T13-1〜T13-5で確かめた細部：3.6、4.5）。前の版は`archived/261113042452_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映（プランアセット v7。録音の許可を判定せずS09bを取りやめる、Process Tapと集約デバイスを自前で作りcpalで開く、T12-1で確かめた細部：2節、3.1、3.5、3.6、4.5、7節）。前の版は`archived/261113032529_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113031351_change_macos_support」を反映（プランアセット v6。macOSへの対応：1節、2節、3.1、3.4、3.5、3.6〔新設〕、4.5、4.6、4.8、6節、7節。v5のSPEC 11節「モックとの差分」がモックに取り込まれたため、11節への参照を画面IDに改めた）。前の版は`archived/261111033238_imple_sonar_spectra_architecture.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映（4.5：描画を開始できない表示と、入力源の状態の表示〔S01b〜S01d〕の出し分け）。前の版は`archived/261110165456_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映（4.6の発光：等倍の図形は画像を写さず同じ頂点の範囲をもう一度描いて重ねる）。前の版は`archived/261110133636_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映（1節、2節、3.4、4.2、4.5、4.6、4.8、5.1、5.2の16、5.3）。前の版は`archived/261109115345_imple_sonar_spectra_architecture.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」））））））
+- 対になるドキュメント：`261117002930_tasks_sonar_spectra_initial.md`、`261117002930_walk_sonar_spectra_initial.md`
+- 改訂：change「261117002629_change_macos_memory_pressure」に合わせて新しいタイムスタンプで引き継いだ（プランアセット v11。変わったのはSPEC 3節のメモリプレッシャーの基準だけで、この文書の中身の変更なし）。前の版は`archived/261116220740_imple_sonar_spectra_architecture.md`（その前の改訂：change「261116220138_change_render_resolution_and_macos_load」を反映（プランアセット v10。描画の解像度の設定とschema 3、T15-1で改めた描画の層の描く順と発光、macOSでの計測の条件：3.4、4.6、5.1、5.2の17、5.3）。前の版は`archived/261113070449_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113065821_change_app_display_name」を反映（プランアセット v9。アプリの表示名をSonar Spectraにし、Windowsで0.1.0から更新するときインストーラーが旧版を自動で取り除く：2節、6節）。前の版は`archived/261113063725_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映（プランアセット v8。タイトル帯のダブルクリックは拡大・戻すだけ、Escで全画面を終える動きは求めない、T13-1〜T13-5で確かめた細部：3.6、4.5）。前の版は`archived/261113042452_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映（プランアセット v7。録音の許可を判定せずS09bを取りやめる、Process Tapと集約デバイスを自前で作りcpalで開く、T12-1で確かめた細部：2節、3.1、3.5、3.6、4.5、7節）。前の版は`archived/261113032529_imple_sonar_spectra_architecture.md`（その前の改訂：change「261113031351_change_macos_support」を反映（プランアセット v6。macOSへの対応：1節、2節、3.1、3.4、3.5、3.6〔新設〕、4.5、4.6、4.8、6節、7節。v5のSPEC 11節「モックとの差分」がモックに取り込まれたため、11節への参照を画面IDに改めた）。前の版は`archived/261111033238_imple_sonar_spectra_architecture.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映（4.5：描画を開始できない表示と、入力源の状態の表示〔S01b〜S01d〕の出し分け）。前の版は`archived/261110165456_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」を反映（4.6の発光：等倍の図形は画像を写さず同じ頂点の範囲をもう一度描いて重ねる）。前の版は`archived/261110133636_imple_sonar_spectra_architecture.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映（1節、2節、3.4、4.2、4.5、4.6、4.8、5.1、5.2の16、5.3）。前の版は`archived/261109115345_imple_sonar_spectra_architecture.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」））））））））
 
 ## 1. 方針
 
@@ -135,6 +135,7 @@ pub trait Analyzer: Send {
 - 書き込みは一時ファイルに書いてから置き換える（書き込み中に落ちても前の状態が残る）
 - 読み込み時に`schema`を確かめ、古い形式は移行し、読めない場合は既定の状態で起動して元のファイルを`state.broken-{日時}.json`として残す
 - schema 2（v4）：`state.json`に`app`（アプリ全体の設定）を足す。1→2の移行は`app: { frameLimit: 60 }`を足すだけ。構成ファイルの`schema`は`state.json`と同じ版を使うため2になり、その1→2の移行は中身を変えない
+- schema 3（v10）：`app`に`renderResolution`（描画の解像度）を足す。2→3の移行は`app.renderResolution = "display"`を足すだけ（すでにあれば残す）。構成ファイルの2→3の移行は中身を変えない
 - 構成の書き出し・読み込みは、UIで`tauri-plugin-dialog`で場所を選び、`tauri-plugin-fs`で読み書きする（fsの権限はダイアログで選んだパスに限る）。中身の検証は`settings_store`のコマンドで行う
 
 ### 3.5 コマンドとイベント（UI ⇔ Rust のインターフェース）
@@ -258,16 +259,20 @@ interface ShapeSink {
   - 周期は平均で合わせる：描くたびに「次に描いてよい時刻」を周期ぶん進める（遅れが周期を超えたら今の時刻に合わせ直し、まとめて描かない）。画面の1周期の半分を許容の幅にして、60 Hzの画面で上限60fpsのときに1回おきにならないようにする
   - 画面の周期が上限より低いときは、来た回ごとに描く（上限は引き上げない）
   - 上限は`app.frameLimit`から読み、変わったらすぐ効かせる。経過時間（`dt`）は描いた回どうしの差のまま（流れる速さは描く回数によらない）
+- **描画の解像度**（v10）：描画の倍率を1か所（`render/`の関数）で決める。`app.renderResolution`が`"display"`なら`devicePixelRatio`、`"one"`なら`min(devicePixelRatio, 1)`。共有キャンバスの画素数（`ResizeObserver`の`device-pixel-content-box`は`devicePixelRatio`での値なので、倍率の比を掛けて丸める）、枠の範囲（`MeterGrid`の`deviceFrames`）、枠ごとのCanvas 2Dの層（`ModuleFrame`の`Geometry.devicePixelRatio`）は、すべてこの倍率を使い、`window.devicePixelRatio`を直接読まない（図形と文字の位置をそろえる）。設定が変わったら、すぐキャンバスと層の大きさを合わせ直す。開発用のモジュールギャラリーは対象外（画面どおりのまま）
 - ウィンドウが最小化されたら止め、`set_render_paused(true)`を送る。復帰したら再開する
 - 描画が重い場合も受信・取得は止まらない（最新のフレームだけを描く）
-- macOSでの計測（v6）：WebView2のリモートデバッグは使えないため、ページ内の計測（描く回数と1回の時間。開発用のビルドでだけ有効にするか、計測用の一時的なコードにする）と、アクティビティモニタ（CPU・GPU・メモリプレッシャー）で測る。Safariの Web インスペクタが使えるかはT15-1で確かめる
+- macOSでの計測（v6。v10で改訂）：ページ内の計測（描く回数・`requestAnimationFrame`の回数・1回の時間・受信の回数。アプリのコードは変えず、ビルド済みの`dist/index.html`に計測用のスクリプトを差し込んだ計測用のビルドで測る）と、GPUの使用率（`ioreg`の`IOAccelerator`の`Device Utilization %`）、アクティビティモニタ（CPU・メモリプレッシャー）で測る。条件はSPEC 3節（クラムシェル・Acer ET430K単体、4K・スケーリングWQHD、全画面・全モジュール・音の見本）。Safariの Web インスペクタは使っていない。道具と結果はリポジトリの外（`~/code/sonar_spectra_captures/t15/`）に置く
+  - T15-1で分かったこと：この条件では、何も描かなくても、キャンバスが見えていれば全画面の合成だけでGPUの約8割を使い（キャンバスの大きさ・透明かどうかによらない）、「画面どおり」（キャンバス5120×2880）では上限によらず約25回/秒にとどまる。「等倍」（2560×1396）では上限30・45どおりに描ける
 
 #### 描画の層（`render/gl/`。v4）
 
 - **共有キャンバス**：WebGL2のコンテキストは1つ。1回の描画の初めに全体を消し、モジュールごとに、枠の範囲（`MeterGrid`の配置から求めた矩形。デバイスピクセル）をビューポートと切り抜きにして、そのモジュールの図形を描く。枠の地の色もここで塗る。枠の位置はDOMから測らず、配置の状態から毎回求める（レイアウト編集のドラッグに追従する）
 - **図形の描き方**：線は太さを持つ三角形の列に展開する（WebGLの線は1ピクセル固定のため）。端と継ぎ目のアンチエイリアスはシェーダーで付ける。帯・多角形・点・四角も三角形にする。1つのモジュールの図形は、色と発光ごとにまとめて少ない描画命令で描く
 - **方向**：枠の`quarterTurns`を頂点の変換（行列）で当てる
-- **発光**（T9-1の推奨案(a)）：発光する図形を、等倍のオフスクリーンのフレームバッファに1回だけ描き、それを縮小（発光の値が12以下は1/2、超えると1/4）して分離型のガウスでぼかし（標準偏差＝発光の値/2。`shadowBlur`と同じ広がり。枠の範囲の外は透明として読む）、拡大して枠に敷いてから、等倍の図形を重ねる。等倍の図形は、フレームバッファの画像を写さず、送ってある同じ頂点の範囲を枠へもう一度描く（展開はし直さない。塗りのふちは共有キャンバスのマルチサンプルでならされ、画像の側にマルチサンプルの領域と解決が要らない）。発光が0のときは、ぼかしを飛ばして図形だけを描く。フレームバッファは共有キャンバスの大きさで作って全部の枠で使い回し、大きさが変わったときだけ作り直す
+- **描く順**（v10。T15-1）：1回の描画を2段に分ける。1段目で、全部の枠の発光と枠の画像（残光・薄くする枠）を用意してから、2段目で共有キャンバスに1回で、枠ごとに地の色・発光・図形・枠の画像を描く。タイル型のGPU（Apple Silicon）では、描く先（とくにマルチサンプルの共有キャンバス）を切り替えるたびに画像全体の読み書きが起きるため、切り替えを段ごとにまとめる。`invalidateFramebuffer`はWebKitで重くなるため使わない
+- **発光**（T9-1の推奨案(a)。v10で用意のしかたを改訂）：発光ごとに、図形のある範囲にぼかしの届く幅を足した範囲（`glowRegion`）だけを、等倍の作業用の画像に詰めて置き（`packShelves`。入りきらなければ次の回に分ける）、発光する図形を1回だけ描く。それを縮小した画像（発光の値が12以下は1/2、超えると1/4。置き場所は`packShelves`で詰める）へまとめて縮小し、全部の発光を分離型のガウスでまとめてぼかす（標準偏差＝発光の値/2。`shadowBlur`と同じ広がり。発光の範囲の外は透明として読む）。2段目で、描く先の枠へ拡大して敷いてから、等倍の図形を重ねる。範囲の外はぼかしが届かないので、結果は枠全体で計算したときと同じ（モジュールギャラリーで変更前と比べた差は最大2/255）。等倍の図形は、画像を写さず、送ってある同じ頂点の範囲を描く先へもう一度描く（展開はし直さない。塗りのふちは描く先のマルチサンプルでならされる）。発光が0のときは、ぼかしを飛ばして図形だけを描く。作業用の画像は大きさが変わったときだけ作り直す
+- **枠の画像**（残光・レイアウト編集中に薄くする枠）：枠の図形を、枠の大きさの画像（マルチサンプルの描く先と読む先の組）に描いて解決（blit）してから、共有キャンバスに重ねる。1段目で全部の枠の分を描いて解決しておくため、薄くするための画像も枠ごとに持つ
 - **色**：テーマ・配色の色（CSSの色の文字列）は、描画の層でRGBAの数値に直してから使う（同じ文字列は使い回す）
 - **コンテキストの喪失**：`webglcontextlost`で`preventDefault`して描くのを止め、`webglcontextrestored`でシェーダー・バッファ・テクスチャを作り直して再開する。流れる画像の中身は消えたところから描き直す
 - **作れないとき**：WebGL2のコンテキストを作れなければ、描画の層は描かず、`MeterScreen`に描画を開始できない状態を知らせる（4.5）。Canvas 2Dの描き方へは戻さない
@@ -300,13 +305,13 @@ interface ShapeSink {
 
 ```ts
 interface PersistedState {
-  schema: 2;                       // v4で2に上げた（3.4）
+  schema: 3;                       // v4で2、v10で3に上げた（3.4）
   current: Config;                 // 今表示している構成（作業中の写し）
   activeConfigId: string;          // 使用中の保存済み構成
   dirty: boolean;                  // 保存後に変更があるか（S02の「保存後に変更あり」）
   savedConfigs: SavedConfig[];
   source: { deviceId: string | null }; // null は既定の出力デバイス。構成には含めない
-  app: { frameLimit: 60 | 45 | 30 };   // アプリ全体の設定（v4）。構成には含めない。既定は60
+  app: { frameLimit: 60 | 45 | 30; renderResolution: "display" | "one" }; // アプリ全体の設定（v4。renderResolutionはv10）。構成には含めない。既定は60・"display"
 }
 
 interface SavedConfig extends Config { id: string; name: string; savedAt: string /* ISO 8601 */ }
@@ -358,16 +363,17 @@ interface Palette { id: string; name: string; main: string; sub: string; accent:
 9. **「名前を付けて保存」で「クラブ用」と付ける** → `savedConfigs`に`current`の写しが新しい`id`・`name`・`savedAt`で1件増え、`activeConfigId`がそれになり、`dirty = false`
 10. **配色を作る（主色・副色・強調色）** → `current.customPalettes`に1件増える。`dirty = true`。どのインスタンスもまだ使っていない
 11. **構成を「既定」に切り替える** → `dirty = true`なので、上書き・別名で保存・破棄を確認する。破棄を選ぶと`current`は「既定」の写しになり、`activeConfigId`が「既定」、`dirty = false`。10で作った配色は「クラブ用」に保存していないので消える
-12. **「クラブ用」を書き出す** → `state.json`は変わらない。選んだ場所に`{ format: "sonar_spectra.config", schema: 2, config: SavedConfig }`のJSONを書く（v4で`schema`は2。schema 1のファイルも移行して読める）
+12. **「クラブ用」を書き出す** → `state.json`は変わらない。選んだ場所に`{ format: "sonar_spectra.config", schema: 3, config: SavedConfig }`のJSONを書く（v4で`schema`は2。schema 1のファイルも移行して読める）
 13. **別のPCでそのファイルを読み込む** → 検証してから、新しい`id`を振って`savedConfigs`に1件増やす。`activeConfigId`は変えない（読み込んだ構成は一覧から切り替えて使う）。そのPCに「クラブ用」がすでにあれば、「クラブ用_1」として足す（5.4）
 14. **入力源のデバイスを変える** → `source.deviceId`だけが変わる。構成は変わらず、`dirty`も変わらない
 15. **アプリを終了して起動し直す** → `state.json`から`current`をそのまま復元し、`display.startFullscreen`がオンなら全画面で始める。ウィンドウの位置・大きさはwindow-stateから復元する（そのディスプレイがなければOSが置く位置）
 16. **設定でフレームレートの上限を30fpsにする**（v4） → `app.frameLimit = 30`だけが変わり、すぐ描く回数が減る。構成は変わらず、`dirty`も変わらない。構成を切り替えても30fpsのまま
+17. **設定で描画の解像度を「等倍」にする**（v10） → `app.renderResolution = "one"`だけが変わり、すぐ共有キャンバスと枠ごとの層の倍率が`min(devicePixelRatio, 1)`になる。構成は変わらず、`dirty`も変わらない。構成を切り替えても「等倍」のまま
 
 ### 5.3 画面の項目とデータの対応
 
 - タイトル帯の出力系統のチップ（S01、S01b〜S01d）：`source-status`イベント（保存しない）と`source.deviceId`
-- 設定パネル（S02）：構成の欄 → `activeConfigId`の`name`と`dirty`（「上書き保存」は`dirty`のときだけ押せ、使用中の保存済み構成を`current`の写しにして`dirty = false`）／入力源 → `source.deviceId`／テーマ → `current.theme`／表示 → `current.display.*`／フレームレートの上限 → `app.frameLimit`（v4）
+- 設定パネル（S02）：構成の欄 → `activeConfigId`の`name`と`dirty`（「上書き保存」は`dirty`のときだけ押せ、使用中の保存済み構成を`current`の写しにして`dirty = false`）／入力源 → `source.deviceId`／テーマ → `current.theme`／表示 → `current.display.*`／フレームレートの上限 → `app.frameLimit`（v4）／描画の解像度 → `app.renderResolution`（v10）
 - 配色の管理（S02a）：標準 → コード上のプリセット／自分で作った配色 → `current.customPalettes`
 - 構成の管理（S02b）：一覧 → `savedConfigs`（名前、配置の種類・モジュール数・保存日は`layout.mode`・有効なインスタンスの数・`savedAt`から作る）／使用中 → `activeConfigId`
 - レイアウト編集（S03）：置いたモジュールの一覧 → `current.layout.instances`（`enabled`はスイッチ）／見出しの矢印 → `direction`／自動配置・手動配置のバッジ → `layout.mode`

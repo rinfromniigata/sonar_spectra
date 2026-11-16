@@ -219,6 +219,9 @@ const ja = {
     frame_limit_60: "60 fps",
     frame_limit_45: "45 fps",
     frame_limit_30: "30 fps",
+    render_resolution: "描画の解像度",
+    render_resolution_display: "画面どおり",
+    render_resolution_one: "等倍",
   },
   // アプリの外（OS）が出す文言。画面では使わず、バンドルの設定に同じ値を書く（bun run check:plist で一致を確かめる）
   bundle: {

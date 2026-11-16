@@ -14,7 +14,14 @@
 import { computed, onMounted, shallowRef, useId } from "vue";
 import { useRuntimeStore } from "../app/runtime_store";
 import { useConfigStore } from "../config/config_store";
-import { FRAME_LIMITS, type DisplaySettings, type FrameLimit, type ThemeSetting } from "../config/types";
+import {
+  FRAME_LIMITS,
+  RENDER_RESOLUTIONS,
+  type DisplaySettings,
+  type FrameLimit,
+  type RenderResolution,
+  type ThemeSetting,
+} from "../config/types";
 import { useT } from "../i18n/use_t";
 import {
   DEFAULT_DEVICE_VALUE,
@@ -131,6 +138,22 @@ const frameLimit = computed({
   },
 });
 
+// 描画の解像度（v10）
+const renderResolutionLabels = computed<Record<RenderResolution, string>>(() => ({
+  display: t("settings.render_resolution_display"),
+  one: t("settings.render_resolution_one"),
+}));
+const renderResolutionOptions = computed<ChoiceOption<string>[]>(() =>
+  RENDER_RESOLUTIONS.map((value) => ({ value, label: renderResolutionLabels.value[value] })),
+);
+const renderResolution = computed({
+  get: (): string => config.renderResolution.value,
+  set: (value: string) => {
+    const next = RENDER_RESOLUTIONS.find((r) => r === value);
+    if (next !== undefined) config.setRenderResolution(next);
+  },
+});
+
 function close(): void {
   runtime.closeDrawer();
 }
@@ -200,6 +223,14 @@ function close(): void {
       <div class="row" data-setting="frameLimit">
         <span class="row-label">{{ t("settings.frame_limit") }}</span>
         <UiSegmented v-model="frameLimit" :label="t('settings.frame_limit')" :options="frameLimitOptions" />
+      </div>
+      <div class="row" data-setting="renderResolution">
+        <span class="row-label">{{ t("settings.render_resolution") }}</span>
+        <UiSegmented
+          v-model="renderResolution"
+          :label="t('settings.render_resolution')"
+          :options="renderResolutionOptions"
+        />
       </div>
     </fieldset>
 

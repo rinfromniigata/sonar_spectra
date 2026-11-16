@@ -45,6 +45,7 @@ import { returnToAuto, setDirection } from "../layout/manual";
 import type { Direction } from "../modules/options";
 import { moduleRegistry } from "../modules";
 import type { AnyModuleDefinition } from "../modules/types";
+import { provideRenderScale } from "../render/render_scale";
 import { provideRenderLoop } from "../render/use_render_loop";
 import { useWindowController } from "../window";
 import { centerNotice, createDeviceSelection, useSourceStatus } from "../source";
@@ -94,6 +95,8 @@ provideRenderLoop({
   frameLimit: () => config.frameLimit.value,
   registry: moduleRegistry,
 });
+// 描画の倍率（描画の解像度。アプリ全体の設定）。格子の共有キャンバスと、枠ごとの文字の層が使う
+provideRenderScale(() => config.renderResolution.value);
 
 /** 受信を続ける間、Channel を持っておく */
 let channel: Channel<ArrayBuffer> | null = null;

@@ -8,6 +8,7 @@
 // 描かない（Canvas 2D の描き方へは戻さない）。描画の層がないとき（部品だけを組み立てたとき）は、地をこの枠が塗り、図形は捨てる。
 // レイアウト編集中は描画を薄くする：文字の層は CSS の opacity で、図形は描画の層に同じ濃さ（--edit-dim-opacity）を渡して、
 // 枠の図形をまとめて薄くする。
+// 文字の層の画素数と座標系は、描画の倍率（render_scale。描画の解像度の設定）で決め、共有キャンバスの枠の範囲とそろえる。
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { findCustomPalette, resolvePaletteColors } from "../config/palettes";
 import type { Instance, Palette } from "../config/types";
@@ -18,6 +19,7 @@ import type { AnyModuleDefinition, FrameDrawInput, Geometry, ModuleRenderer, Pal
 import { DISCARD_SINK } from "../render/gl/shape_batch";
 import { canvasPixels } from "../render/gl/transform";
 import { SHAPE_LAYER_KEY } from "../render/gl/use_shape_layer";
+import { useRenderScale } from "../render/render_scale";
 import { RENDER_LOOP_KEY } from "../render/use_render_loop";
 import type { CanvasColors } from "../theme/canvas_colors";
 
@@ -70,13 +72,16 @@ function paletteColors(colors: CanvasColors): PaletteColors {
   return paletteCache.result;
 }
 
-/** 大きさ・向き・DPR を読み直し、変わっていたらキャンバスを作り直して描画側に知らせる */
+/** 描画の倍率（描画の解像度の設定。共有キャンバスの枠の範囲と同じもの） */
+const renderScale = useRenderScale();
+
+/** 大きさ・向き・描画の倍率を読み直し、変わっていたらキャンバスを作り直して描画側に知らせる */
 function updateGeometry(): void {
   const el = root.value;
   const cv = canvas.value;
   if (!el || !cv || !renderer || !context) return;
   const rect = el.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = renderScale.current();
   const turns = quarterTurns(props.definition.baseDirection, props.instance.direction);
   const size = logicalSize(rect.width, rect.height, turns);
   const next: Geometry = { width: size.width, height: size.height, devicePixelRatio: dpr, quarterTurns: turns };
@@ -150,6 +155,8 @@ onMounted(() => {
 });
 
 watch(() => props.instance.direction, updateGeometry);
+// 描画の解像度を変えたら、すぐ文字の層の大きさを合わせ直す
+watch(renderScale.resolution, updateGeometry);
 watch(
   () => props.editing,
   (editing) => {

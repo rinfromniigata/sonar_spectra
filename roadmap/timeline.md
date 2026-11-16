@@ -10,3 +10,5 @@
 - 261113042727 プランアセット v7：macOSで録音の許可を判定せず、許可がないときの表示（S09b）を取りやめる（許可がないときは無音として見え、無音のあいだの作り直しで許可後に自動で回復する）。Process Tapと集約デバイスを自前で作り、cpalで開く ← development/261113041903_change_macos_permission_and_tap.md
 - 261113063837 プランアセット v8：macOSのタイトル帯のダブルクリックを拡大・戻すだけにし（システム設定の「しまう」「何もしない」には従わない）、信号機ボタンを中央にそろえるのは既定の大きさ以上のウィンドウとする。Escで全画面を終える動きは求めない ← development/261113063530_change_macos_title_double_click_and_esc.md
 - 261113070700 プランアセット v9：アプリの表示名を「Sonar Spectra」と定め（リポジトリ名・識別子は`sonar_spectra`のまま）、Windowsで0.1.0から更新するときはインストーラーが旧版を自動で取り除く ← development/261113065821_change_app_display_name.md
+- 261116221011 プランアセット v10：設定に「描画の解像度」（画面どおり／等倍）を足し（schema 3）、macOSでの負荷の計測の条件をクラムシェル・外部4Kディスプレイ（スケーリングWQHD）に、合格の基準を「等倍」・上限30fpsで上限に届くことに改める ← development/261116220138_change_render_resolution_and_macos_load.md
+- 261117002930 プランアセット v11：macOSでVJツールと同時に30分動かす確かめの、メモリプレッシャーの基準を「赤にならない」に改める（メモリ8GBの開発機では黄色を許す） ← development/261117002629_change_macos_memory_pressure.md

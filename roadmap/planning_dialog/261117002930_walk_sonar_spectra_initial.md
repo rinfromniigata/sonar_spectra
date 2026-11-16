@@ -1,7 +1,7 @@
 # sonar_spectra 検証手順（walk）
 
-- 対象：`261113070449_tasks_sonar_spectra_initial.md`
-- 改訂：change「261113065821_change_app_display_name」を反映し、Phase 14にW14-4（W14-1のあと、W14-2の前）とW14-5（末尾）を足し、W14-2の依存をW14-4に改め、W14-3・W16-2・W16-3・W16-4に表示名と旧版の取り除きの確かめを足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113063725_walk_sonar_spectra_initial.md`（その前の改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映し、W13-3のS09（ダブルクリックは拡大・戻す、中央にそろうのは既定の大きさ以上）とS09a（Escを外す）を改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113042452_walk_sonar_spectra_initial.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映し、W12-1・W12-2・W12-3・W13-1〜W13-3・W16-3からS09bと`PermissionDenied`を外し、W12-3に許可の取り消しと与え直し、入出力兼用のデバイスを足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113032529_walk_sonar_spectra_initial.md`（その前の改訂：change「261113031351_change_macos_support」を反映し、macOS対応と0.2.0のリリースのためにPhase 12〜17（W12-1〜W17-1）を足した。完了済みの項目（Phase 1〜11）は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261111033238_walk_sonar_spectra_initial.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映し、Phase 9にW9-10（W9-7のあと、W9-8の前）を足し、W9-8の依存にW9-10を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110165456_walk_sonar_spectra_initial.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」に合わせて新しいタイムスタンプで引き継いだ（中身の変更なし）。前の版は`archived/261110133636_walk_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にW9-4〜W9-9を足し、未通過のW9-1をW9-7へ（中身を上限の計測に改めた）、W9-2をW9-9へ移した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_walk_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でW7-7・W7-8を追加し、W7-6をW7-9へ移動）））））
+- 対象：`261117002930_tasks_sonar_spectra_initial.md`
+- 改訂：change「261117002629_change_macos_memory_pressure」を反映し、W15-3のメモリプレッシャーの基準を「黄色にならない」から「赤にならない（黄色は許す）」に改め、W15-3をチェックした。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261116220740_walk_sonar_spectra_initial.md`（その前の改訂：change「261116220138_change_render_resolution_and_macos_load」を反映し、W15-1の依存をT15-4に、W15-2・W15-3の条件と基準をSPEC 3節（v10）に改め、W15-4（S02のモックとの照合と、古い形式の読み込み）を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113070449_walk_sonar_spectra_initial.md`（その前の改訂：change「261113065821_change_app_display_name」を反映し、Phase 14にW14-4（W14-1のあと、W14-2の前）とW14-5（末尾）を足し、W14-2の依存をW14-4に改め、W14-3・W16-2・W16-3・W16-4に表示名と旧版の取り除きの確かめを足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113063725_walk_sonar_spectra_initial.md`（その前の改訂：change「261113063530_change_macos_title_double_click_and_esc」を反映し、W13-3のS09（ダブルクリックは拡大・戻す、中央にそろうのは既定の大きさ以上）とS09a（Escを外す）を改めた。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113042452_walk_sonar_spectra_initial.md`（その前の改訂：change「261113041903_change_macos_permission_and_tap」を反映し、W12-1・W12-2・W12-3・W13-1〜W13-3・W16-3からS09bと`PermissionDenied`を外し、W12-3に許可の取り消しと与え直し、入出力兼用のデバイスを足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261113032529_walk_sonar_spectra_initial.md`（その前の改訂：change「261113031351_change_macos_support」を反映し、macOS対応と0.2.0のリリースのためにPhase 12〜17（W12-1〜W17-1）を足した。完了済みの項目（Phase 1〜11）は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261111033238_walk_sonar_spectra_initial.md`（その前の改訂：change「261111033031_change_render_unavailable_priority」を反映し、Phase 9にW9-10（W9-7のあと、W9-8の前）を足し、W9-8の依存にW9-10を足した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261110165456_walk_sonar_spectra_initial.md`（その前の改訂：change「261110165301_change_glow_sharp_redraw」に合わせて新しいタイムスタンプで引き継いだ（中身の変更なし）。前の版は`archived/261110133636_walk_sonar_spectra_initial.md`（その前の改訂：change「261110124814_change_frame_limit_and_webgl」を反映し、Phase 9にW9-4〜W9-9を足し、未通過のW9-1をW9-7へ（中身を上限の計測に改めた）、W9-2をW9-9へ移した。完了済みの項目は、IDとチェック状態と実施メモをそのまま引き継いだ。前の版は`archived/261109115345_walk_sonar_spectra_initial.md`（その前の改訂：change「261109114953_change_config_name_unique_and_overwrite」でW7-7・W7-8を追加し、W7-6をW7-9へ移動）））））））
 - IDの付け替え（261113071817）：Phase 14の記載順と番号順をそろえるため、未着手のW14-2・W14-3・W14-5をW14-6〜W14-8に付け替えた（旧IDは移動先を示す行として残し、再利用しない）。tasksのT14-1〜T14-4も、T14-6〜T14-9に付け替えた。中身と実行順は変えていない
 - 進め方：各Phaseの実装の直後に、そのPhaseの項目を上から行う。不合格のときはその場で修正して同じ項目をやり直し、通過してからチェックを入れる。不合格の内容と、修正を記録したfix・changeのファイル名を実施メモに残す
 
@@ -753,15 +753,29 @@
 
 ## Phase 15: macOSでの負荷と動作の継続
 
-- [ ] W15-1 【エージェント】`bun run check`が通る
+- [x] W15-1 【エージェント】`bun run check`が通る
   - 推奨: Sonnet・low以上
-  - 依存: T15-2
-- [ ] W15-2 【エージェント】T15-1・T15-2の計測の結果が、SPEC 3節の基準を満たす
+  - 依存: T15-4
+  - 実施メモ（261116223255）：終了コード0（型・lint・i18n・plist・トークン・UI 983件・Rust 160件）
+  - 実施: Opus 5.5・high
+- [x] W15-2 【エージェント】T15-2・T15-4の計測の結果が、SPEC 3節（v10）の基準を満たす
   - 推奨: Sonnet・high以上
   - 依存: W15-1
-  - リリースビルド・全モジュール・内蔵ディスプレイの全画面で、上限60fpsのとき描く回数が上限に届く。45・30fpsでも上限どおりに描く。ほかのアプリを前面にしても（ウィンドウが見えている限り）描く回数と送出の回数が落ちず、最小化では止まる
-- [ ] W15-3 【ユーザー】VJツールと同時に30分動かし、カクつき・音と表示のずれ・VJツール側の重さが気にならず、アクティビティモニタのメモリプレッシャーが黄色にならないことを確かめる（上限60fpsで）
+  - クラムシェル・Acer ET430K単体（4K・スケーリングWQHD）、リリースビルド・全モジュール・全画面で、描画の解像度「等倍」・上限30fpsのとき、描く回数が上限に届く。「画面どおり」の上限60と「等倍」の上限60・45は、回数が記録されていればよい（合否に使わない）
+  - ほかのアプリを前面にしても（ウィンドウが見えている限り）描く回数と送出の回数が落ちず、最小化では止まる
+  - 実施メモ（261116223255）：T15-4の記録（`run5/reports.jsonl`）を集計し直し、等倍・30＝30.00回/秒（1秒ごと29〜31）・受信60・seqの抜けなしで基準に届いた（等倍・45＝45.00、等倍・60＝51.37、画面どおり・60＝25.40は記録のみ）。T15-2はv10の条件より前の計測だったため、等倍・30で測り直した（`RESULTS_261116223255.md`・`run6/`）：全画面で前面30.04→計算機を前面30.00、ウィンドウで30.02→30.0、受信は常に60、最小化で描画・受信とも0、戻すと29.98で再開。描画の間隔は中央値33ms・最大約52ms。カクつきの見え方はW15-3でユーザーが確かめる
+  - 実施: Opus 5.5・high
+- [x] W15-3 【ユーザー】VJツールと同時に30分動かし、カクつき・音と表示のずれ・VJツール側の重さが気にならず、アクティビティモニタのメモリプレッシャーが赤にならないことを確かめる（SPEC 3節〔v11〕の条件で、描画の解像度「等倍」・上限30fps。メモリ8GBの開発機では、黄色になることは許す）
   - 依存: W15-2
+  - 「等倍」の見た目（線と文字の粗さ）が、VJで使ううえで気にならないことも確かめる
+  - 実施メモ（261116233154）：ユーザーがTouchDesignerの重めのプロジェクトと同時に30分動かし、著しいカクつきはなかったが、メモリプレッシャーはずっと黄色（物理8GB・使用済み7.25GB・スワップ4.74GB・圧縮2.02GB）。Sonar Spectra自体は等倍・30・全画面で約0.57GB（本体34MB・WebKitのGPU 81MB・WebContent 442MB・Networking 8MB、起動25秒後の`footprint`）。直後の`state.json`は`app`が画面どおり・60だったため、条件（等倍・30）で行ったかを確認中。基準を満たさないため未チェック
+  - 実施メモ（261117002930）：ユーザーが「等倍」・上限30fpsで30分以上、TouchDesignerと同時に動かした。カクつき・ずれ・VJツール側の重さは気にならず、メモリプレッシャーは大半が緑で、終わりのほうで黄色（赤にはならない。使用済み7.04GB・スワップ4.37GB・圧縮2.03GB。同時にrust-analyzer 1.26GB）。Sonar Spectraの描画のプロセスは460MB。開発用のビルド（`bun tauri dev`）で確かめたが、描画は同じで、メモリは多めに出る側のため、change「261117002629_change_macos_memory_pressure」の承認（261117）で通過とした。「等倍」の見た目（線と文字の粗さ）も、ユーザーが気にならないと確かめた（4K・40インチをWQHDのスケーリングで使い、UIが大きく見える条件でもぼやけない）
+- [x] W15-4 【エージェント】設定パネル（S02）の表示の欄が、モックとSPEC 11節の差分（描画の解像度の行）と構造で一致し、選ぶとすぐ描画に効き、構成を切り替えても変わらない。「画面どおり」では、共有キャンバスと枠ごとの層の画素数が変更前と同じ（`devicePixelRatio`どおり）で、「等倍」では倍率が`min(devicePixelRatio, 1)`になり、図形と文字の位置がずれない。schema 2の`state.json`と構成ファイルを読める
+  - 推奨: Sonnet・medium以上
+  - 依存: W15-1
+  - 画面: S02
+  - 実施メモ（261117003402）：`bun run check`が通った（UI 983件・Rust 160件）。S02：表示の欄の末尾（フレームレートの上限の次）に、フレームレートの上限と同じ構造（`.row`＝ラベル＋セグメント、2択、既定は画面どおり）の行があり、辞書3キーはSPEC 11節（v10）のとおり（`SettingsDrawer.test.ts`が行の順・ラベル・選択肢・押下状態を確認。モックv11の`settings.frame_limit`の行と同じ形）。即時反映：`ModuleFrame`が解像度の変更を`watch`して文字の層を作り直し、`ShapeLayer`は倍率を毎回の描画で読む。構成に含めない：切り替え・上書き保存・名前を付けて保存でも変わらず、dirtyにならない（`config_store.test.ts`）。画素数：画面どおりは倍率＝`devicePixelRatio`で`scalePixels`が測った値をそのまま返し、枠の範囲・層も`devicePixelRatio`どおり。等倍は`min(devicePixelRatio, 1)`で、共有キャンバス・枠の範囲・文字の層が同じ倍率を使い位置がそろう（`render_scale.test.ts`）。`window.devicePixelRatio`の直読みは`render_scale.ts`と開発用ギャラリー以外にない。古い形式：schema 2の`state.json`（`app.frameLimit`は保持・退避なし）、schema 1・2の構成ファイルが読める（Rustのテスト）。実機の見た目は、W15-3でユーザーが「等倍」を確かめ済み
+  - 実施: Sonnet 5.5・high
 
 ## Phase 16: 0.2.0のリリースの準備
 

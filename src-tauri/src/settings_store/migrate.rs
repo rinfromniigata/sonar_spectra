@@ -3,23 +3,35 @@
 //! 形式を変えるときは、`model::SCHEMA` を1つ上げ、旧版から新版へ JSON を書き換える関数を
 //! `STEPS` の末尾に足す。読み込み時に、ファイルの `schema` から今の版まで順に当てる。
 //! schema 1 が最初の形式。1→2（v4）で、アプリ全体の設定 `app` を足した。
+//! 2→3（v10）で、`app` に描画の解像度 `renderResolution` を足した。
 
 use std::fmt;
 
 use serde_json::{Map, Value, json};
 
-use super::model::{DEFAULT_FRAME_LIMIT, SCHEMA};
+use super::model::{DEFAULT_FRAME_LIMIT, RenderResolution, SCHEMA};
 
 /// 1つの版を次の版へ書き換える。`schema` の書き換えは呼び出し側が行う
 pub type Step = fn(Map<String, Value>) -> Result<Map<String, Value>, String>;
 
 /// `STEPS[i]` は schema `i + 1` → `i + 2` の移行
-pub const STEPS: &[Step] = &[add_app_settings];
+pub const STEPS: &[Step] = &[add_app_settings, add_render_resolution];
 
 /// schema 1 → 2：アプリ全体の設定 `app`（フレームレートの上限60fps）を足す。すでにあれば残す
 fn add_app_settings(mut map: Map<String, Value>) -> Result<Map<String, Value>, String> {
     map.entry("app")
         .or_insert_with(|| json!({ "frameLimit": DEFAULT_FRAME_LIMIT }));
+    Ok(map)
+}
+
+/// schema 2 → 3：`app` に描画の解像度「画面どおり」を足す。すでにあれば残す
+fn add_render_resolution(mut map: Map<String, Value>) -> Result<Map<String, Value>, String> {
+    let app = map
+        .get_mut("app")
+        .and_then(Value::as_object_mut)
+        .ok_or("app is missing")?;
+    app.entry("renderResolution")
+        .or_insert_with(|| Value::from(RenderResolution::DEFAULT_JSON));
     Ok(map)
 }
 
@@ -124,15 +136,44 @@ mod tests {
         let out = migrate(json!({ "schema": 1, "dirty": true })).unwrap();
         assert_eq!(
             out.value,
-            json!({ "schema": 2, "dirty": true, "app": { "frameLimit": 60 } })
+            json!({ "schema": 3, "dirty": true, "app": { "frameLimit": 60, "renderResolution": "display" } })
         );
         assert!(out.migrated);
 
-        // すでに `app` があれば書き換えない
+        // すでに `app` があれば、フレームレートの上限は書き換えない
         let kept = migrate(json!({ "schema": 1, "app": { "frameLimit": 30 } })).unwrap();
         assert_eq!(
             kept.value,
-            json!({ "schema": 2, "app": { "frameLimit": 30 } })
+            json!({ "schema": 3, "app": { "frameLimit": 30, "renderResolution": "display" } })
+        );
+    }
+
+    #[test]
+    fn schema_2_gets_the_display_render_resolution() {
+        let out = migrate(json!({ "schema": 2, "app": { "frameLimit": 45 } })).unwrap();
+        assert_eq!(
+            out.value,
+            json!({ "schema": 3, "app": { "frameLimit": 45, "renderResolution": "display" } })
+        );
+        assert_eq!(out.from, 2);
+        assert!(out.migrated);
+
+        // すでにあれば残す
+        let kept =
+            migrate(json!({ "schema": 2, "app": { "frameLimit": 30, "renderResolution": "one" } }))
+                .unwrap();
+        assert_eq!(
+            kept.value,
+            json!({ "schema": 3, "app": { "frameLimit": 30, "renderResolution": "one" } })
+        );
+
+        // `app` のない schema 2 は移行できない
+        assert_eq!(
+            migrate(json!({ "schema": 2 })).unwrap_err(),
+            MigrateError::Step {
+                from: 2,
+                detail: "app is missing".into()
+            }
         );
     }
 

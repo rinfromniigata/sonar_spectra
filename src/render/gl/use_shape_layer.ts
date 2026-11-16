@@ -26,6 +26,8 @@ export interface ShapeLayerSetup {
   canvas: Readonly<Ref<HTMLCanvasElement | null>>;
   /** 今の枠の範囲（枠のインスタンスID → 共有キャンバスのデバイスピクセル） */
   frames: () => ReadonlyMap<string, DeviceRect>;
+  /** 描画の倍率（枠の範囲と同じもの）。省略すると画面どおり */
+  scale?: () => number;
   /** 描画ループ（省略すると、親が provide したものを使う。同じコンポーネントで provide したときに渡す） */
   loop?: RenderLoop;
 }
@@ -49,6 +51,7 @@ export function provideShapeLayer(setup: ShapeLayerSetup): ShapeLayerHandle {
     layer = new ShapeLayer({
       canvas,
       frames: setup.frames,
+      scale: setup.scale,
       onStatus: (next) => {
         status.value = next;
       },

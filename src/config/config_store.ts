@@ -22,7 +22,7 @@ import {
   saveAs as saveAsState,
   switchTo,
 } from "./saved_configs";
-import type { Config, FrameLimit, PersistedState, SavedConfig } from "./types";
+import type { Config, FrameLimit, PersistedState, RenderResolution, SavedConfig } from "./types";
 
 /** 変更から保存までの間（imple 4.4） */
 export const SAVE_DELAY_MS = 300;
@@ -76,6 +76,8 @@ export interface ConfigStore {
   readonly deviceId: ComputedRef<string | null>;
   /** フレームレートの上限（fps）。アプリ全体の設定 */
   readonly frameLimit: ComputedRef<FrameLimit>;
+  /** 描画の解像度。アプリ全体の設定 */
+  readonly renderResolution: ComputedRef<RenderResolution>;
   /** 起動時に1度呼ぶ */
   restore(): Promise<RestoreResult>;
   /**
@@ -103,6 +105,8 @@ export interface ConfigStore {
   setDeviceId(deviceId: string | null): void;
   /** フレームレートの上限を変える。構成には含めないので「保存後に変更あり」にはならない */
   setFrameLimit(frameLimit: FrameLimit): void;
+  /** 描画の解像度を変える。構成には含めないので「保存後に変更あり」にはならない */
+  setRenderResolution(renderResolution: RenderResolution): void;
   /** 間を置いている保存を、すぐに行って終わるまで待つ（ウィンドウを閉じるとき） */
   flush(): Promise<void>;
   dispose(): void;
@@ -257,6 +261,11 @@ export function createConfigStore(options: ConfigStoreOptions): ConfigStore {
     commit({ ...state.value, app: { ...state.value.app, frameLimit } });
   }
 
+  function setRenderResolution(renderResolution: RenderResolution): void {
+    if (state.value.app.renderResolution === renderResolution) return;
+    commit({ ...state.value, app: { ...state.value.app, renderResolution } });
+  }
+
   async function flush(): Promise<void> {
     clearTimer();
     await drain();
@@ -269,6 +278,7 @@ export function createConfigStore(options: ConfigStoreOptions): ConfigStore {
     dirty: computed(() => state.value.dirty),
     deviceId: computed(() => state.value.source.deviceId),
     frameLimit: computed(() => state.value.app.frameLimit),
+    renderResolution: computed(() => state.value.app.renderResolution),
     restore,
     updateCurrent,
     saveAs,
@@ -280,6 +290,7 @@ export function createConfigStore(options: ConfigStoreOptions): ConfigStore {
     importConfig,
     setDeviceId,
     setFrameLimit,
+    setRenderResolution,
     flush,
     dispose: clearTimer,
   };

@@ -69,13 +69,22 @@ export const FRAME_LIMITS = [60, 45, 30] as const;
 export type FrameLimit = (typeof FRAME_LIMITS)[number];
 export const DEFAULT_FRAME_LIMIT: FrameLimit = 60;
 
+/**
+ * 描画の解像度（v10。Rust の settings_store/model.rs の RenderResolution と同じ）。先頭が既定。
+ * "display" は画面どおり（devicePixelRatio）、"one" は等倍（min(devicePixelRatio, 1)）
+ */
+export const RENDER_RESOLUTIONS = ["display", "one"] as const;
+export type RenderResolution = (typeof RENDER_RESOLUTIONS)[number];
+export const DEFAULT_RENDER_RESOLUTION: RenderResolution = "display";
+
 /** アプリ全体の設定（構成には含めない） */
 export interface AppSettings {
   frameLimit: FrameLimit;
+  renderResolution: RenderResolution;
 }
 
-/** state.json の形式の版（v4で2。1→2で app を足した） */
-export const STATE_SCHEMA = 2;
+/** state.json の形式の版（v4で2。1→2で app を足した。v10で3。2→3で app.renderResolution を足した） */
+export const STATE_SCHEMA = 3;
 
 /** state.json の中身 */
 export interface PersistedState {

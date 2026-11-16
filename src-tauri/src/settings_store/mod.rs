@@ -277,13 +277,13 @@ mod tests {
         saved["name"] = json!("既定");
         saved["savedAt"] = json!("2026-11-08T05:15:30.000Z");
         json!({
-            "schema": 2,
+            "schema": 3,
             "current": config("light", "manual", true),
             "activeConfigId": "c-default",
             "dirty": true,
             "savedConfigs": [saved],
             "source": { "deviceId": "{0.0.0.00000000}.{abc}" },
-            "app": { "frameLimit": 45 }
+            "app": { "frameLimit": 45, "renderResolution": "one" }
         })
     }
 
@@ -354,8 +354,46 @@ mod tests {
         assert_eq!(state.app.frame_limit, 60);
         let mut expected = sample();
         expected.app.frame_limit = 60;
+        expected.app.render_resolution = RenderResolution::Display;
         assert_eq!(state, expected);
         assert_eq!(dir.files(), vec![STATE_FILE.to_string()]);
+    }
+
+    /// v4〜v9のアプリが書いた schema 2 の `state.json` は、移行して読む（描画の解像度は「画面どおり」）。
+    /// フレームレートの上限はそのまま残し、退避はしない
+    #[test]
+    fn schema_2_state_is_migrated_with_the_display_render_resolution() {
+        let dir = TestDir::new("v2_state");
+        let mut old = sample_json();
+        old["schema"] = json!(2);
+        old["app"]
+            .as_object_mut()
+            .unwrap()
+            .remove("renderResolution");
+        write_state(&dir, &old.to_string());
+
+        let LoadOutcome::Loaded(state) = dir.store().load().unwrap() else {
+            panic!("schema 2 should load");
+        };
+        assert_eq!(state.schema, SCHEMA);
+        let mut expected = sample();
+        expected.app.render_resolution = RenderResolution::Display;
+        assert_eq!(state, expected);
+        assert_eq!(state.app.frame_limit, 45);
+        assert_eq!(dir.files(), vec![STATE_FILE.to_string()]);
+    }
+
+    #[test]
+    fn render_resolution_must_be_one_of_the_choices() {
+        let mut bad = sample_json();
+        bad["app"]["renderResolution"] = json!("half");
+        assert_recovered("bad_render_resolution", &bad.to_string());
+        let mut missing = sample_json();
+        missing["app"]
+            .as_object_mut()
+            .unwrap()
+            .remove("renderResolution");
+        assert_recovered("no_render_resolution", &missing.to_string());
     }
 
     #[test]

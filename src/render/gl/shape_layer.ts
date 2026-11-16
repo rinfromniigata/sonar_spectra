@@ -12,6 +12,7 @@
 
 import type { FrameDrawInput, Geometry, ShapeSink } from "../../modules/types";
 import type { RenderLayer } from "../render_loop";
+import { currentDevicePixelRatio, scalePixels } from "../render_scale";
 import { canvasColorFallback, createColorResolver, type Rgba } from "./color";
 import type { DeviceRect } from "./frame_rects";
 import { GlRenderer, type FramePass } from "./gl_renderer";
@@ -25,6 +26,8 @@ export interface ShapeLayerOptions {
   canvas: HTMLCanvasElement;
   /** 今の枠の範囲（枠のインスタンスID → 共有キャンバスのデバイスピクセル）。毎回の描画の初めに呼ぶ */
   frames: () => ReadonlyMap<string, DeviceRect>;
+  /** 描画の倍率（render_scale。枠の範囲と同じもの）。毎回の描画で呼ぶ。省略すると画面どおり */
+  scale?: () => number;
   onStatus?: (status: ShapeLayerStatus) => void;
 }
 
@@ -59,7 +62,12 @@ export class ShapeLayer implements RenderLayer {
   private frames: ReadonlyMap<string, DeviceRect> = new Map();
   private readonly recorded = new Map<string, FrameRecord>();
   private observer: ResizeObserver | null = null;
-  /** キャンバスの表示の大きさ（デバイスピクセル）。測るまでは 0 */
+  /** キャンバスの表示の大きさ（測ったときの devicePixelRatio でのデバイスピクセル）。測るまでは 0 */
+  private deviceWidth = 0;
+  private deviceHeight = 0;
+  /** 表示の大きさを測ったときの devicePixelRatio */
+  private observedDpr = 1;
+  /** キャンバスの画素数（描画の倍率での大きさ。fitCanvas で決める） */
   private pixelWidth = 0;
   private pixelHeight = 0;
 
@@ -163,17 +171,24 @@ export class ShapeLayer implements RenderLayer {
     return true;
   }
 
-  /** キャンバスの画素数を、表示の大きさ（デバイスピクセル）に合わせる。大きさが分からなければ false */
+  /**
+   * キャンバスの画素数を、表示の大きさに描画の倍率を当てた大きさに合わせる（画面どおりなら表示の大きさのデバイスピクセル）。
+   * 倍率は毎回読むので、描画の解像度を変えると次の描画から効く。大きさが分からなければ false
+   */
   private fitCanvas(): boolean {
     const { canvas } = this.options;
-    if (this.pixelWidth <= 0 || this.pixelHeight <= 0) {
+    if (this.deviceWidth <= 0 || this.deviceHeight <= 0) {
       // まだ測れていない：今の大きさから求める
       const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      this.pixelWidth = Math.round(rect.width * dpr);
-      this.pixelHeight = Math.round(rect.height * dpr);
-      if (this.pixelWidth <= 0 || this.pixelHeight <= 0) return false;
+      const dpr = currentDevicePixelRatio();
+      this.deviceWidth = Math.round(rect.width * dpr);
+      this.deviceHeight = Math.round(rect.height * dpr);
+      this.observedDpr = dpr;
+      if (this.deviceWidth <= 0 || this.deviceHeight <= 0) return false;
     }
+    const scale = this.options.scale?.() ?? currentDevicePixelRatio();
+    this.pixelWidth = scalePixels(this.deviceWidth, this.observedDpr, scale);
+    this.pixelHeight = scalePixels(this.deviceHeight, this.observedDpr, scale);
     if (canvas.width !== this.pixelWidth) canvas.width = this.pixelWidth;
     if (canvas.height !== this.pixelHeight) canvas.height = this.pixelHeight;
     return true;
@@ -184,13 +199,14 @@ export class ShapeLayer implements RenderLayer {
     this.observer = new ResizeObserver((entries) => {
       const entry = entries[entries.length - 1];
       const device = entry.devicePixelContentBoxSize?.[0];
+      const dpr = currentDevicePixelRatio();
+      this.observedDpr = dpr;
       if (device) {
-        this.pixelWidth = device.inlineSize;
-        this.pixelHeight = device.blockSize;
+        this.deviceWidth = device.inlineSize;
+        this.deviceHeight = device.blockSize;
       } else {
-        const dpr = window.devicePixelRatio || 1;
-        this.pixelWidth = Math.round(entry.contentRect.width * dpr);
-        this.pixelHeight = Math.round(entry.contentRect.height * dpr);
+        this.deviceWidth = Math.round(entry.contentRect.width * dpr);
+        this.deviceHeight = Math.round(entry.contentRect.height * dpr);
       }
     });
     try {

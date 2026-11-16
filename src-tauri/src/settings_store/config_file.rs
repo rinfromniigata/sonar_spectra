@@ -1,6 +1,6 @@
 //! 構成ファイル（書き出し・読み込み。imple 5.2 の12・13）
 //!
-//! 形式は `{ "format": "sonar_spectra.config", "schema": 2, "config": SavedConfig }`。
+//! 形式は `{ "format": "sonar_spectra.config", "schema": 3, "config": SavedConfig }`。
 //! 書き出しは UI が行う（選んだ場所に `tauri-plugin-fs` で書く）。読み込みでは、UI が読んだ本文を
 //! `validate_config_file` で確かめ、保存済み構成として返す。新しい ID を振って一覧に足すのは UI。
 //!
@@ -18,9 +18,9 @@ use super::model::SavedConfig;
 pub const CONFIG_FORMAT: &str = "sonar_spectra.config";
 
 /// `CONFIG_STEPS[i]` は構成ファイルの schema `i + 1` → `i + 2` の移行（対象はファイル全体のオブジェクト）
-pub const CONFIG_STEPS: &[Step] = &[unchanged];
+pub const CONFIG_STEPS: &[Step] = &[unchanged, unchanged];
 
-/// schema 1 → 2：構成ファイルの中身は変わらない（`app` は構成に含めない）
+/// schema 1 → 2・2 → 3：構成ファイルの中身は変わらない（`app` は構成に含めない）
 fn unchanged(map: Map<String, Value>) -> Result<Map<String, Value>, String> {
     Ok(map)
 }
@@ -166,15 +166,21 @@ mod tests {
         }
     }
 
-    /// UI と共有する見本（`fixtures/config_file_v2.json`）。UI の `buildConfigFile` が書いたとおりの本文で、
+    /// UI と共有する見本（`fixtures/config_file_v3.json`）。UI の `buildConfigFile` が書いたとおりの本文で、
     /// UI 側（`src/config/config_flow.test.ts`）は「この見本の構成を書き出すと、同じ本文になる」を確かめる
-    const SHARED_FIXTURE: &str = include_str!("fixtures/config_file_v2.json");
+    const SHARED_FIXTURE: &str = include_str!("fixtures/config_file_v3.json");
 
-    /// v3までのアプリが書いた schema 1 の構成ファイル（`fixtures/config_file_v1.json`）も、同じ構成として読める
+    /// 前の版のアプリが書いた構成ファイルも、同じ構成として読める
+    /// （schema 1：v3まで `fixtures/config_file_v1.json`、schema 2：v4〜v9 `fixtures/config_file_v2.json`）
     #[test]
-    fn schema_1_file_is_still_readable() {
-        let old = parse_config_file(include_str!("fixtures/config_file_v1.json")).unwrap();
-        assert_eq!(old, parse_config_file(SHARED_FIXTURE).unwrap());
+    fn older_schema_files_are_still_readable() {
+        let current = parse_config_file(SHARED_FIXTURE).unwrap();
+        for old in [
+            include_str!("fixtures/config_file_v1.json"),
+            include_str!("fixtures/config_file_v2.json"),
+        ] {
+            assert_eq!(parse_config_file(old).unwrap(), current);
+        }
     }
 
     #[test]
