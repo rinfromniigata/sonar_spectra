@@ -1040,7 +1040,7 @@ Phaseの推奨: Opus・high以上
 ## Phase 16: 0.2.0のリリースの準備
 
 Phaseの推奨: Sonnet・high以上
-引き継ぎ（261117021531）：T16-1〜T16-5は完了。T16-6の途中：リリースのCIで、macOSのテストの失敗とactoolの失敗を直した（fix_phase16の1・2）。ユーザーがコミットし、タグ`v0.2.0`とドラフトを作り直してpushする。そのあとW16-1〜W16-4。READMEのファイル名は、ドラフトで実際の名前を確かめてから合わせる
+引き継ぎ（261117052627）：Phase 16は完了（W16-1〜W16-4は通過）。次はPhase 17のT17-1（ユーザーがドラフトリリースを公開する）
 
 - [x] T16-1 【エージェント】`release.yml`にmacOS（Apple Silicon、`.dmg`、アドホック署名）のジョブを足す
   - 依存: W15-3
@@ -1072,12 +1072,13 @@ Phaseの推奨: Sonnet・high以上
   - pushの前にバージョンを変えた場合は、timelineに新しい行を追記する（過去の行は書き換えない）
   - 実施メモ（261117004245）：`bun run check`は通過。`bun run icons`を実行し、マスターSVG（`specs/`の最新版）と`docs/brand/icon_master.svg`が一致、書き出した`docs/brand/icon_layers/`の3枚と`AppIcon.icon/Assets/`の3枚が一致、`icon.icns`の中の画像は前回の生成と同一（`.icns`のファイルとしての違いは生成のたびに変わる箱の部分だけなので、元に戻した）。`bun run tauri build --target aarch64-apple-darwin --bundles dmg`で`Sonar Spectra_0.2.0_aarch64.dmg`（13.39 MiB）ができ、マウントした中の`.app`に`Assets.car`と`icon.icns`があり、`CFBundleIconName`＝Icon・`CFBundleShortVersionString`＝0.2.0・`LSMinimumSystemVersion`＝26.0・`NSAudioCaptureUsageDescription`あり・署名はadhocだった。発見：`--bundles dmg`は`.dmg`を作ったあとに`.app`を片づけるため、T16-1で足したCIの確かめ（`.app`を直接見る）は失敗するところだった。`.dmg`をマウントして中を見る形に直した（ローカルで同じ手順を確認）。`timeline.md`にリリース準備の行（`0.2.0`・プランアセット v11）を追記した。READMEのmacOSのスクリーンショットは足していない（W16-2でユーザーが実物を見て決める）
   - 実施: Sonnet 5.5・high
-- [ ] T16-6 【ユーザー】コミット・`v0.2.0`タグの作成・pushを行い、GitHub Releasesのドラフトに、Windowsのインストーラーと、macOSの`.dmg`がそろったことを確かめる。About欄を設定する
+- [x] T16-6 【ユーザー】コミット・`v0.2.0`タグの作成・pushを行い、GitHub Releasesのドラフトに、Windowsのインストーラーと、macOSの`.dmg`がそろったことを確かめる。About欄を設定する
   - 依存: T16-3, T16-5
   - 実施メモ（261117011441）：初回の`release.yml`の実行（run 43899804397）は、Windowsのジョブが成功してドラフトに`Sonar.Spectra_0.2.0_x64-setup.exe`が付いた。macOSのジョブは「The job was not acquired by Runner」（GitHub側のmacOS arm64のランナーの不足）で、手順が1つも動かずに失敗した。ワークフローの不具合ではない（同じコミットのdevのCIではmacOSの検査が通っている）。失敗したジョブだけを再実行すれば、同じドラフトに`.dmg`が足される
   - 実施メモ（261117013209）：再実行（job 133437024265）はランナーを得たが、`bun run check`のRustのテスト`frame_transport::tests::transport_sends_about_sixty_frames_per_second_and_applies_controls`が「500msで17回（平均30.28ms）」で落ちた（基準は20〜36回）。デバッグビルドのテストを並列に回す負荷で1回の処理が16.7msを超え、遅れを取り戻さない作りのため約半分の回数になったと見る。アプリの不具合ではない（devのCIと手元では通る）。まず失敗したジョブを再実行し、また落ちたらテストを直してタグを付け直す
   - 実施メモ（261117014016）：2回目の再実行も同じテストで落ちた（15回）。テストを軽いセクションだけで測る形に直した（`development/261117014016_fix_phase16.md`）。タグ`v0.2.0`とドラフトを作り直してから、もう一度pushする
   - 実施メモ（261117021531）：付け直したタグのCI（run 43910600761）は、macOSの検査は通ったが、ビルドでtauri-bundlerの`actool`が落ちた（tauri#15315）。imple 7節の手どおり、手元で作った`Assets.car`を`bundle.icon`に入れる形に替え、`bun run icons:car`と`check:appicon`を足した（fix_phase16の2）。もう一度、ドラフトとタグを作り直してpushする
+  - 実施メモ（261117051658）：ユーザーの完了報告を受けた（About欄の設定を含む）。ドラフト`Sonar Spectra v0.2.0`（タグ`v0.2.0`）の資産を`gh release view`で確かめた：`Sonar.Spectra_0.2.0_x64-setup.exe`（11.1 MiB）と`Sonar.Spectra_0.2.0_aarch64.dmg`（13.4 MiB）。README・CONTRIBUTINGにはこれらのファイル名の記述がない（T16-2の想定の「合わせる」作業は不要）
 
 ## Phase 17: 公開（0.2.0）
 
