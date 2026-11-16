@@ -2,3 +2,6 @@
 # UIのテストが、書き出した本文と見本をバイト単位で比べるため、CRLFになると食い違う
 # （Windowsのランナーで取り出すCIで失敗した）
 src-tauri/src/**/fixtures/*.json text eol=lf
+
+# 手元の actool で作った Apple環境向けアイコン（bun run icons:car）。改行の変換をしない
+src-tauri/macos/Assets.car binary

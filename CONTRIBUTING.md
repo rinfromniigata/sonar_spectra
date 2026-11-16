@@ -7,7 +7,7 @@
 WindowsとmacOS（Apple Silicon）に対応しています。出力音声の取得はOSごとに実装し、Windowsは WASAPI のループバック、macOSは Process Tap（Core Audio）を使います。開発は、次のどちらかの環境で行います。
 
 - Windows 10／11（x64）
-- macOS 26以降（Apple Silicon）：Xcode 26以降（アイコンの`actool`のために本体が要ります。Command Line Toolsだけでは足りません）
+- macOS 26以降（Apple Silicon）：Xcode 26以降（`bun run icons:car`の`actool`のために本体が要ります。Command Line Toolsだけでは足りません）
 
 共通の道具は次のとおりです。
 
@@ -66,6 +66,7 @@ bun run check
 - `bun run check:lint`：ESLint。UIの文字列の直書き（テンプレート、`aria-label`などの属性、スクリプト内の日本語）と、`useT()`を通らない翻訳を検出します
 - `bun run check:i18n`：ロケール間のキーの過不足、プレースホルダの一致、メッセージの構文、未使用キー
 - `bun run check:plist`：`src-tauri/Info.plist`の用途の説明（`NSAudioCaptureUsageDescription`）が、原文の辞書の値と一致すること
+- `bun run check:appicon`：`src-tauri/macos/Assets.car`が、今の`AppIcon.icon`から作られたものであること（`Assets.car.source`に記録した`AppIcon.icon`の指紋と比べます。OSを問いません）
 - `bun run check:tokens`：`src/theme/`以外にある、色とpx値の直書き
 - `bun run check:unit`：単体テスト（vitest）
 - `bun run check:rust`：`cargo clippy`（警告もエラー扱い）と`cargo test`
@@ -107,9 +108,9 @@ bun run tauri build
 フロントエンドのビルドのあと、Rust側をリリースビルドし、配布用のファイルを作ります（初回は数分かかります）。`src-tauri/target/release/bundle/`の下にできます。
 
 - Windows：NSISのインストーラー（`nsis/*-setup.exe`）とMSI（`msi/`）
-- macOS：`macos/Sonar Spectra.app`と、ディスクイメージ（`dmg/*.dmg`）。`src-tauri/tauri.macos.conf.json`が、アドホック署名（`signingIdentity`が`-`）と、`AppIcon.icon`の組み込みを指定します。リリースのCIは`--target aarch64-apple-darwin`を付けるため、出力は`src-tauri/target/aarch64-apple-darwin/release/bundle/`の下になります
+- macOS：`macos/Sonar Spectra.app`と、ディスクイメージ（`dmg/*.dmg`）。`src-tauri/tauri.macos.conf.json`が、アドホック署名（`signingIdentity`が`-`）と、アイコン（`Assets.car`と`icon.icns`）を指定します。リリースのCIは`--target aarch64-apple-darwin`を付けるため、出力は`src-tauri/target/aarch64-apple-darwin/release/bundle/`の下になります
 
-インストーラー・ディスクイメージを作らず実行ファイルだけを確かめるときは、`bun run tauri build --no-bundle`です。macOSでビルドしたら、`.app`の`Contents/Resources/`に`Assets.car`と`icon.icns`の両方があることを確かめてください（`--bundles dmg`では、`.dmg`を作ったあとに`.app`が片づけられるため、`.dmg`をマウントして中を見ます）（`actool`が使えないと、ビルドはアイコンなしで成功してしまいます）。
+インストーラー・ディスクイメージを作らず実行ファイルだけを確かめるときは、`bun run tauri build --no-bundle`です。macOSでビルドしたら、`.app`の`Contents/Resources/`に`Assets.car`と`icon.icns`の両方があることを確かめてください（`--bundles dmg`では、`.dmg`を作ったあとに`.app`が片づけられるため、`.dmg`をマウントして中を見ます）。
 
 NSISのインストーラーには、`src-tauri/windows/hooks.nsh`のフック（`bundle.windows.nsis.installerHooks`）を組み込みます。0.1.0は表示名が`sonar_spectra`だったため、アンインストール情報のキーとインストール先が今の版と違います。フックは、インストールの前に0.1.0のアンインストーラーをサイレントで実行し、設定と構成（`%APPDATA%\com.rinontech.sonar-spectra`）を残したまま旧版を取り除きます。表示名は`productName`で決まります。`identifier`とCargoの`package.name`（実行ファイルの名前）は、表示名とは別のもので、変えません（設定の保存場所と、実行ファイルの名前が、これで決まるため）。
 
@@ -155,13 +156,20 @@ bun run icons
 
 - Apple環境向けの`AppIcon.icon`の材料：前景のレイヤー（`01_ring`・`02_wave`・`03_peak`）を、1024四方のキャンバスのまま、角丸や余白を足さずに`docs/brand/icon_layers/{レイヤー名}.svg`へ書き出します。`00_bg`は書き出さず、その色（実行の最後に表示します）をIcon Composerの背景の塗りにします
 
-`src-tauri/macos/AppIcon.icon`は、これらのSVGと`docs/brand/brand.md`の「Apple環境向けアイコン」から、Icon Composerで作ったものです。`bun run icons`は`src-tauri/icons/`を消してから作り直すため、その外に置いています。macOSのビルドでは、`src-tauri/tauri.macos.conf.json`の`bundle.icon`が`AppIcon.icon`と`icon.icns`の両方を指し、バンドラーが`actool`で`Assets.car`を作ります（`.icns`は、従来形式のフォールバックとして残します）。`actool`には、Xcode 26以降が要り、`xcode-select -p`がXcode本体（`/Applications/Xcode.app/Contents/Developer`）を指している必要があります。`actool`が使えないときも、ビルドは`Assets.car`なしで成功してしまうため、`.app`の`Contents/Resources/`に`Assets.car`があることを確かめてください。モバイル向けは作りません。
+`src-tauri/macos/AppIcon.icon`は、これらのSVGと`docs/brand/brand.md`の「Apple環境向けアイコン」から、Icon Composerで作ったものです。`bun run icons`は`src-tauri/icons/`を消してから作り直すため、その外に置いています。ビルドに組み込むのは、`AppIcon.icon`から手元で作った`src-tauri/macos/Assets.car`です。`src-tauri/tauri.macos.conf.json`の`bundle.icon`が`Assets.car`と`icon.icns`の両方を指し、バンドラーは`Assets.car`をそのまま`.app`に入れます（`.icns`は、従来形式のフォールバックとして残します）。`bundle.icon`に`.icon`を挙げるとバンドラーがビルドの中で`actool`を呼びますが、GitHub Actionsのランナーでは`actool`が落ちるため（[tauri#15315](https://github.com/tauri-apps/tauri/issues/15315)）、この形にしています。モバイル向けは作りません。
+
+```sh
+bun run icons:car
+```
+
+macOSで、`AppIcon.icon`を`actool`で`Assets.car`にし、元にした`AppIcon.icon`の指紋を`Assets.car.source`に書きます（`actool`の引数は、tauri-bundlerと同じです）。`actool`には、Xcode 26以降が要り、`xcode-select -p`がXcode本体（`/Applications/Xcode.app/Contents/Developer`）を指している必要があります。
 
 マスターSVGが変わったときの`AppIcon.icon`の作り直しの手順は、次のとおりです。`AppIcon.icon`は、Icon Composerで人が作り直し、エージェントや生成スクリプトは編集しません。
 
 1. 先に`docs/brand/icon_master.svg`を最新版のマスターSVGと同じにし、`bun run icons`を実行する（`docs/brand/icon_layers/`のレイヤーのSVGが更新されます）
 2. Icon Composerで`src-tauri/macos/AppIcon.icon`を開き、各レイヤーを`docs/brand/icon_layers/`の新しいSVGに差し替える。背景の塗りは、`bun run icons`の最後に表示される`00_bg`の色にし、そのほかの設定は`docs/brand/brand.md`の「Apple環境向けアイコン」に従う
-3. 保存して、`bun run tauri build`で`.app`を作り、`Assets.car`と`icon.icns`ができていることを確かめる
+3. 保存して、`bun run icons:car`で`Assets.car`を作り直す（作り直し忘れは`bun run check:appicon`で止まります）
+4. `bun run tauri build`で`.app`を作り、`Assets.car`と`icon.icns`が入っていることを確かめる
 
 ## リポジトリ構成
 
@@ -172,7 +180,7 @@ sonar_spectra/
 │  ├─ i18n/              辞書（locales/ja.ts）・useT()・ロケールの判定・整形・疑似ロケール
 │  ├─ components/ui/     基本部品
 │  └─ dev/               開発時だけ開ける画面（部品ギャラリー）
-├─ src-tauri/            Rust（Tauri）。icons/ は bun run icons で生成。windows/hooks.nsh はNSISのフック、macos/AppIcon.icon はApple環境向けアイコン
+├─ src-tauri/            Rust（Tauri）。icons/ は bun run icons で生成。windows/hooks.nsh はNSISのフック、macos/AppIcon.icon はApple環境向けアイコン（Assets.car はそこから作ったもの）
 ├─ scripts/              検査（i18n・トークン）とアイコン生成のスクリプト
 ├─ public/               ファビコン（bun run icons で生成）
 ├─ docs/brand/           ブランド方針（brand.md）とマスターSVGの写し。icon_layers/ は bun run icons で生成

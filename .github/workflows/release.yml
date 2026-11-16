@@ -34,8 +34,9 @@ jobs:
             # インストーラー（NSIS の setup.exe）だけを作る。MSI は作らない
             args: --bundles nsis
             rust-targets: ""
-          # macOS 26 の Apple Silicon（arm64）のランナー。Xcode 26 以降が入っており、
-          # AppIcon.icon を actool で Assets.car にできる。Intel Mac は対象外
+          # macOS 26 の Apple Silicon（arm64）のランナー。Intel Mac は対象外。
+          # アイコンは手元で作った src-tauri/macos/Assets.car を使い、ここでは actool を呼ばない
+          # （ランナーでは actool が落ちるため。tauri#15315）
           - platform: macos-26
             args: --target aarch64-apple-darwin --bundles dmg
             rust-targets: aarch64-apple-darwin
@@ -101,7 +102,7 @@ jobs:
           # 自動更新は使わないため、updater 用の latest.json は作らない
           uploadUpdaterJson: false
 
-      # actool が使えないと、ビルドは Assets.car なしでも成功してしまう。.icon が組み込まれたことを確かめる。
+      # Apple環境向けアイコン（Assets.car）と従来形式（.icns）が組み込まれたことを確かめる。
       # --bundles dmg では、.dmg を作ったあとに .app が片づけられるため、.dmg をマウントして中の .app を調べる
       - name: アプリのアイコン（Assets.car と .icns）と署名を確かめる
         if: runner.os == 'macOS'
