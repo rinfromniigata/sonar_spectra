@@ -1040,27 +1040,38 @@ Phaseの推奨: Opus・high以上
 ## Phase 16: 0.2.0のリリースの準備
 
 Phaseの推奨: Sonnet・high以上
+引き継ぎ（261117004245）：T16-1〜T16-5は完了。次はT16-6（ユーザー：コミット・`v0.2.0`タグ・push、ドラフトの確認、About欄）。そのあとW16-1〜W16-4。READMEのファイル名は、ドラフトで実際の名前を確かめてから合わせる
 
-- [ ] T16-1 【エージェント】`release.yml`にmacOS（Apple Silicon、`.dmg`、アドホック署名）のジョブを足す
+- [x] T16-1 【エージェント】`release.yml`にmacOS（Apple Silicon、`.dmg`、アドホック署名）のジョブを足す
   - 依存: W15-3
   - imple 6節。Xcode 26以降のランナー（ラベルはその時点のドキュメントで確かめる）。タグとバージョン表記の一致の確かめと`bun run check`はWindowsのジョブと同じにする。1つのドラフトリリースに両OSのファイルがそろうようにする。リリースの説明文に、macOSの初回の開き方と許可の与え直しの案内を足す
   - リリースの説明文に、Windowsで0.1.0から更新すると旧版が自動で取り除かれ、設定と構成は引き継がれることを書く（v9）
-- [ ] T16-2 【エージェント】READMEと`CONTRIBUTING.md`をmacOSに対応させる
+  - 実施メモ（261117003813）：`release.yml`をmatrix（`windows-latest`は`--bundles nsis`、`macos-26`は`--target aarch64-apple-darwin --bundles dmg`）にした。ラベルはGitHubの`actions/runner-images`で確認（`macos-26`＝arm64、`macos-latest`も同じ。Xcode 26.6が既定）。`max-parallel: 1`で順に実行し、同じタグのドラフトが2つできるのを避ける。タグとバージョンの一致の確かめ・`bun run check`は両OSで同じ。macOSのジョブの最後に`Assets.car`と`icon.icns`の存在を確かめる手順を足した。リリースの説明文に、Windowsの旧版の自動の取り除きと、macOSの初回の開き方・許可の与え直しを書いた。YAMLの構文は`Bun.YAML`で読めることを確認。実際のCIでの動作は、T16-6のドラフトで確かめる
+  - 実施: Sonnet 5.5・high
+- [x] T16-2 【エージェント】READMEと`CONTRIBUTING.md`をmacOSに対応させる
   - 依存: T16-1
   - 画面: S09
   - README：入手方法（`.dmg`）、動作環境（macOS 26以降のApple Silicon）、初回の開き方（「このまま開く」。版ごとに必要）、システムオーディオ録音の許可（初回の確認で許可する。拒否した・更新したあとは、システム設定の「画面とシステムオーディオ録音」でSonar Spectraをオンにすると、操作なしで表示が始まる。許可がないあいだは無音として見える）、データの保存場所（macOS）。macOSのスクリーンショットを足すかは、実物を見て決める
   - README（v9）：Windowsで0.1.0から更新すると、旧版（`sonar_spectra`）が自動で取り除かれ、設定と構成は引き継がれることを書く。インストーラーと`.dmg`のファイル名は、T16-6のドラフトで実際の名前（GitHubはスペースを`.`に置き換える）を確かめてから合わせる
   - README（v10）：高解像度の外部ディスプレイなどで重いときは、設定の「描画の解像度」を「等倍」に、フレームレートの上限を30fpsにする、という勧めを書く
   - CONTRIBUTING：macOSの開発環境（Xcode 26以降、`bun run icons`のレイヤーの書き出し、`AppIcon.icon`の作り直しの手順）、CIのmacOSのジョブ
-- [ ] T16-3 【エージェント】GitHubのAbout欄の文案（説明文の「on Windows」、トピック）を見直して提示する
+  - 実施メモ（261117003856）：READMEに、入手方法（`.dmg`）・動作環境（macOS 26以降のApple Silicon）・初回の「このまま開く」・システムオーディオ録音の許可と与え直し・データの保存場所（macOS）・0.1.0からの自動の取り除き（Windows）・重いときの勧め（「等倍」・30fps）を書いた。CONTRIBUTINGに、macOSの開発環境（Xcode 26以降）、macOSのビルドの出力、CIの両OSのジョブ、`AppIcon.icon`の作り直しの手順を書いた。ファイル名（`_x64-setup.exe`・`_aarch64.dmg`）は、T16-6のドラフトで実際の名前を確かめてから合わせる。macOSのスクリーンショットは足していない（実物を見て決める。T16-5のビルドのときに相談）
+  - 実施: Sonnet 5.5・high
+- [x] T16-3 【エージェント】GitHubのAbout欄の文案（説明文の「on Windows」、トピック）を見直して提示する
   - 依存: T16-2
-- [ ] T16-4 【エージェント】`CHANGELOG.md`に0.2.0を書き、`package.json`・`tauri.conf.json`・`Cargo.toml`のバージョンを`0.2.0`にそろえる
+  - 実施メモ（261117003902）：現状のAbout欄は「Neon-style real-time audio visualizer for VJ performances on Windows. ...」、トピックは`audio-visualizer`・`rust`・`spectrum-analyzer`・`tauri`・`vj`・`vue`・`wasapi`・`webgl`・`windows`。提案：説明文は「Neon-style real-time audio visualizer for VJ performances on Windows and macOS. Shows waveform, spectrum, phase and more from the system's output audio.」、トピックは`macos`と`core-audio`を足す（ほかは残す）。設定はT16-6でユーザーが行う（エージェントはGitHubの設定を変えない）
+  - 実施: Sonnet 5.5・high
+- [x] T16-4 【エージェント】`CHANGELOG.md`に0.2.0を書き、`package.json`・`tauri.conf.json`・`Cargo.toml`のバージョンを`0.2.0`にそろえる
   - 依存: T16-2
   - Known issuesに、macOSのアドホック署名による初回の開き方と、許可の与え直しを書く（SPEC 7節）
   - 表示名の変更と旧版の自動の取り除き（T14-5で[Unreleased]に書いたもの）を0.2.0に含める（v9）
-- [ ] T16-5 【エージェント】ローカルでmacOSのビルドを確かめ、アイコン一式と`.icon`のレイヤーが`specs/`の最新のマスターSVGから作られたことを確かめる。`roadmap/timeline.md`にリリース準備の行（`0.2.0`と、その時点のプランアセットの版）を追記し、コミットメッセージとタグ作成・pushのコマンドを提示して停止する
+  - 実施メモ（261117004245）：`CHANGELOG.md`に0.2.0（日付は2026-11-17を仮に置いた。pushの日が変わったら直す）を書き、[Unreleased]は空にした（表示名の変更・旧版の取り除きは0.2.0へ移した）。Known issuesに、macOSの初回の開き方と許可の与え直しを書いた。`package.json`・`tauri.conf.json`・`Cargo.toml`（と`Cargo.lock`）を`0.2.0`にそろえた
+  - 実施: Sonnet 5.5・high
+- [x] T16-5 【エージェント】ローカルでmacOSのビルドを確かめ、アイコン一式と`.icon`のレイヤーが`specs/`の最新のマスターSVGから作られたことを確かめる。`roadmap/timeline.md`にリリース準備の行（`0.2.0`と、その時点のプランアセットの版）を追記し、コミットメッセージとタグ作成・pushのコマンドを提示して停止する
   - 依存: T14-9, T16-4
   - pushの前にバージョンを変えた場合は、timelineに新しい行を追記する（過去の行は書き換えない）
+  - 実施メモ（261117004245）：`bun run check`は通過。`bun run icons`を実行し、マスターSVG（`specs/`の最新版）と`docs/brand/icon_master.svg`が一致、書き出した`docs/brand/icon_layers/`の3枚と`AppIcon.icon/Assets/`の3枚が一致、`icon.icns`の中の画像は前回の生成と同一（`.icns`のファイルとしての違いは生成のたびに変わる箱の部分だけなので、元に戻した）。`bun run tauri build --target aarch64-apple-darwin --bundles dmg`で`Sonar Spectra_0.2.0_aarch64.dmg`（13.39 MiB）ができ、マウントした中の`.app`に`Assets.car`と`icon.icns`があり、`CFBundleIconName`＝Icon・`CFBundleShortVersionString`＝0.2.0・`LSMinimumSystemVersion`＝26.0・`NSAudioCaptureUsageDescription`あり・署名はadhocだった。発見：`--bundles dmg`は`.dmg`を作ったあとに`.app`を片づけるため、T16-1で足したCIの確かめ（`.app`を直接見る）は失敗するところだった。`.dmg`をマウントして中を見る形に直した（ローカルで同じ手順を確認）。`timeline.md`にリリース準備の行（`0.2.0`・プランアセット v11）を追記した。READMEのmacOSのスクリーンショットは足していない（W16-2でユーザーが実物を見て決める）
+  - 実施: Sonnet 5.5・high
 - [ ] T16-6 【ユーザー】コミット・`v0.2.0`タグの作成・pushを行い、GitHub Releasesのドラフトに、Windowsのインストーラーと、macOSの`.dmg`がそろったことを確かめる。About欄を設定する
   - 依存: T16-3, T16-5
 

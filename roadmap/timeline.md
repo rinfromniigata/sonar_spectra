@@ -12,3 +12,4 @@
 - 261113070700 プランアセット v9：アプリの表示名を「Sonar Spectra」と定め（リポジトリ名・識別子は`sonar_spectra`のまま）、Windowsで0.1.0から更新するときはインストーラーが旧版を自動で取り除く ← development/261113065821_change_app_display_name.md
 - 261116221011 プランアセット v10：設定に「描画の解像度」（画面どおり／等倍）を足し（schema 3）、macOSでの負荷の計測の条件をクラムシェル・外部4Kディスプレイ（スケーリングWQHD）に、合格の基準を「等倍」・上限30fpsで上限に届くことに改める ← development/261116220138_change_render_resolution_and_macos_load.md
 - 261117002930 プランアセット v11：macOSでVJツールと同時に30分動かす確かめの、メモリプレッシャーの基準を「赤にならない」に改める（メモリ8GBの開発機では黄色を許す） ← development/261117002629_change_macos_memory_pressure.md
+- 261117004245 リリース準備 0.2.0（プランアセット v11）← CHANGELOG.md

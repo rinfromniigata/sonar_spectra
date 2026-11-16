@@ -4,11 +4,18 @@
 
 ## 開発環境
 
-初版はWindows x64だけに対応しています（出力音声の取得にWASAPIのループバックを使うため）。
+WindowsとmacOS（Apple Silicon）に対応しています。出力音声の取得はOSごとに実装し、Windowsは WASAPI のループバック、macOSは Process Tap（Core Audio）を使います。開発は、次のどちらかの環境で行います。
 
 - Windows 10／11（x64）
+- macOS 26以降（Apple Silicon）：Xcode 26以降（アイコンの`actool`のために本体が要ります。Command Line Toolsだけでは足りません）
+
+共通の道具は次のとおりです。
+
 - [Bun](https://bun.sh/)：ランタイムとパッケージマネージャ。版は`package.json`の`packageManager`（CIも同じ版を使います）
 - [Rust](https://www.rust-lang.org/tools/install)：stable。edition 2024を使うため、1.85以降
+
+Windowsではさらに次が要ります。
+
 - Microsoft C++ Build Tools：「C++によるデスクトップ開発」のワークロード
 - Microsoft Edge WebView2 Runtime：Windows 11には同梱されています
 
@@ -97,7 +104,12 @@ SONAR_UPDATE_FIXTURE=1 cargo test --manifest-path src-tauri/Cargo.toml regenerat
 bun run tauri build
 ```
 
-フロントエンドのビルドのあと、Rust側をリリースビルドし、インストーラーを作ります（初回は数分かかります）。`src-tauri/target/release/bundle/`の下に、NSISのインストーラー（`nsis/*-setup.exe`）とMSI（`msi/`）ができます。インストーラーを作らず実行ファイルだけを確かめるときは、`bun run tauri build --no-bundle`です。
+フロントエンドのビルドのあと、Rust側をリリースビルドし、配布用のファイルを作ります（初回は数分かかります）。`src-tauri/target/release/bundle/`の下にできます。
+
+- Windows：NSISのインストーラー（`nsis/*-setup.exe`）とMSI（`msi/`）
+- macOS：`macos/Sonar Spectra.app`と、ディスクイメージ（`dmg/*.dmg`）。`src-tauri/tauri.macos.conf.json`が、アドホック署名（`signingIdentity`が`-`）と、`AppIcon.icon`の組み込みを指定します。リリースのCIは`--target aarch64-apple-darwin`を付けるため、出力は`src-tauri/target/aarch64-apple-darwin/release/bundle/`の下になります
+
+インストーラー・ディスクイメージを作らず実行ファイルだけを確かめるときは、`bun run tauri build --no-bundle`です。macOSでビルドしたら、`.app`の`Contents/Resources/`に`Assets.car`と`icon.icns`の両方があることを確かめてください（`--bundles dmg`では、`.dmg`を作ったあとに`.app`が片づけられるため、`.dmg`をマウントして中を見ます）（`actool`が使えないと、ビルドはアイコンなしで成功してしまいます）。
 
 NSISのインストーラーには、`src-tauri/windows/hooks.nsh`のフック（`bundle.windows.nsis.installerHooks`）を組み込みます。0.1.0は表示名が`sonar_spectra`だったため、アンインストール情報のキーとインストール先が今の版と違います。フックは、インストールの前に0.1.0のアンインストーラーをサイレントで実行し、設定と構成（`%APPDATA%\com.rinontech.sonar-spectra`）を残したまま旧版を取り除きます。表示名は`productName`で決まります。`identifier`とCargoの`package.name`（実行ファイルの名前）は、表示名とは別のもので、変えません（設定の保存場所と、実行ファイルの名前が、これで決まるため）。
 
@@ -105,7 +117,7 @@ NSISのインストーラーには、`src-tauri/windows/hooks.nsh`のフック�
 
 ### リリースの手順
 
-リリースは、GitHub Actionsのワークフロー（`.github/workflows/release.yml`）が行います。コード署名はしないため、初回起動時にWindowsのSmartScreenの警告が出ます（開き方はREADMEに書きます）。
+リリースは、GitHub Actionsのワークフロー（`.github/workflows/release.yml`）が行います。Windowsはコード署名をしないため、初回起動時にSmartScreenの警告が出ます。macOSはアドホック署名だけで、Developer IDの署名と公証はしないため、初回に「このまま開く」が要り、更新のたびにシステムオーディオ録音の許可を与え直す必要があります（どちらも開き方をREADMEに書きます）。
 
 1. `package.json`・`src-tauri/tauri.conf.json`・`src-tauri/Cargo.toml`の`version`を、リリースするバージョン（セマンティックバージョニング。初回は`0.1.0`）にそろえ、`CHANGELOG.md`に変更点を書きます
 2. 手元で`bun run check`が通ることを確かめます
@@ -120,9 +132,11 @@ git push origin v0.1.0
 
 - タグ（`v`を除いた値）が、上の3つのファイルの`version`と一致することを確かめる。食い違っていたら失敗します（バージョンを直したら、タグを付け直してpushします）
 - `bun run check`（`ci.yml`と同じ検査）
-- Windows x64のインストーラー（NSISの`setup.exe`のみ。MSIは作りません）をビルドし、GitHub Releasesに**ドラフト**のリリースを作る
+- 次の2つを、1つずつ順にビルドし、GitHub Releasesの**1つのドラフト**にそろえる（同時に走らせると、同じタグのドラフトが2つできることがあるため、`max-parallel: 1`にしています）。ビルドごとに、上の検査も実行します
+    - Windows x64のインストーラー（NSISの`setup.exe`のみ。MSIは作りません）
+    - macOS（Apple Silicon、`aarch64-apple-darwin`）のディスクイメージ（`.dmg`のみ）。ランナーは`macos-26`（Xcode 26以降）で、ビルドのあとに、`.dmg`をマウントして中の`.app`に`Assets.car`と`icon.icns`があること、アドホック署名であることを確かめます。Intel Mac用（Universal）は作りません
 
-4. GitHubのReleasesのページでドラフトを開き、インストーラーが添付されていること、本文を確かめて、公開します。公開するまで、一般の利用者には見えません
+4. GitHubのReleasesのページでドラフトを開き、Windowsのインストーラーと、macOSの`.dmg`の両方が添付されていること、本文を確かめて、公開します。公開するまで、一般の利用者には見えません
 
 自動更新は使わないため、更新用の`latest.json`は作りません。
 
@@ -142,6 +156,12 @@ bun run icons
 - Apple環境向けの`AppIcon.icon`の材料：前景のレイヤー（`01_ring`・`02_wave`・`03_peak`）を、1024四方のキャンバスのまま、角丸や余白を足さずに`docs/brand/icon_layers/{レイヤー名}.svg`へ書き出します。`00_bg`は書き出さず、その色（実行の最後に表示します）をIcon Composerの背景の塗りにします
 
 `src-tauri/macos/AppIcon.icon`は、これらのSVGと`docs/brand/brand.md`の「Apple環境向けアイコン」から、Icon Composerで作ったものです。`bun run icons`は`src-tauri/icons/`を消してから作り直すため、その外に置いています。macOSのビルドでは、`src-tauri/tauri.macos.conf.json`の`bundle.icon`が`AppIcon.icon`と`icon.icns`の両方を指し、バンドラーが`actool`で`Assets.car`を作ります（`.icns`は、従来形式のフォールバックとして残します）。`actool`には、Xcode 26以降が要り、`xcode-select -p`がXcode本体（`/Applications/Xcode.app/Contents/Developer`）を指している必要があります。`actool`が使えないときも、ビルドは`Assets.car`なしで成功してしまうため、`.app`の`Contents/Resources/`に`Assets.car`があることを確かめてください。モバイル向けは作りません。
+
+マスターSVGが変わったときの`AppIcon.icon`の作り直しの手順は、次のとおりです。`AppIcon.icon`は、Icon Composerで人が作り直し、エージェントや生成スクリプトは編集しません。
+
+1. 先に`docs/brand/icon_master.svg`を最新版のマスターSVGと同じにし、`bun run icons`を実行する（`docs/brand/icon_layers/`のレイヤーのSVGが更新されます）
+2. Icon Composerで`src-tauri/macos/AppIcon.icon`を開き、各レイヤーを`docs/brand/icon_layers/`の新しいSVGに差し替える。背景の塗りは、`bun run icons`の最後に表示される`00_bg`の色にし、そのほかの設定は`docs/brand/brand.md`の「Apple環境向けアイコン」に従う
+3. 保存して、`bun run tauri build`で`.app`を作り、`Assets.car`と`icon.icns`ができていることを確かめる
 
 ## リポジトリ構成
 

@@ -1,7 +1,9 @@
-# リリース。`v*` のタグを push すると、自動検査（bun run check）を通したうえで、
-# Windows x64 のインストーラー（NSIS）をビルドし、GitHub Releases にドラフトを作る。
-# ドラフトの公開は手動で行う。コード署名はしない（SmartScreen の警告は README に書く）
-# 初版の対象は Windows x64 だけ（出力音声の取得に WASAPI を使うため）
+# リリース。`v*` のタグを push すると、OS ごとに自動検査（bun run check）を通したうえで、
+# Windows x64 のインストーラー（NSIS）と macOS（Apple Silicon）の .dmg をビルドし、
+# GitHub Releases の 1 つのドラフトにそろえる。ドラフトの公開は手動で行う
+# コード署名は、Windows はしない（SmartScreen の警告は README に書く）。
+# macOS はアドホック署名だけで、Developer ID の署名と公証はしない
+# （tauri.macos.conf.json の signingIdentity が "-"。初回の開き方は README に書く）
 name: Release
 
 on:
@@ -20,7 +22,24 @@ concurrency:
 
 jobs:
   release:
-    runs-on: windows-latest
+    strategy:
+      # 片方が失敗しても、もう片方の結果を見られるようにする
+      fail-fast: false
+      # 1 つのドラフトに両 OS のファイルを足すため、1 つずつ順に実行する。
+      # 同時に走らせると、tauri-action が同じタグのドラフトを 2 つ作ることがある
+      max-parallel: 1
+      matrix:
+        include:
+          - platform: windows-latest
+            # インストーラー（NSIS の setup.exe）だけを作る。MSI は作らない
+            args: --bundles nsis
+            rust-targets: ""
+          # macOS 26 の Apple Silicon（arm64）のランナー。Xcode 26 以降が入っており、
+          # AppIcon.icon を actool で Assets.car にできる。Intel Mac は対象外
+          - platform: macos-26
+            args: --target aarch64-apple-darwin --bundles dmg
+            rust-targets: aarch64-apple-darwin
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
 
@@ -47,6 +66,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+          targets: ${{ matrix.rust-targets }}
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -65,11 +85,33 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tauriScript: bun run tauri
-          args: --bundles nsis
+          args: ${{ matrix.args }}
           tagName: ${{ github.ref_name }}
           releaseName: Sonar Spectra ${{ github.ref_name }}
-          releaseBody: 変更点は CHANGELOG.md を参照してください。初回起動時に SmartScreen の警告が出ることがあります（README を参照）。
+          releaseBody: |
+            変更点は CHANGELOG.md を参照してください。
+
+            **Windows**（`.exe`）：コード署名がないため、初回起動時に SmartScreen の警告が出ることがあります。0.1.0（表示名 `sonar_spectra`）を入れているときは、そのまま実行してください。0.1.0 は自動で取り除かれ、設定と構成は引き継がれます。
+
+            **macOS**（Apple Silicon、macOS 26 以降、`.dmg`）：アドホック署名だけで、公証はしていません。ダウンロードしたアプリは、初回に「システム設定」→「プライバシーとセキュリティ」の「このまま開く」で開いてください（版ごとに必要です）。更新したあとは、システムオーディオ録音の許可が外れるため、「システム設定」→「プライバシーとセキュリティ」→「画面とシステムオーディオ録音」で Sonar Spectra をオンにし直してください。
+
+            詳しくは README を参照してください。
           releaseDraft: true
           prerelease: false
           # 自動更新は使わないため、updater 用の latest.json は作らない
           uploadUpdaterJson: false
+
+      # actool が使えないと、ビルドは Assets.car なしでも成功してしまう。.icon が組み込まれたことを確かめる。
+      # --bundles dmg では、.dmg を作ったあとに .app が片づけられるため、.dmg をマウントして中の .app を調べる
+      - name: アプリのアイコン（Assets.car と .icns）と署名を確かめる
+        if: runner.os == 'macOS'
+        run: |
+          dmg=$(ls src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg)
+          mnt=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg" > /dev/null
+          trap 'hdiutil detach "$mnt" > /dev/null' EXIT
+          app="$mnt/Sonar Spectra.app"
+          ls "$app/Contents/Resources"
+          test -f "$app/Contents/Resources/Assets.car"
+          test -f "$app/Contents/Resources/icon.icns"
+          codesign -dv "$app" 2>&1 | grep "Signature=adhoc"
