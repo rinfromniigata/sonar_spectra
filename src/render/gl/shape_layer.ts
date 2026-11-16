@@ -3,6 +3,7 @@
 // - begin：まとめを空にし、今の枠の範囲（配置の状態から求めたもの）を受け取る
 // - モジュールの描画：ModuleFrame が sink(枠, 大きさと向き) で受け口を得て、モジュールが図形を出す（その場で三角形に展開して積む）
 // - end：全体を透明にし、枠ごとに、範囲を切り抜きとビューポートにして地の色で塗り、そのモジュールの図形を描く
+//   （描く順は GlRenderer.render：発光と枠の画像を先に用意してから、共有キャンバスに描く。T15-1）
 //   （発光の値を持つ図形は、先に発光を敷いてから描く。gl_glow。文字の発光は、文字の画像の発光だけを敷く）。残光を使う枠（ShapeSink.trail）と、薄くする枠
 //   （レイアウト編集中。sink の opacity が 1 未満）は、枠の画像に描いてから重ねる（gl_frame_image）
 // コンテキストの喪失：webglcontextlost で preventDefault して描くのを止め（状態は lost）、webglcontextrestored で
@@ -13,7 +14,7 @@ import type { FrameDrawInput, Geometry, ShapeSink } from "../../modules/types";
 import type { RenderLayer } from "../render_loop";
 import { canvasColorFallback, createColorResolver, type Rgba } from "./color";
 import type { DeviceRect } from "./frame_rects";
-import { GlRenderer } from "./gl_renderer";
+import { GlRenderer, type FramePass } from "./gl_renderer";
 import { DISCARD_SINK, ShapeBatch, type FrameCommands } from "./shape_batch";
 import { frameClipMatrix } from "./transform";
 
@@ -36,6 +37,9 @@ const CONTEXT_ATTRIBUTES: WebGLContextAttributes = {
   stencil: false,
   preserveDrawingBuffer: false,
 };
+
+/** 命令のない枠の変換（使われない） */
+const NO_MATRIX = new Float32Array(9);
 
 interface FrameRecord extends FrameCommands {
   turns: Geometry["quarterTurns"];
@@ -125,25 +129,20 @@ export class ShapeLayer implements RenderLayer {
     const gl = this.gl;
     if (this.currentStatus !== "ready" || !renderer || !gl || gl.isContextLost()) return;
     if (!this.fitCanvas()) return;
-    renderer.begin(this.pixelWidth, this.pixelHeight, this.batch);
     const bg: Rgba = this.resolveColor(input.colors.bg);
+    const passes: FramePass[] = [];
     for (const [id, rect] of this.frames) {
       if (rect.width <= 0 || rect.height <= 0) continue;
-      renderer.frame(rect, bg);
       const record = this.recorded.get(id);
-      if (!record) continue;
-      // 残光と薄くする枠は、枠の画像に描いてから重ねる（画像を使えなければ、そのまま描く）
-      const useImage = (record.trail !== null || record.opacity < 1) && renderer.beginFrameImage(id, record.trail);
-      if (record.commands.length > 0) {
-        const matrix = frameClipMatrix(record.turns, record.width, record.height, record.devicePixelRatio);
-        for (const command of record.commands) {
-          if (command.kind === "shapes") renderer.shapes(matrix, command.first, command.count, command.glow, command.glowOnly, command.gradient);
-          else if (command.kind === "image") renderer.streamImage(matrix, command.stream, command.dest, command.alpha);
-          else renderer.textGlow(matrix, command.text, command.x, command.y, command.style, command.pixelScale);
-        }
+      // 枠が描かれなかったときは、地の色で塗るだけ
+      if (!record) {
+        passes.push({ id, rect, matrix: NO_MATRIX, commands: [], trail: null, opacity: 1 });
+        continue;
       }
-      if (useImage) renderer.endFrameImage(record.opacity);
+      const matrix = record.commands.length > 0 ? frameClipMatrix(record.turns, record.width, record.height, record.devicePixelRatio) : NO_MATRIX;
+      passes.push({ id, rect, matrix, commands: record.commands, trail: record.trail, opacity: record.opacity });
     }
+    renderer.render(this.pixelWidth, this.pixelHeight, this.batch, bg, passes);
     renderer.end();
   }
 

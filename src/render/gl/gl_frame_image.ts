@@ -4,6 +4,8 @@
 // - 薄くする（レイアウト編集中）：重なった図形がまとめて薄くなるよう、一時の画像に描いてから、不透明度を掛けて重ねる
 // 画像は、マルチサンプルの描く先（renderbuffer）と読む先（texture）の組。描いたあとで解決（blit）してから重ねる
 // （塗りのふちが、共有キャンバスに直接描いたときと同じくならされる）。マルチサンプルを使えなければ texture に直接描く。
+// 枠の画像は、共有キャンバスに描き始める前に、全部の枠の分を描いて解決しておく（描く先の切り替えを減らす。T15-1）。
+// そのため、薄くするための画像も枠ごとに持つ。
 // 重ねるときは1ピクセルずつそのまま写す（texelFetch）。色は不透明度を掛けた値（premultiplied）のまま扱う。
 
 import type { Rgba } from "./color";
@@ -60,10 +62,8 @@ export class FrameImages {
   private quadVao: WebGLVertexArrayObject | null = null;
   private samples = 0;
   private readonly trails = new Map<string, { image: FrameImage; lastUsed: number }>();
-  /** 薄くするための一時の画像（共有キャンバスの大きさ。左下の範囲を使い回す） */
-  private scratchImage: FrameImage | null = null;
-  private canvasWidth = 0;
-  private canvasHeight = 0;
+  /** 薄くするための画像（枠ごと。毎回透明にしてから描く） */
+  private readonly temporaries = new Map<string, { image: FrameImage; lastUsed: number }>();
   private tick = 0;
   /** 画像を作れなかった（記録は1度だけ） */
   private reported = false;
@@ -96,40 +96,19 @@ export class FrameImages {
     return true;
   }
 
-  /** 1回の描画の初め。共有キャンバスの大きさが変わったら、一時の画像を作り直す */
-  begin(canvasWidth: number, canvasHeight: number): void {
+  /** 1回の描画の初め */
+  begin(): void {
     this.tick++;
-    if (canvasWidth !== this.canvasWidth || canvasHeight !== this.canvasHeight) {
-      this.canvasWidth = canvasWidth;
-      this.canvasHeight = canvasHeight;
-      if (this.scratchImage) this.destroy(this.scratchImage);
-      this.scratchImage = null;
-    }
   }
 
   /** 枠 id の残光の画像（前の回の絵が残っている）。大きさが変わったら作り直して透明にする。作れなければ null */
   trail(id: string, width: number, height: number): FrameImage | null {
-    let entry = this.trails.get(id);
-    if (entry && (entry.image.width !== width || entry.image.height !== height)) {
-      this.destroy(entry.image);
-      this.trails.delete(id);
-      entry = undefined;
-    }
-    if (!entry) {
-      const image = this.create(width, height);
-      if (!image) return null;
-      entry = { image, lastUsed: this.tick };
-      this.trails.set(id, entry);
-    }
-    entry.lastUsed = this.tick;
-    return entry.image;
+    return this.keep(this.trails, id, width, height);
   }
 
-  /** 薄くするための一時の画像（左下の width × height を使う）。共有キャンバスより大きい枠や、作れなければ null */
-  scratch(width: number, height: number): FrameImage | null {
-    if (width > this.canvasWidth || height > this.canvasHeight) return null;
-    if (!this.scratchImage) this.scratchImage = this.create(this.canvasWidth, this.canvasHeight);
-    return this.scratchImage;
+  /** 枠 id の薄くするための画像（中身は前の回のまま。呼び出し側が透明にしてから描く）。作れなければ null */
+  temporary(id: string, width: number, height: number): FrameImage | null {
+    return this.keep(this.temporaries, id, width, height);
   }
 
   /** 今のフレームバッファのビューポート全体に、色（不透明度で掛けない値）を alpha の濃さで重ねる */
@@ -146,14 +125,13 @@ export class FrameImages {
   }
 
   /**
-   * 画像の左下 rect の大きさの範囲を、今のフレームバッファの rect に、不透明度 opacity で重ねる
-   * （ビューポートと切り抜きは呼ぶ側が rect にしておく）。マルチサンプルの画像は先に解決する
+   * 画像を、今のフレームバッファの rect に、不透明度 opacity で重ねる
+   * （ビューポートと切り抜きは呼ぶ側が rect にしておく。マルチサンプルの画像は、先に resolve しておく）
    */
   composite(image: FrameImage, rect: GlRect, opacity: number): void {
     const gl = this.gl;
     const program = this.compositeProgram;
     if (!program) return;
-    this.resolve(image, Math.min(rect.width, image.width), Math.min(rect.height, image.height), rect);
     gl.useProgram(program.program);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, image.texture);
@@ -165,12 +143,14 @@ export class FrameImages {
     gl.bindVertexArray(null);
   }
 
-  /** 1回の描画の終わり：しばらく描かれなかった残光の画像を捨てる */
+  /** 1回の描画の終わり：しばらく描かれなかった残光・薄くするための画像を捨てる */
   end(): void {
-    for (const [id, entry] of this.trails) {
-      if (this.tick - entry.lastUsed > TRAIL_IDLE_TICKS) {
-        this.destroy(entry.image);
-        this.trails.delete(id);
+    for (const images of [this.trails, this.temporaries]) {
+      for (const [id, entry] of images) {
+        if (this.tick - entry.lastUsed > TRAIL_IDLE_TICKS) {
+          this.destroy(entry.image);
+          images.delete(id);
+        }
       }
     }
   }
@@ -178,31 +158,46 @@ export class FrameImages {
   dispose(): void {
     const gl = this.gl;
     if (gl.isContextLost()) return;
-    for (const entry of this.trails.values()) this.destroy(entry.image);
-    this.trails.clear();
-    if (this.scratchImage) this.destroy(this.scratchImage);
-    this.scratchImage = null;
+    for (const images of [this.trails, this.temporaries]) {
+      for (const entry of images.values()) this.destroy(entry.image);
+      images.clear();
+    }
     gl.deleteBuffer(this.quadBuffer);
     gl.deleteVertexArray(this.quadVao);
     for (const program of [this.fillProgram, this.compositeProgram]) if (program) gl.deleteProgram(program.program);
   }
 
   /**
-   * マルチサンプルの描く先を、読む先（texture）へ解決する（左下 width × height）。
-   * 終わると、描く先のフレームバッファ（共有キャンバス）・ビューポート・切り抜きを restore に戻す
+   * マルチサンプルの描く先を、読む先（texture）へ解決する（描き終えたあと、重ねる前に1回）。
+   * 終わると、フレームバッファは決まっていない（呼び出し側が描く先を選び直す）
    */
-  private resolve(image: FrameImage, width: number, height: number, restore: GlRect): void {
+  resolve(image: FrameImage): void {
     const gl = this.gl;
     if (image.drawFramebuffer === image.textureFramebuffer) return;
-    const target = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
     gl.disable(gl.SCISSOR_TEST);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, image.drawFramebuffer);
     gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, image.textureFramebuffer);
-    gl.blitFramebuffer(0, 0, width, height, 0, 0, width, height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, target);
+    gl.blitFramebuffer(0, 0, image.width, image.height, 0, 0, image.width, image.height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.enable(gl.SCISSOR_TEST);
-    gl.viewport(restore.x, restore.y, restore.width, restore.height);
-    gl.scissor(restore.x, restore.y, restore.width, restore.height);
+  }
+
+  /** 枠 id の画像を、images から取り出す（なければ作る）。大きさが変わったら作り直して透明にする。作れなければ null */
+  private keep(images: Map<string, { image: FrameImage; lastUsed: number }>, id: string, width: number, height: number): FrameImage | null {
+    let entry = images.get(id);
+    if (entry && (entry.image.width !== width || entry.image.height !== height)) {
+      this.destroy(entry.image);
+      images.delete(id);
+      entry = undefined;
+    }
+    if (!entry) {
+      const image = this.create(width, height);
+      if (!image) return null;
+      entry = { image, lastUsed: this.tick };
+      images.set(id, entry);
+    }
+    entry.lastUsed = this.tick;
+    return entry.image;
   }
 
   private create(width: number, height: number): FrameImage | null {

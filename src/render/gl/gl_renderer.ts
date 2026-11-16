@@ -15,12 +15,12 @@ import { MAX_GRADIENT_STOPS, type Rect } from "../../modules/types";
 import type { Rgba } from "./color";
 import type { DeviceRect } from "./frame_rects";
 import { FrameImages, type FrameImage } from "./gl_frame_image";
-import { FLOATS_PER_VERTEX, type ShapeBatch } from "./shape_batch";
+import { FLOATS_PER_VERTEX, type BatchCommand, type ShapeBatch } from "./shape_batch";
 import { imageQuad } from "./tessellate";
 import type { Mat3 } from "./transform";
-import { GlowRenderer, type GlDestination } from "./gl_glow";
+import { GlowRenderer, type GlRect } from "./gl_glow";
 import { link, type Program } from "./gl_program";
-import { glowPlan } from "./glow";
+import { glowPlan, glowRegion, type ClipBounds } from "./glow";
 import type { ResolvedGradient } from "./gradient";
 import { rasterizeText, textGlowKey } from "./text_glow";
 import type { TextGlowStyle } from "../../modules/types";
@@ -124,18 +124,66 @@ interface TextTexture extends StreamTexture {
   provisional: boolean;
 }
 
+/** 描画の座標系の矩形 (x0, y0)〜(x1, y1) を変換した、クリップ座標の上の範囲（向きは1/4回転ずつなので、角を写せば足りる） */
+function rectClipBounds(x0: number, y0: number, x1: number, y1: number, m: Mat3): ClipBounds {
+  const xs = [m[0] * x0 + m[3] * y0, m[0] * x1 + m[3] * y0, m[0] * x0 + m[3] * y1, m[0] * x1 + m[3] * y1];
+  const ys = [m[1] * x0 + m[4] * y0, m[1] * x1 + m[4] * y0, m[1] * x0 + m[4] * y1, m[1] * x1 + m[4] * y1];
+  return { minX: Math.min(...xs) + m[6], maxX: Math.max(...xs) + m[6], minY: Math.min(...ys) + m[7], maxY: Math.max(...ys) + m[7] };
+}
+
+/** まとめた図形の、番号の first から count 個が使う頂点の、クリップ座標の上の範囲 */
+function shapeClipBounds(batch: ShapeBatch, first: number, count: number, m: Mat3): ClipBounds {
+  const { vertices, indices } = batch;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (let i = first; i < first + count; i++) {
+    const v = indices[i] * FLOATS_PER_VERTEX;
+    const x = vertices[v];
+    const y = vertices[v + 1];
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
+  return rectClipBounds(x0, y0, x1, y1, m);
+}
+
+/** 枠1つ分の描き方（ShapeLayer が、配置の順に組み立てる） */
+export interface FramePass {
+  /** 枠のインスタンスID（残光・薄くするための画像を持ち続ける鍵） */
+  id: string;
+  /** 共有キャンバスの上の範囲（デバイスピクセル。y は上から） */
+  rect: DeviceRect;
+  /** 枠の描画の座標系から、枠のクリップ座標への変換 */
+  matrix: Mat3;
+  commands: readonly BatchCommand[];
+  /** 残光（あれば、枠の画像に前の回の絵を残す） */
+  trail: { color: Rgba; alpha: number } | null;
+  /** 枠の図形の不透明度（1 未満なら、枠の画像にしてから薄くして重ねる） */
+  opacity: number;
+}
+
+/** 枠1つ分の、下ごしらえの結果 */
+interface PreparedPass {
+  pass: FramePass;
+  /** 共有キャンバスの上の範囲（WebGL の座標。y は下から） */
+  rect: GlRect;
+  /** 命令ごとの、用意した発光の番号 */
+  glows: number[];
+  /** 命令ごとの、流れる画像のテクスチャ */
+  textures: (WebGLTexture | null)[];
+  /** 描いて解決した枠の画像（使わない・使えなければ null） */
+  image: FrameImage | null;
+}
+
 export class GlRenderer {
   private shape: ShapeProgram | null = null;
   /** 発光（作れなければ null。そのときは発光なしで図形だけを描く） */
   private glow: GlowRenderer | null = null;
   /** 枠の画像（作れなければ null。そのときは残光を残さず・薄くせずに、共有キャンバスへ直接描く） */
   private images: FrameImages | null = null;
-  /** 今の枠の、共有キャンバスの上の範囲（WebGL の座標。frame で決まる） */
-  private frameDest: GlDestination | null = null;
-  /** 今の描く先（ふだんは frameDest。枠の画像に描いているあいだは、その画像） */
-  private dest: GlDestination | null = null;
-  /** 描いている枠の画像 */
-  private image: FrameImage | null = null;
   private imageProgram: (Program & { alpha: WebGLUniformLocation | null; sampler: WebGLUniformLocation | null }) | null = null;
   private shapeVao: WebGLVertexArrayObject | null = null;
   private imageVao: WebGLVertexArrayObject | null = null;
@@ -147,8 +195,6 @@ export class GlRenderer {
   /** 文字を画像にする Canvas 2D（使い回す） */
   private textCanvas: HTMLCanvasElement | null = null;
   private tick = 0;
-  /** 今の描画の、キャンバスの高さ（WebGL の y は下から） */
-  private canvasHeight = 0;
 
   constructor(private readonly gl: WebGL2RenderingContext) {}
 
@@ -216,20 +262,18 @@ export class GlRenderer {
     return true;
   }
 
-  /** 1回の描画の初め：全体を透明にし、まとめた図形を送る */
-  begin(canvasWidth: number, canvasHeight: number, batch: ShapeBatch): void {
+  /**
+   * 1回の描画。まとめた図形を送り、枠ごとの描き方（passes。並びの順に描く）に従って描く。描く先の切り替えを減らすため、
+   * 次の順に進める（T15-1。重ねる順と計算は、枠ごとに順に描いていたときと同じ）：
+   *   1. 流れる画像・文字の発光のテクスチャを書き、全部の発光を用意する（gl_glow）
+   *   2. 残光と薄くする枠を、枠の画像に描いて解決する（gl_frame_image）
+   *   3. 共有キャンバスを透明にし、枠ごとに、地の色で塗ってから、枠の画像を重ねるか、図形を描く
+   */
+  render(canvasWidth: number, canvasHeight: number, batch: ShapeBatch, bg: Rgba, passes: readonly FramePass[]): void {
     const gl = this.gl;
     this.tick++;
-    this.canvasHeight = canvasHeight;
-    this.frameDest = null;
-    this.dest = null;
-    this.image = null;
-    this.glow?.resize(canvasWidth, canvasHeight);
-    this.images?.begin(canvasWidth, canvasHeight);
-    gl.disable(gl.SCISSOR_TEST);
-    gl.viewport(0, 0, canvasWidth, canvasHeight);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    this.glow?.begin(canvasWidth, canvasHeight);
+    this.images?.begin();
     gl.enable(gl.SCISSOR_TEST);
     if (batch.indexCount > 0) {
       gl.bindVertexArray(this.shapeVao);
@@ -238,79 +282,118 @@ export class GlRenderer {
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, batch.indices.subarray(0, batch.indexCount), gl.STREAM_DRAW);
       gl.bindVertexArray(null);
     }
+
+    // 1. テクスチャと発光
+    const prepared = passes.map((pass) => this.preparePass(pass, canvasHeight, batch));
+    this.glow?.prepare();
+
+    // 2. 枠の画像（画像を使えなければ、共有キャンバスへ直接描く）
+    for (const entry of prepared) {
+      if (entry.pass.trail !== null || entry.pass.opacity < 1) entry.image = this.drawFrameImage(entry);
+    }
+
+    // 3. 共有キャンバス
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.viewport(0, 0, canvasWidth, canvasHeight);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.enable(gl.SCISSOR_TEST);
+    const a = bg[3];
+    for (const entry of prepared) {
+      const { rect } = entry;
+      gl.viewport(rect.x, rect.y, rect.width, rect.height);
+      gl.scissor(rect.x, rect.y, rect.width, rect.height);
+      gl.clearColor(bg[0] * a, bg[1] * a, bg[2] * a, a);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      if (entry.image && this.images) this.images.composite(entry.image, rect, entry.pass.opacity);
+      else this.replay(entry, rect);
+    }
   }
 
-  /** 枠の範囲を切り抜きとビューポートにし、地の色で塗る */
-  frame(rect: DeviceRect, bg: Rgba): void {
-    const gl = this.gl;
-    const y = this.canvasHeight - rect.y - rect.height;
-    this.frameDest = { framebuffer: null, rect: { x: rect.x, y, width: rect.width, height: rect.height } };
-    this.dest = this.frameDest;
-    this.image = null;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.scissor(rect.x, y, rect.width, rect.height);
-    gl.viewport(rect.x, y, rect.width, rect.height);
-    const a = bg[3];
-    gl.clearColor(bg[0] * a, bg[1] * a, bg[2] * a, a);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+  /** 枠1つ分の下ごしらえ：共有キャンバスの上の範囲を求め、流れる画像・文字の発光のテクスチャを書き、発光を用意に加える */
+  private preparePass(pass: FramePass, canvasHeight: number, batch: ShapeBatch): PreparedPass {
+    const rect: GlRect = { x: pass.rect.x, y: canvasHeight - pass.rect.y - pass.rect.height, width: pass.rect.width, height: pass.rect.height };
+    const entry: PreparedPass = { pass, rect, glows: [], textures: [], image: null };
+    const { matrix } = pass;
+    const glow = this.glow;
+    pass.commands.forEach((command, i) => {
+      if (command.kind === "shapes") {
+        if (!this.shape || command.count <= 0 || !glow) return;
+        const plan = glowPlan(command.glow, rect.width, rect.height);
+        const region = plan ? glowRegion(shapeClipBounds(batch, command.first, command.count, matrix), plan) : null;
+        if (plan && region) entry.glows[i] = glow.add(plan, region, () => this.drawShapes(matrix, command.first, command.count, command.gradient));
+      } else if (command.kind === "image") {
+        if (this.imageProgram) entry.textures[i] = this.updateTexture(command.stream);
+      } else {
+        if (!glow || !this.imageProgram) return;
+        const plan = glowPlan(command.style.glow, rect.width, rect.height);
+        const text = plan ? this.textTexture(command.text, command.style, command.pixelScale) : null;
+        if (!plan || !text) return;
+        const dest = { ...text.dest, x: text.dest.x + command.x, y: text.dest.y + command.y };
+        const alpha = Math.min(1, Math.max(0, command.style.alpha ?? 1));
+        const region = glowRegion(rectClipBounds(dest.x, dest.y, dest.x + dest.width, dest.y + dest.height, matrix), plan);
+        if (region) entry.glows[i] = glow.add(plan, region, () => this.drawTexture(matrix, text.texture, imageQuad(dest, 0, 1), alpha));
+      }
+    });
+    return entry;
   }
 
   /**
-   * 今の枠の図形を、枠の画像に描き始める（frame のあと、図形より先に呼ぶ）。
-   * trail があれば、枠の残光の画像（trailId ごとに持ち続ける）に color を alpha の濃さで重ねてから描く。
-   * なければ一時の画像を透明にしてから描く（endFrameImage で不透明度を掛けて重ねる）。画像を使えなければ false
-   * （そのときは共有キャンバスへ直接描く）
+   * 枠の図形を、枠の画像に描いて解決する。trail があれば、枠の残光の画像（枠の id ごとに持ち続ける）に color を alpha の濃さで
+   * 重ねてから描く。なければ薄くするための画像を透明にしてから描く（共有キャンバスに重ねるときに不透明度を掛ける）。
+   * 画像を使えなければ null
    */
-  beginFrameImage(trailId: string, trail: { color: Rgba; alpha: number } | null): boolean {
+  private drawFrameImage(entry: PreparedPass): FrameImage | null {
     const gl = this.gl;
-    const frame = this.frameDest;
-    if (!frame || !this.images) return false;
-    const { width, height } = frame.rect;
-    const image = trail ? this.images.trail(trailId, width, height) : this.images.scratch(width, height);
-    if (!image) return false;
+    const images = this.images;
+    if (!images) return null;
+    const { id, trail } = entry.pass;
+    const { width, height } = entry.rect;
+    const image = trail ? images.trail(id, width, height) : images.temporary(id, width, height);
+    if (!image) return null;
     const rect = { x: 0, y: 0, width, height };
     gl.bindFramebuffer(gl.FRAMEBUFFER, image.drawFramebuffer);
     gl.viewport(0, 0, width, height);
     gl.scissor(0, 0, width, height);
     if (trail) {
-      this.images.fill(trail.color, trail.alpha);
+      images.fill(trail.color, trail.alpha);
     } else {
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
     }
-    this.image = image;
-    this.dest = { framebuffer: image.drawFramebuffer, rect };
-    return true;
-  }
-
-  /** 枠の画像を、共有キャンバスの枠に不透明度 opacity で重ねる（beginFrameImage が true のとき、図形のあとで呼ぶ） */
-  endFrameImage(opacity: number): void {
-    const gl = this.gl;
-    const frame = this.frameDest;
-    const image = this.image;
-    if (!frame || !image || !this.images) return;
-    const { rect } = frame;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(rect.x, rect.y, rect.width, rect.height);
-    gl.scissor(rect.x, rect.y, rect.width, rect.height);
-    this.images.composite(image, rect, opacity);
-    this.image = null;
-    this.dest = frame;
+    this.replay(entry, rect);
+    images.resolve(image);
+    return image;
   }
 
   /**
-   * まとめた図形のうち、番号の first から count 個を、今の描く先に描く。
-   * glow が 0 より大きければ、先に発光（ぼかした写し）を敷いてから、図形を重ねる。glowOnly なら発光だけを敷く。
-   * gradient があれば、色の移り変わりを頂点の色に掛ける
+   * 枠の命令を、今のフレームバッファの dest の範囲に、順に描く。発光を持つ図形は、用意した発光を敷いてから図形を重ねる
+   * （発光だけの命令は図形を描かない）。色の移り変わりは頂点の色に掛ける
    */
-  shapes(matrix: Mat3, first: number, count: number, glow = 0, glowOnly = false, gradient: ResolvedGradient | null = null): void {
-    if (!this.shape || count <= 0) return;
-    const dest = this.dest;
-    const plan = this.glow && dest ? glowPlan(glow, dest.rect.width, dest.rect.height) : null;
-    if (plan && this.glow && dest) {
-      this.glow.draw(plan, dest, () => this.drawShapes(matrix, first, count, gradient));
-    }
-    if (!glowOnly) this.drawShapes(matrix, first, count, gradient);
+  private replay(entry: PreparedPass, dest: GlRect): void {
+    const gl = this.gl;
+    const { matrix, commands } = entry.pass;
+    gl.viewport(dest.x, dest.y, dest.width, dest.height);
+    gl.scissor(dest.x, dest.y, dest.width, dest.height);
+    commands.forEach((command, i) => {
+      const glow = entry.glows[i];
+      if (command.kind === "shapes") {
+        if (!this.shape || command.count <= 0) return;
+        if (glow !== undefined) {
+          this.glow?.draw(glow, dest);
+          gl.scissor(dest.x, dest.y, dest.width, dest.height);
+        }
+        if (!command.glowOnly) this.drawShapes(matrix, command.first, command.count, command.gradient);
+      } else if (command.kind === "image") {
+        if (!this.imageProgram) return;
+        const texture = entry.textures[i] ?? null;
+        this.drawTexture(matrix, texture, imageQuad(command.dest, command.stream.start, command.stream.width), command.alpha);
+      } else if (glow !== undefined) {
+        this.glow?.draw(glow, dest);
+        gl.scissor(dest.x, dest.y, dest.width, dest.height);
+      }
+    });
   }
 
   private drawShapes(matrix: Mat3, first: number, count: number, gradient: ResolvedGradient | null): void {
@@ -331,28 +414,6 @@ export class GlRenderer {
     gl.bindVertexArray(this.shapeVao);
     gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_INT, first * 4);
     gl.bindVertexArray(null);
-  }
-
-  /** 流れる画像を描く（足された列を書いてから） */
-  streamImage(matrix: Mat3, stream: StreamImage, dest: Rect, alpha: number): void {
-    if (!this.imageProgram) return;
-    const texture = this.updateTexture(stream);
-    this.drawTexture(matrix, texture, imageQuad(dest, stream.start, stream.width), alpha);
-  }
-
-  /**
-   * 文字の発光だけを、今の描く先に敷く（文字を発光の色で描いた画像を、発光の命令の図形として描く）。
-   * (x, y) は文字の基準の点（描画の座標系）
-   */
-  textGlow(matrix: Mat3, text: string, x: number, y: number, style: TextGlowStyle, pixelScale: number): void {
-    const dest = this.dest;
-    if (!this.glow || !this.imageProgram || !dest) return;
-    const plan = glowPlan(style.glow, dest.rect.width, dest.rect.height);
-    const entry = plan ? this.textTexture(text, style, pixelScale) : null;
-    if (!plan || !entry) return;
-    const rect = { ...entry.dest, x: entry.dest.x + x, y: entry.dest.y + y };
-    const alpha = Math.min(1, Math.max(0, style.alpha ?? 1));
-    this.glow.draw(plan, dest, () => this.drawTexture(matrix, entry.texture, imageQuad(rect, 0, 1), alpha));
   }
 
   private drawTexture(matrix: Mat3, texture: WebGLTexture | null, quad: Float32Array, alpha: number): void {

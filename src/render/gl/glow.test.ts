@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GlowTargets, MAX_GLOW_RADIUS, gaussianWeights, glowDeviation, glowPlan, glowSampling, glowScale } from "./glow";
+import { MAX_GLOW_RADIUS, gaussianWeights, glowDeviation, glowPlan, glowRegion, glowSampling, glowScale, packShelves } from "./glow";
 
 describe("glowScale・glowDeviation", () => {
   it("発光 12 までは 1/2、それより大きいと 1/4 に縮小し、縮小した画像の上で標準偏差 b/2 × 縮小率のぼかしにする", () => {
@@ -90,85 +90,117 @@ describe("glowSampling", () => {
   });
 });
 
-describe("GlowTargets", () => {
-  function recording(failAt: number[] = []) {
-    const created: { width: number; height: number; destroyed: boolean }[] = [];
-    let calls = 0;
-    const targets = new GlowTargets({
-      create: (width, height) => {
-        if (failAt.includes(calls++)) return null;
-        const t = { width, height, destroyed: false };
-        created.push(t);
-        return t;
-      },
-      destroy: (t) => {
-        t.destroyed = true;
-      },
-    });
-    return { targets, created };
-  }
+describe("glowSampling（置き場所）", () => {
+  it("縮小した画像を (originX, originY) に置いたときは、倍率は同じで、その分を足し、読む範囲もずらす", () => {
+    const plan = glowPlan(10, 101, 50)!;
+    const at0 = glowSampling(plan, 400, 200);
+    const s = glowSampling(plan, 400, 200, 120, 30);
+    expect(s.uvScale).toEqual(at0.uvScale);
+    expect(at0.uvOffset).toEqual([0, 0]);
+    expect(s.uvOffset[0] * 400).toBeCloseTo(120, 9);
+    expect(s.uvOffset[1] * 200).toBeCloseTo(30, 9);
+    const clamp = s.clamp.map((v, i) => v * (i % 2 === 0 ? 400 : 200));
+    [120.5, 30.5, 170.5, 54.5].forEach((v, i) => expect(clamp[i]).toBeCloseTo(v, 9));
+  });
+});
 
-  it("使うときに作る：等倍は1枚、縮小は縮小率ごとに2枚（キャンバスの大きさを切り上げで割った大きさ）", () => {
-    const { targets, created } = recording();
-    targets.resize(2880, 1801);
-    expect(created).toHaveLength(0);
-    targets.full();
-    targets.scaled(2);
-    targets.scaled(4);
-    expect(created.map((t) => [t.width, t.height])).toEqual([
-      [2880, 1801],
-      [1440, 901],
-      [1440, 901],
-      [720, 451],
-      [720, 451],
+describe("glowSampling（枠の一部）", () => {
+  it("枠の一部（縮小した画像で offset から）を置いたときは、読む位置をその分だけ戻し、読む範囲は置いたものに留める", () => {
+    const plan = { ...glowPlan(10, 200, 100)!, smallWidth: 20, smallHeight: 10 };
+    const s = glowSampling(plan, 400, 200, 120, 30, 16, 4);
+    // 枠の左下（uv 0）は、置いたものの左端から offset だけ外（120 − 16 = 104）
+    expect(s.uvOffset[0] * 400).toBeCloseTo(104, 9);
+    expect(s.uvOffset[1] * 200).toBeCloseTo(26, 9);
+    const clamp = s.clamp.map((v, i) => v * (i % 2 === 0 ? 400 : 200));
+    [120.5, 30.5, 139.5, 39.5].forEach((v, i) => expect(clamp[i]).toBeCloseTo(v, 9));
+  });
+});
+
+describe("glowRegion", () => {
+  // 発光 10 → 1/2 に縮小、標準偏差 2.5、半径 8（縮小した画像）→ 届く幅 (8 + 1) × 2 + 2 = 20 デバイスピクセル
+  const plan = glowPlan(10, 400, 200)!;
+
+  it("図形のある範囲に、ぼかしの届く幅を足し、左下を縮小の割り算の値の倍数にそろえる", () => {
+    expect(plan.weights.length - 1).toBe(8);
+    // クリップ座標 x: -0.5〜0 → 100〜200 px、y: 0〜0.5 → 100〜150 px
+    const region = glowRegion({ minX: -0.5, maxX: 0, minY: 0, maxY: 0.5 }, plan)!;
+    expect(region).toEqual({ x: 80, y: 80, width: 140, height: 90 });
+    // 奇数になる端は、外側の倍数に広げる
+    const odd = glowRegion({ minX: (101 / 400) * 2 - 1, maxX: (151 / 400) * 2 - 1, minY: -1, maxY: -1 }, plan)!;
+    expect(odd.x % 2).toBe(0);
+    expect(odd.x).toBe(80);
+    expect(odd.x + odd.width).toBe(172);
+  });
+
+  it("枠の外は切る。図形が枠の外にしかなければ null", () => {
+    expect(glowRegion({ minX: -2, maxX: 2, minY: -2, maxY: 2 }, plan)).toEqual({ x: 0, y: 0, width: 400, height: 200 });
+    expect(glowRegion({ minX: 1.2, maxX: 1.5, minY: 0, maxY: 0.5 }, plan)).toBeNull();
+  });
+
+  it("1/4 に縮小するときは、4 の倍数にそろえる", () => {
+    const big = glowPlan(24, 400, 200)!;
+    const region = glowRegion({ minX: 0, maxX: 0.1, minY: 0, maxY: 0.1 }, big)!;
+    expect(region.x % 4).toBe(0);
+    expect(region.y % 4).toBe(0);
+  });
+});
+
+describe("packShelves", () => {
+  it("左下から右へ詰め、入らなければ上の段へ移る。段の高さは、その段でいちばん高いもの", () => {
+    const packed = packShelves(
+      [
+        { width: 60, height: 20 },
+        { width: 30, height: 25 },
+        { width: 20, height: 10 },
+        { width: 50, height: 5 },
+      ],
+      100,
+    );
+    expect(packed.origins).toEqual([
+      { x: 0, y: 0, page: 0 },
+      { x: 60, y: 0, page: 0 },
+      { x: 0, y: 25, page: 0 },
+      { x: 20, y: 25, page: 0 },
     ]);
+    expect(packed).toMatchObject({ width: 90, height: 35, pages: 1 });
   });
 
-  it("2回目からは使い回す。大きさが変わったら捨てて作り直し、同じ大きさなら作り直さない", () => {
-    const { targets, created } = recording();
-    targets.resize(300, 120);
-    const full = targets.full();
-    const pair = targets.scaled(2);
-    expect(targets.full()).toBe(full);
-    expect(targets.scaled(2)).toBe(pair);
-    targets.resize(300, 120);
-    expect(targets.full()).toBe(full);
-    expect(created).toHaveLength(3);
-
-    targets.resize(200, 120);
-    expect(created.every((t) => t.destroyed)).toBe(true);
-    targets.full();
-    targets.scaled(2);
-    expect(created.slice(3).map((t) => [t.width, t.height, t.destroyed])).toEqual([
-      [200, 120, false],
-      [100, 60, false],
-      [100, 60, false],
+  it("幅より広いものは、それだけの段にし、使った幅として返す", () => {
+    const packed = packShelves(
+      [
+        { width: 10, height: 10 },
+        { width: 120, height: 5 },
+      ],
+      100,
+    );
+    expect(packed.origins).toEqual([
+      { x: 0, y: 0, page: 0 },
+      { x: 0, y: 10, page: 0 },
     ]);
+    expect(packed).toMatchObject({ width: 120, height: 15 });
   });
 
-  it("大きさがまだないとき・作れないときは null。2枚目を作れなければ1枚目も捨てる", () => {
-    const empty = recording();
-    expect(empty.targets.full()).toBeNull();
-    expect(empty.targets.scaled(2)).toBeNull();
-    expect(empty.created).toHaveLength(0);
-
-    const failing = recording([1]);
-    failing.targets.resize(300, 120);
-    expect(failing.targets.scaled(2)).toBeNull();
-    expect(failing.created).toHaveLength(1);
-    expect(failing.created[0].destroyed).toBe(true);
-    // 次は作れる
-    expect(failing.targets.scaled(2)).not.toBeNull();
+  it("高さの上限を超える段は、次のページの左下から詰める。高さは、いちばん高いページの高さ", () => {
+    const packed = packShelves(
+      [
+        { width: 80, height: 40 },
+        { width: 80, height: 50 },
+        { width: 30, height: 20 },
+        { width: 80, height: 30 },
+      ],
+      100,
+      60,
+    );
+    expect(packed.origins).toEqual([
+      { x: 0, y: 0, page: 0 },
+      { x: 0, y: 0, page: 1 },
+      { x: 0, y: 0, page: 2 },
+      { x: 0, y: 20, page: 2 },
+    ]);
+    expect(packed).toMatchObject({ height: 50, pages: 3 });
   });
 
-  it("release で全部を捨てる", () => {
-    const { targets, created } = recording();
-    targets.resize(300, 120);
-    targets.full();
-    targets.scaled(4);
-    targets.release();
-    expect(created.map((t) => t.destroyed)).toEqual([true, true, true]);
-    targets.full();
-    expect(created).toHaveLength(4);
+  it("何もなければ大きさは 0、ページも 0", () => {
+    expect(packShelves([], 100)).toEqual({ origins: [], width: 0, height: 0, pages: 0 });
   });
 });
